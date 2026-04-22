@@ -12,19 +12,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
-import { useExpenseCategories } from "@/hooks/useCatalogs";
+import { useExpenseCategories, useCountries } from "@/hooks/useCatalogs";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 
 export default function Expenses() {
   const qc = useQueryClient();
+  const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [localCountry, setLocalCountry] = useState<string | null>(null);
+  const effectiveCountry = localCountry ?? countryId;
 
   const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ["expenses"],
+    queryKey: ["expenses", effectiveCountry],
     queryFn: async () => {
-      const { data, error } = await supabase.from("expenses").select("*, category:expense_categories(name)").order("date", { ascending: false });
+      let q = supabase.from("expenses").select("*, category:expense_categories(name), country:countries(name, currency_code)").order("date", { ascending: false });
+      if (effectiveCountry) q = q.eq("country_id", effectiveCountry);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
