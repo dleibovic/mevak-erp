@@ -368,16 +368,18 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                 </div>
               </div>
               <div>
-                <Label>CMV (costo del cliente)</Label>
-                <div className="flex gap-2">
-                  <Input type="number" step="0.01" min={0} value={form.cmv_cost ?? 0} onChange={(e) => setForm({ ...form, cmv_cost: e.target.value })} />
-                  <Select value={form.cmv_currency ?? defaultCurrency} onValueChange={(v) => setForm({ ...form, cmv_currency: v })}>
-                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ARS">ARS</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <Label>CMV (Costo de Mercadería Vendida) %</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    max={100}
+                    value={form.cmv_cost ?? 0}
+                    onChange={(e) => setForm({ ...form, cmv_cost: e.target.value })}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
                 </div>
               </div>
             </div>
