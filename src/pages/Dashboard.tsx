@@ -115,14 +115,25 @@ export default function Dashboard() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <KCard label="Ingresos ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-        <KCard label="Ingresos EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-        <KCard label="Gastos ARS" value={formatMoney(stats.expARS, "ARS")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
-        <KCard label="Gastos EUR" value={formatMoney(stats.expEUR, "EUR")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
-        <KCard label="Nómina ARS" value={formatMoney(stats.payrollARS, "ARS")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-        <KCard label="Nómina EUR" value={formatMoney(stats.payrollEUR, "EUR")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-        <KCard label="Neto ARS" value={formatMoney(stats.netARS, "ARS")} accent={stats.netARS >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
-        <KCard label="Neto EUR" value={formatMoney(stats.netEUR, "EUR")} accent={stats.netEUR >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+        {stats.mode === "single" ? (
+          <>
+            <KCard label={`Ingresos ${stats.currency}`} value={formatMoney(stats.income, stats.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label={`Gastos ${stats.currency}`} value={formatMoney(stats.exp, stats.currency)} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
+            <KCard label={`Nómina ${stats.currency}`} value={formatMoney(stats.payroll, stats.currency)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label={`Neto ${stats.currency}`} value={formatMoney(stats.net, stats.currency)} accent={stats.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+          </>
+        ) : (
+          <>
+            <KCard label="Ingresos ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Ingresos EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Gastos ARS" value={formatMoney(stats.expARS, "ARS")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
+            <KCard label="Gastos EUR" value={formatMoney(stats.expEUR, "EUR")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
+            <KCard label="Nómina ARS" value={formatMoney(stats.payrollARS, "ARS")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label="Nómina EUR" value={formatMoney(stats.payrollEUR, "EUR")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label="Neto ARS" value={formatMoney(stats.netARS, "ARS")} accent={stats.netARS >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+            <KCard label="Neto EUR" value={formatMoney(stats.netEUR, "EUR")} accent={stats.netEUR >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
