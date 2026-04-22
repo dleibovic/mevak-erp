@@ -58,13 +58,17 @@ export default function Billing() {
     onSuccess: () => { toast.success("Marcado como cobrado"); qc.invalidateQueries({ queryKey: ["invoices"] }); },
   });
 
-  const filtered = useMemo(() => filterStatus === "all" ? invoices : invoices.filter((i: any) => i.status === filterStatus), [invoices, filterStatus]);
+  const byCountry = useMemo(
+    () => effectiveCountry ? invoices.filter((i: any) => i.client?.country_id === effectiveCountry) : invoices,
+    [invoices, effectiveCountry]
+  );
+  const filtered = useMemo(() => filterStatus === "all" ? byCountry : byCountry.filter((i: any) => i.status === filterStatus), [byCountry, filterStatus]);
 
   const stats = useMemo(() => {
-    const overdue = invoices.filter((i: any) => i.status === "overdue");
-    const pending = invoices.filter((i: any) => i.status === "pending");
+    const overdue = byCountry.filter((i: any) => i.status === "overdue");
+    const pending = byCountry.filter((i: any) => i.status === "pending");
     return { overdueCount: overdue.length, pendingCount: pending.length };
-  }, [invoices]);
+  }, [byCountry]);
 
   return (
     <PageContainer>
@@ -81,12 +85,15 @@ export default function Billing() {
         <KPI label="Cobradas" value={invoices.filter((i: any) => i.status === "paid").length} accent="success" icon={<CheckCircle2 className="h-4 w-4" />} />
       </div>
 
-      <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex gap-2">
+      <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap gap-2 items-center">
         {[
           { v: "all", l: "Todas" }, { v: "overdue", l: "Vencidas" }, { v: "pending", l: "Pendientes" }, { v: "paid", l: "Cobradas" },
         ].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
+        <div className="ml-auto">
+          <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-[180px]" size="sm" />
+        </div>
       </Card>
 
       <Card className="bg-gradient-card border-border/60 overflow-hidden">
