@@ -328,8 +328,14 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
               <div>
                 <Label>País *</Label>
                 <Select
-                  value={form.country_id ?? ""}
+                  value={newCountry ? "__new__" : (form.country_id ?? "")}
                   onValueChange={(v) => {
+                    if (v === "__new__") {
+                      setNewCountry({ name: "", currency_code: "", currency_symbol: "" });
+                      setForm({ ...form, country_id: "", province_id: null, city_id: null });
+                      return;
+                    }
+                    setNewCountry(null);
                     const c = countries.find((x: any) => x.id === v);
                     setForm({ ...form, country_id: v, province_id: null, city_id: null, fee_currency: c?.currency_code ?? form.fee_currency, cmv_currency: c?.currency_code ?? form.cmv_currency });
                   }}
@@ -337,9 +343,46 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
                     {countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency_code})</SelectItem>)}
+                    <SelectItem value="__new__" className="text-primary font-medium">+ Crear nuevo país…</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {newCountry && (
+                <div className="col-span-2 grid grid-cols-3 gap-3 p-3 rounded-md border border-primary/40 bg-primary/5">
+                  <div>
+                    <Label className="text-xs">Nombre del país *</Label>
+                    <Input
+                      placeholder="Ej: Brasil"
+                      value={newCountry.name}
+                      onChange={(e) => setNewCountry({ ...newCountry, name: e.target.value })}
+                      maxLength={80}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Código moneda *</Label>
+                    <Input
+                      placeholder="BRL"
+                      value={newCountry.currency_code}
+                      onChange={(e) => {
+                        const code = e.target.value.toUpperCase();
+                        setNewCountry({ ...newCountry, currency_code: code });
+                        setForm((f: any) => ({ ...f, fee_currency: code || f.fee_currency, cmv_currency: code || f.cmv_currency }));
+                      }}
+                      maxLength={5}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Símbolo *</Label>
+                    <Input
+                      placeholder="R$"
+                      value={newCountry.currency_symbol}
+                      onChange={(e) => setNewCountry({ ...newCountry, currency_symbol: e.target.value })}
+                      maxLength={5}
+                    />
+                  </div>
+                  <p className="col-span-3 text-[11px] text-muted-foreground">Se creará al guardar el cliente y quedará disponible para futuros usos.</p>
+                </div>
+              )}
               <div>
                 <Label>Cantidad de sucursales *</Label>
                 <Input type="number" min={1} value={form.branches_count ?? 1} onChange={(e) => setForm({ ...form, branches_count: e.target.value })} />
