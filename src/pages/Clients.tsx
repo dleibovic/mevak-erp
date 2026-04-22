@@ -98,7 +98,7 @@ export default function Clients() {
                   <TableCell className="font-medium">{c.company_name}</TableCell>
                   <TableCell>{c.country?.name}</TableCell>
                   <TableCell>{c.branches_count}</TableCell>
-                  <TableCell>{formatCurrency(c.monthly_fee, c.fee_currency)}</TableCell>
+                  <TableCell>{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {c.client_platforms?.map((cp: any) => (
