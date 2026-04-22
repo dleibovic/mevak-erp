@@ -104,9 +104,11 @@ function EmployeeDialog({ open, onOpenChange, employee }: any) {
   const { data: countries = [] } = useCountries();
   const [form, setForm] = useState<any>({});
 
-  if (open && form.full_name === undefined) {
+  useEffect(() => {
+    if (!open) return;
     setForm(employee ?? { full_name: "", role: "", country_id: countries[0]?.id, base_salary: 0, salary_currency: "ARS", is_active: true });
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, employee?.id, countries.length]);
 
   const save = useMutation({
     mutationFn: async () => {

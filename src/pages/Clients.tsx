@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
@@ -156,38 +156,30 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; cmv_cost: number; selected: boolean }>>({});
   const [commissions, setCommissions] = useState<Record<string, number>>({});
 
-  // Initialize form when dialog opens
-  useState(() => {
-    if (open) {
-      if (client) {
-        setForm({
-          company_name: client.company_name,
-          country_id: client.country_id,
-          billing_frequency: client.billing_frequency,
-          status: client.status,
-          assigned_executive_id: client.assigned_executive_id ?? null,
-        });
-        const sp: any = {};
-        client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, cmv_cost: cp.cmv_cost, selected: true }; });
-        setSelectedPlatforms(sp);
-        const cm: any = {};
-        client.client_executive_commission?.forEach((c: any) => { cm[c.employee_id] = c.commission_value; });
-        setCommissions(cm);
-      } else {
-        setForm({ company_name: "", country_id: countries[0]?.id, billing_frequency: "monthly", status: "active", assigned_executive_id: null });
-        setSelectedPlatforms({});
-        setCommissions({});
-      }
-    }
-  });
-  // re-init on open or client change
-  if (open && form.company_name === undefined) {
+  // Initialize form when dialog opens or client changes
+  useEffect(() => {
+    if (!open) return;
     if (client) {
-      setForm({ company_name: client.company_name, country_id: client.country_id, billing_frequency: client.billing_frequency, status: client.status, assigned_executive_id: client.assigned_executive_id });
+      setForm({
+        company_name: client.company_name,
+        country_id: client.country_id,
+        billing_frequency: client.billing_frequency,
+        status: client.status,
+        assigned_executive_id: client.assigned_executive_id ?? null,
+      });
+      const sp: any = {};
+      client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, cmv_cost: cp.cmv_cost, selected: true }; });
+      setSelectedPlatforms(sp);
+      const cm: any = {};
+      client.client_executive_commission?.forEach((c: any) => { cm[c.employee_id] = c.commission_value; });
+      setCommissions(cm);
     } else {
       setForm({ company_name: "", country_id: countries[0]?.id ?? "", billing_frequency: "monthly", status: "active", assigned_executive_id: null });
+      setSelectedPlatforms({});
+      setCommissions({});
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, client?.id, countries.length]);
 
   const save = useMutation({
     mutationFn: async () => {

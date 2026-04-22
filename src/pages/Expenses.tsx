@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
@@ -92,9 +92,10 @@ function ExpenseDialog({ open, onOpenChange, expense }: any) {
   const { data: categories = [] } = useExpenseCategories();
   const [form, setForm] = useState<any>({});
 
-  if (open && form.description === undefined) {
+  useEffect(() => {
+    if (!open) return;
     setForm(expense ?? { description: "", amount: 0, currency: "ARS", assigned_to: "company", date: new Date().toISOString().slice(0, 10), recurring: false });
-  }
+  }, [open, expense?.id]);
 
   const save = useMutation({
     mutationFn: async () => {
