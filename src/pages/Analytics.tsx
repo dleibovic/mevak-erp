@@ -6,13 +6,19 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { formatMoney } from "@/lib/format";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
 
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)"];
 
 export default function Analytics() {
+  const { countryId, current } = useCountryFilter();
   const { data: clients = [] } = useQuery({
-    queryKey: ["analytics-clients"],
-    queryFn: async () => (await supabase.from("clients").select("*, executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), invoices(*)")).data ?? [],
+    queryKey: ["analytics-clients", countryId],
+    queryFn: async () => {
+      let q = supabase.from("clients").select("*, executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), invoices(*)");
+      if (countryId) q = q.eq("country_id", countryId);
+      return (await q).data ?? [];
+    },
   });
 
   const platformBreakdown = useMemo(() => {
@@ -43,7 +49,7 @@ export default function Analytics() {
 
   return (
     <PageContainer>
-      <PageHeader title="Analytics" description="Plataformas y desempeño de ejecutivos" />
+      <PageHeader title="Analytics" description={current ? `Plataformas y desempeño — ${current.name}` : "Plataformas y desempeño de ejecutivos"} />
 
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <Card className="p-5 bg-gradient-card border-border/60">

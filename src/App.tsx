@@ -14,6 +14,7 @@ import Analytics from "./pages/Analytics";
 import Alerts from "./pages/Alerts";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound.tsx";
+import { CountryFilterProvider } from "./hooks/useCountryFilter";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <CountryFilterProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
@@ -38,6 +40,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      </CountryFilterProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

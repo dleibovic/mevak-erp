@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, Receipt, Wallet, UserCog, Settings, LogOut, Ale
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -75,6 +76,10 @@ export default function AppLayout() {
 
       <main className="flex-1 min-w-0 relative">
         <div className="absolute inset-x-0 top-0 h-64 bg-glow pointer-events-none" />
+        <header className="relative z-10 h-14 border-b border-border/60 bg-background/60 backdrop-blur flex items-center justify-end px-6 gap-3">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">Vista por país</span>
+          <CountryFilterSelect />
+        </header>
         <div className="relative">
           <Outlet />
         </div>

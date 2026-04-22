@@ -307,6 +307,7 @@ export type Database = {
           amount: number
           assigned_to: Database["public"]["Enums"]["expense_assignee"]
           category_id: string | null
+          country_id: string | null
           created_at: string
           currency: string
           date: string
@@ -322,6 +323,7 @@ export type Database = {
           amount: number
           assigned_to?: Database["public"]["Enums"]["expense_assignee"]
           category_id?: string | null
+          country_id?: string | null
           created_at?: string
           currency?: string
           date?: string
@@ -337,6 +339,7 @@ export type Database = {
           amount?: number
           assigned_to?: Database["public"]["Enums"]["expense_assignee"]
           category_id?: string | null
+          country_id?: string | null
           created_at?: string
           currency?: string
           date?: string
@@ -354,6 +357,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
             referencedColumns: ["id"]
           },
         ]

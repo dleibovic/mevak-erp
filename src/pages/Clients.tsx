@@ -17,6 +17,8 @@ import { useCountries, usePlatforms, useProvinces, useCities } from "@/hooks/use
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney } from "@/lib/format";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 
 type Client = any;
 
@@ -26,17 +28,20 @@ const FREQ_LABEL: Record<string, string> = { weekly: "Semanal", biweekly: "Quinc
 export default function Clients() {
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
+  const { countryId } = useCountryFilter();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [open, setOpen] = useState(false);
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", countryId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("clients")
         .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*)")
         .order("created_at", { ascending: false });
+      if (countryId) q = q.eq("country_id", countryId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -65,11 +70,12 @@ export default function Clients() {
         )}
       />
 
-      <Card className="p-4 mb-4 bg-gradient-card border-border/60">
-        <div className="relative max-w-sm">
+      <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <CountryFilterSelect className="w-[200px]" />
       </Card>
 
       <Card className="bg-gradient-card border-border/60 overflow-hidden">
@@ -161,12 +167,13 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [form, setForm] = useState<any>({});
   const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; selected: boolean }>>({});
   const [commissions, setCommissions] = useState<Record<string, number>>({});
+  const [newCountry, setNewCountry] = useState<{ name: string; currency_code: string; currency_symbol: string } | null>(null);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
   const { data: cities = [] } = useCities(form.province_id);
 
   const currentCountry = countries.find((c: any) => c.id === form.country_id);
-  const defaultCurrency = currentCountry?.currency_code ?? "ARS";
+  const defaultCurrency = currentCountry?.currency_code ?? newCountry?.currency_code ?? "ARS";
 
   // Initialize form when dialog opens or client changes
   useEffect(() => {
@@ -228,9 +235,29 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
   const save = useMutation({
     mutationFn: async () => {
+      let countryId = form.country_id;
+
+      // If user is creating a brand-new country, insert it first
+      if (!countryId && newCountry) {
+        const name = newCountry.name.trim();
+        const code = newCountry.currency_code.trim().toUpperCase();
+        const symbol = newCountry.currency_symbol.trim();
+        if (!name || !code || !symbol) throw new Error("Completá nombre, código de moneda y símbolo del país");
+        if (code.length > 5) throw new Error("Código de moneda inválido (máx 5 caracteres)");
+        const { data, error } = await supabase
+          .from("countries")
+          .insert({ name, currency_code: code, currency_symbol: symbol })
+          .select()
+          .single();
+        if (error) throw error;
+        countryId = data.id;
+      }
+
+      if (!countryId) throw new Error("Seleccioná un país");
+
       const payload = {
         company_name: form.company_name,
-        country_id: form.country_id,
+        country_id: countryId,
         province_id: form.province_id || null,
         city_id: form.city_id || null,
         address: form.address || null,
@@ -274,8 +301,10 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
     onSuccess: () => {
       toast.success(client ? "Cliente actualizado" : "Cliente creado");
       qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["countries"] });
       onOpenChange(false);
       setForm({});
+      setNewCountry(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -299,8 +328,14 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
               <div>
                 <Label>País *</Label>
                 <Select
-                  value={form.country_id ?? ""}
+                  value={newCountry ? "__new__" : (form.country_id ?? "")}
                   onValueChange={(v) => {
+                    if (v === "__new__") {
+                      setNewCountry({ name: "", currency_code: "", currency_symbol: "" });
+                      setForm({ ...form, country_id: "", province_id: null, city_id: null });
+                      return;
+                    }
+                    setNewCountry(null);
                     const c = countries.find((x: any) => x.id === v);
                     setForm({ ...form, country_id: v, province_id: null, city_id: null, fee_currency: c?.currency_code ?? form.fee_currency, cmv_currency: c?.currency_code ?? form.cmv_currency });
                   }}
@@ -308,9 +343,46 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
                     {countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency_code})</SelectItem>)}
+                    <SelectItem value="__new__" className="text-primary font-medium">+ Crear nuevo país…</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {newCountry && (
+                <div className="col-span-2 grid grid-cols-3 gap-3 p-3 rounded-md border border-primary/40 bg-primary/5">
+                  <div>
+                    <Label className="text-xs">Nombre del país *</Label>
+                    <Input
+                      placeholder="Ej: Brasil"
+                      value={newCountry.name}
+                      onChange={(e) => setNewCountry({ ...newCountry, name: e.target.value })}
+                      maxLength={80}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Código moneda *</Label>
+                    <Input
+                      placeholder="BRL"
+                      value={newCountry.currency_code}
+                      onChange={(e) => {
+                        const code = e.target.value.toUpperCase();
+                        setNewCountry({ ...newCountry, currency_code: code });
+                        setForm((f: any) => ({ ...f, fee_currency: code || f.fee_currency, cmv_currency: code || f.cmv_currency }));
+                      }}
+                      maxLength={5}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Símbolo *</Label>
+                    <Input
+                      placeholder="R$"
+                      value={newCountry.currency_symbol}
+                      onChange={(e) => setNewCountry({ ...newCountry, currency_symbol: e.target.value })}
+                      maxLength={5}
+                    />
+                  </div>
+                  <p className="col-span-3 text-[11px] text-muted-foreground">Se creará al guardar el cliente y quedará disponible para futuros usos.</p>
+                </div>
+              )}
               <div>
                 <Label>Cantidad de sucursales *</Label>
                 <Input type="number" min={1} value={form.branches_count ?? 1} onChange={(e) => setForm({ ...form, branches_count: e.target.value })} />
@@ -503,7 +575,14 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || !form.company_name || !form.country_id}>
+          <Button
+            onClick={() => save.mutate()}
+            disabled={
+              save.isPending ||
+              !form.company_name ||
+              (!form.country_id && !(newCountry && newCountry.name && newCountry.currency_code && newCountry.currency_symbol))
+            }
+          >
             {save.isPending ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>
