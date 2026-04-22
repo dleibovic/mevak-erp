@@ -40,8 +40,22 @@ export default function Dashboard() {
     [employeesAll, countryId]
   );
 
+  // When a country is selected, restrict everything to ITS currency only.
+  const activeCurrency = current?.currency_code ?? null;
+
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
+    if (activeCurrency) {
+      const c = activeCurrency;
+      const income = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === c))[c] ?? 0;
+      const exp = sumByCurr(expenses.filter((e: any) => e.currency === c))[c] ?? 0;
+      const payroll = employees.reduce((acc: number, e: any) => {
+        if (e.salary_currency !== c) return acc;
+        const comm = (e.commissions ?? []).filter((cm: any) => cm.currency === c).reduce((a: number, cm: any) => a + Number(cm.commission_value), 0);
+        return acc + Number(e.base_salary || 0) + comm;
+      }, 0);
+      return { mode: "single" as const, currency: c, income, exp, payroll, net: income - exp - payroll };
+    }
     const incomeARS = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "ARS"))["ARS"] ?? 0;
     const incomeEUR = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "EUR"))["EUR"] ?? 0;
     const expARS = sumByCurr(expenses.filter((e: any) => e.currency === "ARS"))["ARS"] ?? 0;
@@ -56,41 +70,42 @@ export default function Dashboard() {
       const comm = (e.commissions ?? []).filter((c: any) => c.currency === "EUR").reduce((a: number, c: any) => a + Number(c.commission_value), 0);
       return acc + Number(e.base_salary || 0) + comm;
     }, 0);
-    return { incomeARS, incomeEUR, expARS, expEUR, payrollARS, payrollEUR, netARS: incomeARS - expARS - payrollARS, netEUR: incomeEUR - expEUR - payrollEUR };
-  }, [invoices, expenses, employees]);
+    return { mode: "dual" as const, incomeARS, incomeEUR, expARS, expEUR, payrollARS, payrollEUR, netARS: incomeARS - expARS - payrollARS, netEUR: incomeEUR - expEUR - payrollEUR };
+  }, [invoices, expenses, employees, activeCurrency]);
 
   const series = useMemo(() => {
     const map: Record<string, any> = {};
-    invoices.filter((i: any) => i.status === "paid" && i.collected_at).forEach((i: any) => {
+    const okCurr = (r: any) => !activeCurrency || r.currency === activeCurrency;
+    invoices.filter((i: any) => i.status === "paid" && i.collected_at && okCurr(i)).forEach((i: any) => {
       const k = format(startOfMonth(parseISO(i.collected_at)), "yyyy-MM");
       map[k] = map[k] ?? { month: k, ingresos: 0, gastos: 0 };
       map[k].ingresos += Number(i.amount);
     });
-    expenses.forEach((e: any) => {
+    expenses.filter(okCurr).forEach((e: any) => {
       const k = format(startOfMonth(parseISO(e.date)), "yyyy-MM");
       map[k] = map[k] ?? { month: k, ingresos: 0, gastos: 0 };
       map[k].gastos += Number(e.amount);
     });
     return Object.values(map).sort((a: any, b: any) => a.month.localeCompare(b.month));
-  }, [invoices, expenses]);
+  }, [invoices, expenses, activeCurrency]);
 
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    expenses.forEach((e: any) => {
+    expenses.filter((e: any) => !activeCurrency || e.currency === activeCurrency).forEach((e: any) => {
       const k = e.category?.name ?? "Sin categoría";
       map[k] = (map[k] ?? 0) + Number(e.amount);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
-  }, [expenses]);
+  }, [expenses, activeCurrency]);
 
   const byClient = useMemo(() => {
     const map: Record<string, number> = {};
-    invoices.filter((i: any) => i.status === "paid").forEach((i: any) => {
+    invoices.filter((i: any) => i.status === "paid" && (!activeCurrency || i.currency === activeCurrency)).forEach((i: any) => {
       const k = i.client?.company_name ?? "—";
       map[k] = (map[k] ?? 0) + Number(i.amount);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
-  }, [invoices]);
+  }, [invoices, activeCurrency]);
 
   return (
     <PageContainer>
@@ -100,14 +115,25 @@ export default function Dashboard() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <KCard label="Ingresos ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-        <KCard label="Ingresos EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-        <KCard label="Gastos ARS" value={formatMoney(stats.expARS, "ARS")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
-        <KCard label="Gastos EUR" value={formatMoney(stats.expEUR, "EUR")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
-        <KCard label="Nómina ARS" value={formatMoney(stats.payrollARS, "ARS")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-        <KCard label="Nómina EUR" value={formatMoney(stats.payrollEUR, "EUR")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-        <KCard label="Neto ARS" value={formatMoney(stats.netARS, "ARS")} accent={stats.netARS >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
-        <KCard label="Neto EUR" value={formatMoney(stats.netEUR, "EUR")} accent={stats.netEUR >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+        {stats.mode === "single" ? (
+          <>
+            <KCard label={`Ingresos ${stats.currency}`} value={formatMoney(stats.income, stats.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label={`Gastos ${stats.currency}`} value={formatMoney(stats.exp, stats.currency)} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
+            <KCard label={`Nómina ${stats.currency}`} value={formatMoney(stats.payroll, stats.currency)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label={`Neto ${stats.currency}`} value={formatMoney(stats.net, stats.currency)} accent={stats.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+          </>
+        ) : (
+          <>
+            <KCard label="Ingresos ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Ingresos EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Gastos ARS" value={formatMoney(stats.expARS, "ARS")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
+            <KCard label="Gastos EUR" value={formatMoney(stats.expEUR, "EUR")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
+            <KCard label="Nómina ARS" value={formatMoney(stats.payrollARS, "ARS")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label="Nómina EUR" value={formatMoney(stats.payrollEUR, "EUR")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label="Neto ARS" value={formatMoney(stats.netARS, "ARS")} accent={stats.netARS >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+            <KCard label="Neto EUR" value={formatMoney(stats.netEUR, "EUR")} accent={stats.netEUR >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
