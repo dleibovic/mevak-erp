@@ -46,6 +46,10 @@ export default function Expenses() {
     <PageContainer>
       <PageHeader title="Gastos" description="Egresos operativos y recurrentes" actions={<Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nuevo gasto</Button>} />
 
+      <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex justify-end">
+        <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-[200px]" size="sm" />
+      </Card>
+
       <Card className="bg-gradient-card border-border/60 overflow-hidden">
         {isLoading ? <div className="p-10 text-center text-muted-foreground">Cargando...</div> :
           expenses.length === 0 ? <EmptyState title="Sin gastos cargados" /> :
