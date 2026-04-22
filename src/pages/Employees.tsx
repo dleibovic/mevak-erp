@@ -15,19 +15,23 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useCountries } from "@/hooks/useCatalogs";
 import { formatMoney } from "@/lib/format";
 import { toast } from "sonner";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
 
 export default function Employees() {
   const qc = useQueryClient();
+  const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
 
   const { data: employees = [], isLoading } = useQuery({
-    queryKey: ["employees"],
+    queryKey: ["employees", countryId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("employees")
         .select("*, country:countries(*), commissions:client_executive_commission(*, client:clients(company_name))")
         .order("full_name");
+      if (countryId) q = q.eq("country_id", countryId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
