@@ -17,6 +17,8 @@ import { useCountries, usePlatforms, useProvinces, useCities } from "@/hooks/use
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney } from "@/lib/format";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 
 type Client = any;
 
@@ -26,17 +28,20 @@ const FREQ_LABEL: Record<string, string> = { weekly: "Semanal", biweekly: "Quinc
 export default function Clients() {
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
+  const { countryId } = useCountryFilter();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [open, setOpen] = useState(false);
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", countryId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("clients")
         .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*)")
         .order("created_at", { ascending: false });
+      if (countryId) q = q.eq("country_id", countryId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -65,11 +70,12 @@ export default function Clients() {
         )}
       />
 
-      <Card className="p-4 mb-4 bg-gradient-card border-border/60">
-        <div className="relative max-w-sm">
+      <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <CountryFilterSelect className="w-[200px]" />
       </Card>
 
       <Card className="bg-gradient-card border-border/60 overflow-hidden">
