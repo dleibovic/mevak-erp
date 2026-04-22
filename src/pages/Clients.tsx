@@ -16,7 +16,7 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useCountries, usePlatforms, useProvinces, useCities } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 
 type Client = any;
 
