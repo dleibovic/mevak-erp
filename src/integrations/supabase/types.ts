@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      cities: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          province_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          province_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          province_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cities_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_executive_commission: {
         Row: {
           client_id: string
@@ -56,21 +85,18 @@ export type Database = {
       client_platforms: {
         Row: {
           client_id: string
-          cmv_cost: number
           commission_rate: number
           id: string
           platform_id: string
         }
         Insert: {
           client_id: string
-          cmv_cost?: number
           commission_rate?: number
           id?: string
           platform_id: string
         }
         Update: {
           client_id?: string
-          cmv_cost?: number
           commission_rate?: number
           id?: string
           platform_id?: string
@@ -94,30 +120,69 @@ export type Database = {
       }
       clients: {
         Row: {
+          address: string | null
           assigned_executive_id: string | null
           billing_frequency: Database["public"]["Enums"]["billing_frequency"]
+          branches_count: number
+          city_id: string | null
+          cmv_cost: number
+          cmv_currency: string
           company_name: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           country_id: string
           created_at: string
+          fee_currency: string
           id: string
+          monthly_fee: number
+          notes: string | null
+          province_id: string | null
+          reports_email: string | null
           status: Database["public"]["Enums"]["client_status"]
         }
         Insert: {
+          address?: string | null
           assigned_executive_id?: string | null
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          branches_count?: number
+          city_id?: string | null
+          cmv_cost?: number
+          cmv_currency?: string
           company_name: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           country_id: string
           created_at?: string
+          fee_currency?: string
           id?: string
+          monthly_fee?: number
+          notes?: string | null
+          province_id?: string | null
+          reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
         }
         Update: {
+          address?: string | null
           assigned_executive_id?: string | null
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          branches_count?: number
+          city_id?: string | null
+          cmv_cost?: number
+          cmv_currency?: string
           company_name?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           country_id?: string
           created_at?: string
+          fee_currency?: string
           id?: string
+          monthly_fee?: number
+          notes?: string | null
+          province_id?: string | null
+          reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
         }
         Relationships: [
@@ -129,10 +194,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "clients_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "clients_country_id_fkey"
             columns: ["country_id"]
             isOneToOne: false
             referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
             referencedColumns: ["id"]
           },
         ]
@@ -367,6 +446,35 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      provinces: {
+        Row: {
+          country_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          country_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          country_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {

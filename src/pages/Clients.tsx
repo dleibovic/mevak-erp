@@ -7,14 +7,16 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import { useCountries, usePlatforms } from "@/hooks/useCatalogs";
+import { useCountries, usePlatforms, useProvinces, useCities } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { formatMoney } from "@/lib/format";
 
 type Client = any;
 
@@ -33,7 +35,7 @@ export default function Clients() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("*, country:countries(*), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*)")
+        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -81,6 +83,8 @@ export default function Clients() {
               <TableRow>
                 <TableHead>Empresa</TableHead>
                 <TableHead>País</TableHead>
+                <TableHead>Sucursales</TableHead>
+                <TableHead>Fee mensual</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Ejecutivo</TableHead>
@@ -93,6 +97,8 @@ export default function Clients() {
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.company_name}</TableCell>
                   <TableCell>{c.country?.name}</TableCell>
+                  <TableCell>{c.branches_count}</TableCell>
+                  <TableCell>{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {c.client_platforms?.map((cp: any) => (
@@ -153,8 +159,14 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   });
 
   const [form, setForm] = useState<any>({});
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; cmv_cost: number; selected: boolean }>>({});
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; selected: boolean }>>({});
   const [commissions, setCommissions] = useState<Record<string, number>>({});
+
+  const { data: provinces = [] } = useProvinces(form.country_id);
+  const { data: cities = [] } = useCities(form.province_id);
+
+  const currentCountry = countries.find((c: any) => c.id === form.country_id);
+  const defaultCurrency = currentCountry?.currency_code ?? "ARS";
 
   // Initialize form when dialog opens or client changes
   useEffect(() => {
@@ -163,18 +175,51 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
       setForm({
         company_name: client.company_name,
         country_id: client.country_id,
+        province_id: client.province_id,
+        city_id: client.city_id,
+        address: client.address ?? "",
         billing_frequency: client.billing_frequency,
         status: client.status,
         assigned_executive_id: client.assigned_executive_id ?? null,
+        monthly_fee: client.monthly_fee ?? 0,
+        fee_currency: client.fee_currency ?? "ARS",
+        cmv_cost: client.cmv_cost ?? 0,
+        cmv_currency: client.cmv_currency ?? "ARS",
+        branches_count: client.branches_count ?? 1,
+        contact_name: client.contact_name ?? "",
+        contact_phone: client.contact_phone ?? "",
+        contact_email: client.contact_email ?? "",
+        reports_email: client.reports_email ?? "",
+        notes: client.notes ?? "",
       });
       const sp: any = {};
-      client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, cmv_cost: cp.cmv_cost, selected: true }; });
+      client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, selected: true }; });
       setSelectedPlatforms(sp);
       const cm: any = {};
       client.client_executive_commission?.forEach((c: any) => { cm[c.employee_id] = c.commission_value; });
       setCommissions(cm);
     } else {
-      setForm({ company_name: "", country_id: countries[0]?.id ?? "", billing_frequency: "monthly", status: "active", assigned_executive_id: null });
+      const defCountry = countries[0];
+      setForm({
+        company_name: "",
+        country_id: defCountry?.id ?? "",
+        province_id: null,
+        city_id: null,
+        address: "",
+        billing_frequency: "monthly",
+        status: "active",
+        assigned_executive_id: null,
+        monthly_fee: 0,
+        fee_currency: defCountry?.currency_code ?? "ARS",
+        cmv_cost: 0,
+        cmv_currency: defCountry?.currency_code ?? "ARS",
+        branches_count: 1,
+        contact_name: "",
+        contact_phone: "",
+        contact_email: "",
+        reports_email: "",
+        notes: "",
+      });
       setSelectedPlatforms({});
       setCommissions({});
     }
@@ -183,12 +228,33 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
   const save = useMutation({
     mutationFn: async () => {
+      const payload = {
+        company_name: form.company_name,
+        country_id: form.country_id,
+        province_id: form.province_id || null,
+        city_id: form.city_id || null,
+        address: form.address || null,
+        billing_frequency: form.billing_frequency,
+        status: form.status,
+        assigned_executive_id: form.assigned_executive_id,
+        monthly_fee: Number(form.monthly_fee) || 0,
+        fee_currency: form.fee_currency,
+        cmv_cost: Number(form.cmv_cost) || 0,
+        cmv_currency: form.cmv_currency,
+        branches_count: Number(form.branches_count) || 1,
+        contact_name: form.contact_name || null,
+        contact_phone: form.contact_phone || null,
+        contact_email: form.contact_email || null,
+        reports_email: form.reports_email || null,
+        notes: form.notes || null,
+      };
+
       let clientId = client?.id;
       if (clientId) {
-        const { error } = await supabase.from("clients").update(form).eq("id", clientId);
+        const { error } = await supabase.from("clients").update(payload).eq("id", clientId);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from("clients").insert(form).select().single();
+        const { data, error } = await supabase.from("clients").insert(payload).select().single();
         if (error) throw error;
         clientId = data.id;
       }
@@ -196,14 +262,13 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
       await supabase.from("client_platforms").delete().eq("client_id", clientId);
       const platformRows = Object.entries(selectedPlatforms)
         .filter(([_, v]) => v.selected)
-        .map(([platform_id, v]) => ({ client_id: clientId, platform_id, commission_rate: v.commission_rate, cmv_cost: v.cmv_cost }));
+        .map(([platform_id, v]) => ({ client_id: clientId!, platform_id, commission_rate: v.commission_rate }));
       if (platformRows.length) await supabase.from("client_platforms").insert(platformRows);
       // Replace commissions
       await supabase.from("client_executive_commission").delete().eq("client_id", clientId);
-      const country = countries.find((c: any) => c.id === form.country_id);
       const commRows = Object.entries(commissions)
         .filter(([_, v]) => Number(v) > 0)
-        .map(([employee_id, v]) => ({ client_id: clientId, employee_id, commission_value: Number(v), currency: country?.currency_code ?? "ARS" }));
+        .map(([employee_id, v]) => ({ client_id: clientId!, employee_id, commission_value: Number(v), currency: defaultCurrency }));
       if (commRows.length) await supabase.from("client_executive_commission").insert(commRows);
     },
     onSuccess: () => {
@@ -217,84 +282,204 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setForm({}); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{client ? "Editar cliente" : "Nuevo cliente"}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Empresa</Label>
-              <Input value={form.company_name ?? ""} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
-            </div>
-            <div>
-              <Label>País</Label>
-              <Select value={form.country_id ?? ""} onValueChange={(v) => setForm({ ...form, country_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  {countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency_code})</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Frecuencia de cobro</Label>
-              <Select value={form.billing_frequency ?? "monthly"} onValueChange={(v) => setForm({ ...form, billing_frequency: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Semanal</SelectItem>
-                  <SelectItem value="biweekly">Quincenal</SelectItem>
-                  <SelectItem value="monthly">Mensual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Estado</Label>
-              <Select value={form.status ?? "active"} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Activo</SelectItem>
-                  <SelectItem value="inactive">Inactivo</SelectItem>
-                  <SelectItem value="suspended">Suspendido</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2">
-              <Label>Ejecutivo asignado</Label>
-              <Select value={form.assigned_executive_id ?? "none"} onValueChange={(v) => setForm({ ...form, assigned_executive_id: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin asignar</SelectItem>
-                  {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <div>
-            <Label className="mb-2 block">Plataformas activas</Label>
+        <div className="grid gap-6">
+          {/* Datos generales */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Datos generales</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Empresa *</Label>
+                <Input value={form.company_name ?? ""} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>País *</Label>
+                <Select
+                  value={form.country_id ?? ""}
+                  onValueChange={(v) => {
+                    const c = countries.find((x: any) => x.id === v);
+                    setForm({ ...form, country_id: v, province_id: null, city_id: null, fee_currency: c?.currency_code ?? form.fee_currency, cmv_currency: c?.currency_code ?? form.cmv_currency });
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    {countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency_code})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Cantidad de sucursales *</Label>
+                <Input type="number" min={1} value={form.branches_count ?? 1} onChange={(e) => setForm({ ...form, branches_count: e.target.value })} />
+              </div>
+              <div>
+                <Label>Estado</Label>
+                <Select value={form.status ?? "active"} onValueChange={(v) => setForm({ ...form, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Activo</SelectItem>
+                    <SelectItem value="inactive">Inactivo</SelectItem>
+                    <SelectItem value="suspended">Suspendido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Frecuencia de cobro</Label>
+                <Select value={form.billing_frequency ?? "monthly"} onValueChange={(v) => setForm({ ...form, billing_frequency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="biweekly">Quincenal</SelectItem>
+                    <SelectItem value="monthly">Mensual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Ejecutivo asignado</Label>
+                <Select value={form.assigned_executive_id ?? "none"} onValueChange={(v) => setForm({ ...form, assigned_executive_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+
+          {/* Económico */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Económico</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Fee mensual *</Label>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.01" min={0} value={form.monthly_fee ?? 0} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} />
+                  <Select value={form.fee_currency ?? defaultCurrency} onValueChange={(v) => setForm({ ...form, fee_currency: v })}>
+                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ARS">ARS</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>CMV (costo del cliente)</Label>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.01" min={0} value={form.cmv_cost ?? 0} onChange={(e) => setForm({ ...form, cmv_cost: e.target.value })} />
+                  <Select value={form.cmv_currency ?? defaultCurrency} onValueChange={(v) => setForm({ ...form, cmv_currency: v })}>
+                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ARS">ARS</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Dirección */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dirección (opcional)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Provincia</Label>
+                <Select
+                  value={form.province_id ?? "none"}
+                  onValueChange={(v) => setForm({ ...form, province_id: v === "none" ? null : v, city_id: null })}
+                  disabled={!form.country_id}
+                >
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin especificar</SelectItem>
+                    {provinces.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Ciudad</Label>
+                <Select
+                  value={form.city_id ?? "none"}
+                  onValueChange={(v) => setForm({ ...form, city_id: v === "none" ? null : v })}
+                  disabled={!form.province_id}
+                >
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin especificar</SelectItem>
+                    {cities.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Dirección</Label>
+                <Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Calle, número, piso..." />
+              </div>
+            </div>
+          </section>
+
+          {/* Contacto */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Contacto (opcional)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Persona de contacto</Label>
+                <Input value={form.contact_name ?? ""} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Celular</Label>
+                <Input value={form.contact_phone ?? ""} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} placeholder="+54 ..." />
+              </div>
+              <div>
+                <Label>Email de contacto</Label>
+                <Input type="email" value={form.contact_email ?? ""} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
+              </div>
+              <div>
+                <Label>Email para envío de informes</Label>
+                <Input type="email" value={form.reports_email ?? ""} onChange={(e) => setForm({ ...form, reports_email: e.target.value })} />
+              </div>
+            </div>
+          </section>
+
+          {/* Plataformas */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Plataformas activas</h3>
             <div className="space-y-2 border border-border rounded-md p-3 bg-card/40">
               {platforms.map((p: any) => {
                 const sel = selectedPlatforms[p.id];
                 return (
                   <div key={p.id} className="grid grid-cols-12 gap-2 items-center">
-                    <label className="col-span-4 flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={!!sel?.selected} onChange={(e) => setSelectedPlatforms({ ...selectedPlatforms, [p.id]: { commission_rate: sel?.commission_rate ?? 0, cmv_cost: sel?.cmv_cost ?? 0, selected: e.target.checked } })} />
+                    <label className="col-span-6 flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={!!sel?.selected}
+                        onChange={(e) => setSelectedPlatforms({ ...selectedPlatforms, [p.id]: { commission_rate: sel?.commission_rate ?? 0, selected: e.target.checked } })}
+                      />
                       {p.name}
                     </label>
-                    <div className="col-span-4">
-                      <Input type="number" step="0.01" placeholder="Comisión %" disabled={!sel?.selected} value={sel?.commission_rate ?? ""} onChange={(e) => setSelectedPlatforms({ ...selectedPlatforms, [p.id]: { ...sel, selected: true, commission_rate: Number(e.target.value), cmv_cost: sel?.cmv_cost ?? 0 } })} />
-                    </div>
-                    <div className="col-span-4">
-                      <Input type="number" step="0.01" placeholder="CMV costo" disabled={!sel?.selected} value={sel?.cmv_cost ?? ""} onChange={(e) => setSelectedPlatforms({ ...selectedPlatforms, [p.id]: { ...sel, selected: true, cmv_cost: Number(e.target.value), commission_rate: sel?.commission_rate ?? 0 } })} />
+                    <div className="col-span-6">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Comisión %"
+                        disabled={!sel?.selected}
+                        value={sel?.commission_rate ?? ""}
+                        onChange={(e) => setSelectedPlatforms({ ...selectedPlatforms, [p.id]: { selected: true, commission_rate: Number(e.target.value) } })}
+                      />
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          <div>
-            <Label className="mb-2 block">Comisiones de ejecutivos por este cliente</Label>
+          {/* Comisiones ejecutivos */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Comisiones de ejecutivos por este cliente</h3>
             <div className="space-y-2 border border-border rounded-md p-3 bg-card/40">
               {employees.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No hay empleados creados aún.</p>
@@ -305,8 +490,15 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                 </div>
               ))}
             </div>
-          </div>
+          </section>
+
+          {/* Notas */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Notas</h3>
+            <Textarea rows={4} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Información adicional..." />
+          </section>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending || !form.company_name || !form.country_id}>
