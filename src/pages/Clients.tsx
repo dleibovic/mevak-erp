@@ -235,9 +235,29 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
   const save = useMutation({
     mutationFn: async () => {
+      let countryId = form.country_id;
+
+      // If user is creating a brand-new country, insert it first
+      if (!countryId && newCountry) {
+        const name = newCountry.name.trim();
+        const code = newCountry.currency_code.trim().toUpperCase();
+        const symbol = newCountry.currency_symbol.trim();
+        if (!name || !code || !symbol) throw new Error("Completá nombre, código de moneda y símbolo del país");
+        if (code.length > 5) throw new Error("Código de moneda inválido (máx 5 caracteres)");
+        const { data, error } = await supabase
+          .from("countries")
+          .insert({ name, currency_code: code, currency_symbol: symbol })
+          .select()
+          .single();
+        if (error) throw error;
+        countryId = data.id;
+      }
+
+      if (!countryId) throw new Error("Seleccioná un país");
+
       const payload = {
         company_name: form.company_name,
-        country_id: form.country_id,
+        country_id: countryId,
         province_id: form.province_id || null,
         city_id: form.city_id || null,
         address: form.address || null,
@@ -281,8 +301,10 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
     onSuccess: () => {
       toast.success(client ? "Cliente actualizado" : "Cliente creado");
       qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["countries"] });
       onOpenChange(false);
       setForm({});
+      setNewCountry(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
