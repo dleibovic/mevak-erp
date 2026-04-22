@@ -58,6 +58,7 @@ export default function Expenses() {
               <TableRow>
                 <TableHead>Descripción</TableHead>
                 <TableHead>Categoría</TableHead>
+                <TableHead>País</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Asignado</TableHead>
                 <TableHead>Pagó</TableHead>
@@ -71,6 +72,7 @@ export default function Expenses() {
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.description}</TableCell>
                   <TableCell className="text-muted-foreground">{e.category?.name ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{e.country?.name ?? "—"}</TableCell>
                   <TableCell className="font-mono">{formatMoney(e.amount, e.currency)}</TableCell>
                   <TableCell className="capitalize">{e.assigned_to}</TableCell>
                   <TableCell className="capitalize text-muted-foreground">{e.paid_by ?? "—"}</TableCell>
