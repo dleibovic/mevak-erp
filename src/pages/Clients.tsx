@@ -575,7 +575,14 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || !form.company_name || !form.country_id}>
+          <Button
+            onClick={() => save.mutate()}
+            disabled={
+              save.isPending ||
+              !form.company_name ||
+              (!form.country_id && !(newCountry && newCountry.name && newCountry.currency_code && newCountry.currency_symbol))
+            }
+          >
             {save.isPending ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>
