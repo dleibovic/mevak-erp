@@ -167,12 +167,13 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [form, setForm] = useState<any>({});
   const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; selected: boolean }>>({});
   const [commissions, setCommissions] = useState<Record<string, number>>({});
+  const [newCountry, setNewCountry] = useState<{ name: string; currency_code: string; currency_symbol: string } | null>(null);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
   const { data: cities = [] } = useCities(form.province_id);
 
   const currentCountry = countries.find((c: any) => c.id === form.country_id);
-  const defaultCurrency = currentCountry?.currency_code ?? "ARS";
+  const defaultCurrency = currentCountry?.currency_code ?? newCountry?.currency_code ?? "ARS";
 
   // Initialize form when dialog opens or client changes
   useEffect(() => {
