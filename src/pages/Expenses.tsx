@@ -103,17 +103,34 @@ export default function Expenses() {
 function ExpenseDialog({ open, onOpenChange, expense }: any) {
   const qc = useQueryClient();
   const { data: categories = [] } = useExpenseCategories();
+  const { data: countries = [] } = useCountries();
+  const { countryId: globalCountry } = useCountryFilter();
   const [form, setForm] = useState<any>({});
 
   useEffect(() => {
     if (!open) return;
-    setForm(expense ?? { description: "", amount: 0, currency: "ARS", assigned_to: "company", date: new Date().toISOString().slice(0, 10), recurring: false });
-  }, [open, expense?.id]);
+    if (expense) {
+      setForm({ ...expense });
+    } else {
+      const defC = countries.find((c: any) => c.id === globalCountry) ?? countries[0];
+      setForm({
+        description: "",
+        amount: 0,
+        currency: defC?.currency_code ?? "ARS",
+        country_id: defC?.id ?? null,
+        assigned_to: "company",
+        date: new Date().toISOString().slice(0, 10),
+        recurring: false,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, expense?.id, countries.length]);
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { ...form }; delete payload.category;
+      const payload = { ...form }; delete payload.category; delete payload.country;
       if (!payload.recurring) payload.recurrence_frequency = null;
+      if (!payload.country_id) payload.country_id = null;
       if (expense?.id) {
         const { error } = await supabase.from("expenses").update(payload).eq("id", expense.id); if (error) throw error;
       } else {
@@ -143,6 +160,23 @@ function ExpenseDialog({ open, onOpenChange, expense }: any) {
               <Select value={form.currency ?? "ARS"} onValueChange={(v) => setForm({ ...form, currency: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="ARS">ARS ($)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>País</Label>
+              <Select
+                value={form.country_id ?? "none"}
+                onValueChange={(v) => {
+                  if (v === "none") { setForm({ ...form, country_id: null }); return; }
+                  const c = countries.find((x: any) => x.id === v);
+                  setForm({ ...form, country_id: v, currency: c?.currency_code ?? form.currency });
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin país</SelectItem>
+                  {countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
             <div><Label>Monto</Label><Input type="number" step="0.01" value={form.amount ?? 0} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} /></div>
