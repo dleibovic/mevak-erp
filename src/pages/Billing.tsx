@@ -14,12 +14,16 @@ import { Plus, CheckCircle2, AlertTriangle } from "lucide-react";
 import { addDaysFromFrequency, daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 
 export default function Billing() {
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
+  const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [localCountry, setLocalCountry] = useState<string | null>(null);
 
   // refresh overdue statuses on mount
   useQuery({
@@ -36,12 +40,15 @@ export default function Billing() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, client:clients(id, company_name, billing_frequency, country:countries(*))")
+        .select("*, client:clients(id, company_name, billing_frequency, country_id, country:countries(*))")
         .order("due_date", { ascending: true });
       if (error) throw error;
       return data;
     },
   });
+
+  // effective country = local override OR global
+  const effectiveCountry = localCountry ?? countryId;
 
   const markPaid = useMutation({
     mutationFn: async ({ id, collected_by }: { id: string; collected_by: "dario" | "maria" }) => {
