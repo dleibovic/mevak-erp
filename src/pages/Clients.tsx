@@ -472,6 +472,23 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                 <Input type="number" min={1} value={form.branches_count ?? 1} onChange={(e) => setForm({ ...form, branches_count: e.target.value })} />
               </div>
               <div>
+                <Label>Categoría de comida</Label>
+                <Select value={form.food_category_id ?? "none"} onValueChange={(v) => setForm({ ...form, food_category_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin especificar</SelectItem>
+                    {foodCategories.map((cat: any) => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                    <SelectItem value="__new__" className="text-primary font-medium">+ Crear nueva categoría…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.food_category_id === "__new__" && (
+                <div className="col-span-2">
+                  <Label>Nueva categoría gastronómica *</Label>
+                  <Input placeholder="Ej: Comida peruana" value={newFoodCategory} onChange={(e) => setNewFoodCategory(e.target.value)} />
+                </div>
+              )}
+              <div>
                 <Label>Estado</Label>
                 <Select value={form.status ?? "active"} onValueChange={(v) => setForm({ ...form, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
