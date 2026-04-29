@@ -133,15 +133,23 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {stats.mode === "single" ? (
           <>
-            <KCard label={`Ingresos ${stats.currency}`} value={formatMoney(stats.income, stats.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label={`Facturación total ${stats.currency}`} value={formatMoney(stats.totalBilling, stats.currency)} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
+            <KCard label={`Clientes cobrados ${stats.currency}`} value={formatMoney(stats.income, stats.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label={`Clientes con mora ${stats.currency}`} value={formatMoney(stats.overdue, stats.currency)} accent={stats.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
             <KCard label={`Gastos ${stats.currency}`} value={formatMoney(stats.exp, stats.currency)} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
             <KCard label={`Nómina ${stats.currency}`} value={formatMoney(stats.payroll, stats.currency)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
             <KCard label={`Neto ${stats.currency}`} value={formatMoney(stats.net, stats.currency)} accent={stats.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
           </>
         ) : (
           <>
-            <KCard label="Ingresos ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-            <KCard label="Ingresos EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label="Facturación total ARS" value={formatMoney(stats.totalBillingARS, "ARS")} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
+            <KCard label="Facturación total EUR" value={formatMoney(stats.totalBillingEUR, "EUR")} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
+            <KCard label="Clientes cobrados ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes cobrados EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes con mora ARS" value={formatMoney(stats.overdueARS, "ARS")} accent={stats.overdueARS > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
+            <KCard label="Clientes con mora EUR" value={formatMoney(stats.overdueEUR, "EUR")} accent={stats.overdueEUR > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
             <KCard label="Gastos ARS" value={formatMoney(stats.expARS, "ARS")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
             <KCard label="Gastos EUR" value={formatMoney(stats.expEUR, "EUR")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
             <KCard label="Nómina ARS" value={formatMoney(stats.payrollARS, "ARS")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
