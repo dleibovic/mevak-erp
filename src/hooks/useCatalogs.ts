@@ -23,6 +23,17 @@ export function usePlatforms() {
   });
 }
 
+export function useFoodCategories() {
+  return useQuery({
+    queryKey: ["food_categories"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("food_categories").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useProvinces(countryId?: string | null) {
   return useQuery({
     queryKey: ["provinces", countryId],

@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import { useCountries, usePlatforms, useProvinces, useCities } from "@/hooks/useCatalogs";
+import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
+import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney } from "@/lib/format";
@@ -38,7 +38,7 @@ export default function Clients() {
     queryFn: async () => {
       let q = supabase
         .from("clients")
-        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*)")
+        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*), client_sub_brands(*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name))")
         .order("created_at", { ascending: false });
       if (countryId) q = q.eq("country_id", countryId);
       const { data, error } = await q;
@@ -89,6 +89,8 @@ export default function Clients() {
               <TableRow>
                 <TableHead>Empresa</TableHead>
                 <TableHead>País</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Sub-marcas</TableHead>
                 <TableHead>Sucursales</TableHead>
                 <TableHead>Fee mensual</TableHead>
                 <TableHead>Plataformas</TableHead>
@@ -103,6 +105,8 @@ export default function Clients() {
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.company_name}</TableCell>
                   <TableCell>{c.country?.name}</TableCell>
+                  <TableCell>{c.food_category?.name ?? "—"}</TableCell>
+                  <TableCell>{c.client_sub_brands?.length ?? 0}</TableCell>
                   <TableCell>{c.branches_count}</TableCell>
                   <TableCell>{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
                   <TableCell>
@@ -155,6 +159,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const qc = useQueryClient();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
+  const { data: foodCategories = [] } = useFoodCategories();
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-options"],
     queryFn: async () => {
@@ -168,12 +173,48 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; selected: boolean }>>({});
   const [commissions, setCommissions] = useState<Record<string, number>>({});
   const [newCountry, setNewCountry] = useState<{ name: string; currency_code: string; currency_symbol: string } | null>(null);
+  const [newFoodCategory, setNewFoodCategory] = useState("");
+  const [subBrands, setSubBrands] = useState<any[]>([]);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
   const { data: cities = [] } = useCities(form.province_id);
 
   const currentCountry = countries.find((c: any) => c.id === form.country_id);
   const defaultCurrency = currentCountry?.currency_code ?? newCountry?.currency_code ?? "ARS";
+
+  const addSubBrand = () => {
+    setSubBrands([
+      ...subBrands,
+      {
+        name: "",
+        country_id: form.country_id,
+        province_id: null,
+        city_id: null,
+        address: "",
+        billing_frequency: form.billing_frequency ?? "monthly",
+        status: "active",
+        monthly_fee: 0,
+        fee_currency: defaultCurrency,
+        cmv_cost: 0,
+        cmv_currency: defaultCurrency,
+        branches_count: 1,
+        contact_name: "",
+        contact_phone: "",
+        contact_email: "",
+        reports_email: "",
+        food_category_id: form.food_category_id ?? null,
+        notes: "",
+      },
+    ]);
+  };
+
+  const updateSubBrand = (index: number, patch: Record<string, any>) => {
+    setSubBrands(subBrands.map((brand, i) => (i === index ? { ...brand, ...patch } : brand)));
+  };
+
+  const removeSubBrand = (index: number) => {
+    setSubBrands(subBrands.filter((_, i) => i !== index));
+  };
 
   // Initialize form when dialog opens or client changes
   useEffect(() => {
@@ -197,8 +238,10 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         contact_phone: client.contact_phone ?? "",
         contact_email: client.contact_email ?? "",
         reports_email: client.reports_email ?? "",
+        food_category_id: client.food_category_id ?? null,
         notes: client.notes ?? "",
       });
+      setSubBrands(client.client_sub_brands ?? []);
       const sp: any = {};
       client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, selected: true }; });
       setSelectedPlatforms(sp);
@@ -225,10 +268,12 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         contact_phone: "",
         contact_email: "",
         reports_email: "",
+        food_category_id: null,
         notes: "",
       });
       setSelectedPlatforms({});
       setCommissions({});
+      setSubBrands([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, client?.id, countries.length]);
@@ -255,6 +300,15 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
       if (!countryId) throw new Error("Seleccioná un país");
 
+      let foodCategoryId = form.food_category_id || null;
+      if (foodCategoryId === "__new__") {
+        const name = newFoodCategory.trim();
+        if (!name) throw new Error("Completá la nueva categoría gastronómica");
+        const { data, error } = await (supabase as any).from("food_categories").insert({ name }).select().single();
+        if (error) throw error;
+        foodCategoryId = data.id;
+      }
+
       const payload = {
         company_name: form.company_name,
         country_id: countryId,
@@ -273,6 +327,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         contact_phone: form.contact_phone || null,
         contact_email: form.contact_email || null,
         reports_email: form.reports_email || null,
+        food_category_id: foodCategoryId,
         notes: form.notes || null,
       };
 
@@ -297,14 +352,43 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         .filter(([_, v]) => Number(v) > 0)
         .map(([employee_id, v]) => ({ client_id: clientId!, employee_id, commission_value: Number(v), currency: defaultCurrency }));
       if (commRows.length) await supabase.from("client_executive_commission").insert(commRows);
+
+      await (supabase as any).from("client_sub_brands").delete().eq("client_id", clientId);
+      const subBrandRows = subBrands
+        .filter((brand) => brand.name?.trim())
+        .map((brand) => ({
+          client_id: clientId!,
+          name: brand.name.trim(),
+          country_id: brand.country_id || countryId,
+          province_id: brand.province_id || null,
+          city_id: brand.city_id || null,
+          address: brand.address || null,
+          billing_frequency: brand.billing_frequency || "monthly",
+          status: brand.status || "active",
+          monthly_fee: Number(brand.monthly_fee) || 0,
+          fee_currency: brand.fee_currency || defaultCurrency,
+          cmv_cost: Number(brand.cmv_cost) || 0,
+          cmv_currency: brand.cmv_currency || defaultCurrency,
+          branches_count: Number(brand.branches_count) || 1,
+          contact_name: brand.contact_name || null,
+          contact_phone: brand.contact_phone || null,
+          contact_email: brand.contact_email || null,
+          reports_email: brand.reports_email || null,
+          food_category_id: brand.food_category_id === "__new__" ? foodCategoryId : brand.food_category_id || null,
+          notes: brand.notes || null,
+        }));
+      if (subBrandRows.length) await (supabase as any).from("client_sub_brands").insert(subBrandRows);
     },
     onSuccess: () => {
       toast.success(client ? "Cliente actualizado" : "Cliente creado");
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["countries"] });
+      qc.invalidateQueries({ queryKey: ["food_categories"] });
       onOpenChange(false);
       setForm({});
       setNewCountry(null);
+      setNewFoodCategory("");
+      setSubBrands([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -387,6 +471,23 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                 <Label>Cantidad de sucursales *</Label>
                 <Input type="number" min={1} value={form.branches_count ?? 1} onChange={(e) => setForm({ ...form, branches_count: e.target.value })} />
               </div>
+              <div>
+                <Label>Categoría de comida</Label>
+                <Select value={form.food_category_id ?? "none"} onValueChange={(v) => setForm({ ...form, food_category_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin especificar</SelectItem>
+                    {foodCategories.map((cat: any) => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                    <SelectItem value="__new__" className="text-primary font-medium">+ Crear nueva categoría…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.food_category_id === "__new__" && (
+                <div className="col-span-2">
+                  <Label>Nueva categoría gastronómica *</Label>
+                  <Input placeholder="Ej: Comida peruana" value={newFoodCategory} onChange={(e) => setNewFoodCategory(e.target.value)} />
+                </div>
+              )}
               <div>
                 <Label>Estado</Label>
                 <Select value={form.status ?? "active"} onValueChange={(v) => setForm({ ...form, status: v })}>
@@ -517,6 +618,60 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                 <Input type="email" value={form.reports_email ?? ""} onChange={(e) => setForm({ ...form, reports_email: e.target.value })} />
               </div>
             </div>
+          </section>
+
+          {/* Sub-marcas */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sub-marcas</h3>
+              <Button type="button" variant="outline" size="sm" onClick={addSubBrand}><Plus className="h-4 w-4" />Agregar sub-marca</Button>
+            </div>
+            {subBrands.length > 0 && (
+              <div className="space-y-3">
+                {subBrands.map((brand, index) => (
+                  <div key={brand.id ?? index} className="space-y-3 rounded-md border border-border bg-card/40 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Sub-marca {index + 1}</Label>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeSubBrand(index)}><X className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label>Nombre *</Label><Input value={brand.name ?? ""} onChange={(e) => updateSubBrand(index, { name: e.target.value })} /></div>
+                      <div>
+                        <Label>Categoría de comida</Label>
+                        <Select value={brand.food_category_id ?? "none"} onValueChange={(v) => updateSubBrand(index, { food_category_id: v === "none" ? null : v })}>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sin especificar</SelectItem>
+                            {foodCategories.map((cat: any) => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                            <SelectItem value="__new__">Usar nueva categoría del cliente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>País *</Label>
+                        <Select value={brand.country_id ?? form.country_id ?? ""} onValueChange={(v) => {
+                          const c = countries.find((x: any) => x.id === v);
+                          updateSubBrand(index, { country_id: v, province_id: null, city_id: null, fee_currency: c?.currency_code ?? brand.fee_currency, cmv_currency: c?.currency_code ?? brand.cmv_currency });
+                        }}>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                          <SelectContent>{countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency_code})</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
+                      <div><Label>Fee mensual</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div><Label>CMV %</Label><Input type="number" step="0.01" min={0} max={100} value={brand.cmv_cost ?? 0} onChange={(e) => updateSubBrand(index, { cmv_cost: e.target.value })} /></div>
+                      <div><Label>Dirección</Label><Input value={brand.address ?? ""} onChange={(e) => updateSubBrand(index, { address: e.target.value })} /></div>
+                      <div><Label>Persona de contacto</Label><Input value={brand.contact_name ?? ""} onChange={(e) => updateSubBrand(index, { contact_name: e.target.value })} /></div>
+                      <div><Label>Celular</Label><Input value={brand.contact_phone ?? ""} onChange={(e) => updateSubBrand(index, { contact_phone: e.target.value })} /></div>
+                      <div><Label>Email de contacto</Label><Input type="email" value={brand.contact_email ?? ""} onChange={(e) => updateSubBrand(index, { contact_email: e.target.value })} /></div>
+                      <div><Label>Email informes</Label><Input type="email" value={brand.reports_email ?? ""} onChange={(e) => updateSubBrand(index, { reports_email: e.target.value })} /></div>
+                      <div><Label>Estado</Label><Select value={brand.status ?? "active"} onValueChange={(v) => updateSubBrand(index, { status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Activo</SelectItem><SelectItem value="inactive">Inactivo</SelectItem><SelectItem value="suspended">Suspendido</SelectItem></SelectContent></Select></div>
+                      <div className="col-span-2"><Label>Notas</Label><Textarea rows={2} value={brand.notes ?? ""} onChange={(e) => updateSubBrand(index, { notes: e.target.value })} /></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Plataformas */}
