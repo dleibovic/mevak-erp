@@ -118,6 +118,114 @@ export type Database = {
           },
         ]
       }
+      client_sub_brands: {
+        Row: {
+          address: string | null
+          billing_frequency: Database["public"]["Enums"]["billing_frequency"]
+          branches_count: number
+          city_id: string | null
+          client_id: string
+          cmv_cost: number
+          cmv_currency: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          country_id: string
+          created_at: string
+          fee_currency: string
+          food_category_id: string | null
+          id: string
+          monthly_fee: number
+          name: string
+          notes: string | null
+          province_id: string | null
+          reports_email: string | null
+          status: Database["public"]["Enums"]["client_status"]
+        }
+        Insert: {
+          address?: string | null
+          billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          branches_count?: number
+          city_id?: string | null
+          client_id: string
+          cmv_cost?: number
+          cmv_currency?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country_id: string
+          created_at?: string
+          fee_currency?: string
+          food_category_id?: string | null
+          id?: string
+          monthly_fee?: number
+          name: string
+          notes?: string | null
+          province_id?: string | null
+          reports_email?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+        }
+        Update: {
+          address?: string | null
+          billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          branches_count?: number
+          city_id?: string | null
+          client_id?: string
+          cmv_cost?: number
+          cmv_currency?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country_id?: string
+          created_at?: string
+          fee_currency?: string
+          food_category_id?: string | null
+          id?: string
+          monthly_fee?: number
+          name?: string
+          notes?: string | null
+          province_id?: string | null
+          reports_email?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sub_brands_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sub_brands_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sub_brands_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sub_brands_food_category_id_fkey"
+            columns: ["food_category_id"]
+            isOneToOne: false
+            referencedRelation: "food_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_sub_brands_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -134,6 +242,7 @@ export type Database = {
           country_id: string
           created_at: string
           fee_currency: string
+          food_category_id: string | null
           id: string
           monthly_fee: number
           notes: string | null
@@ -156,6 +265,7 @@ export type Database = {
           country_id: string
           created_at?: string
           fee_currency?: string
+          food_category_id?: string | null
           id?: string
           monthly_fee?: number
           notes?: string | null
@@ -178,6 +288,7 @@ export type Database = {
           country_id?: string
           created_at?: string
           fee_currency?: string
+          food_category_id?: string | null
           id?: string
           monthly_fee?: number
           notes?: string | null
@@ -205,6 +316,13 @@ export type Database = {
             columns: ["country_id"]
             isOneToOne: false
             referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_food_category_id_fkey"
+            columns: ["food_category_id"]
+            isOneToOne: false
+            referencedRelation: "food_categories"
             referencedColumns: ["id"]
           },
           {
@@ -367,6 +485,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      food_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       invoices: {
         Row: {
