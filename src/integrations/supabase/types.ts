@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_settings: {
+        Row: {
+          created_at: string
+          default_notify_emails: string[]
+          id: number
+          inactivity_threshold_days: number
+          is_inactivity_alert_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_notify_emails?: string[]
+          id?: number
+          inactivity_threshold_days?: number
+          is_inactivity_alert_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_notify_emails?: string[]
+          id?: number
+          inactivity_threshold_days?: number
+          is_inactivity_alert_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cities: {
         Row: {
           created_at: string
@@ -334,6 +361,33 @@ export type Database = {
           },
         ]
       }
+      contact_channels: {
+        Row: {
+          country_scope: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+        }
+        Insert: {
+          country_scope?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type: string
+        }
+        Update: {
+          country_scope?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
       countries: {
         Row: {
           created_at: string
@@ -504,6 +558,30 @@ export type Database = {
         }
         Relationships: []
       }
+      funnel_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          stage_order: number
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          name: string
+          stage_order: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          stage_order?: number
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
@@ -554,6 +632,24 @@ export type Database = {
           },
         ]
       }
+      lost_reasons: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       platforms: {
         Row: {
           created_at: string
@@ -592,6 +688,347 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      prospect_alerts: {
+        Row: {
+          alert_date: string
+          alert_type: Database["public"]["Enums"]["prospect_alert_type"]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_dismissed: boolean
+          is_sent: boolean
+          notify_emails: string[]
+          prospect_id: string
+          relative_days: number | null
+          sent_at: string | null
+          snoozed_until: string | null
+          title: string
+        }
+        Insert: {
+          alert_date: string
+          alert_type: Database["public"]["Enums"]["prospect_alert_type"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_dismissed?: boolean
+          is_sent?: boolean
+          notify_emails?: string[]
+          prospect_id: string
+          relative_days?: number | null
+          sent_at?: string | null
+          snoozed_until?: string | null
+          title: string
+        }
+        Update: {
+          alert_date?: string
+          alert_type?: Database["public"]["Enums"]["prospect_alert_type"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_dismissed?: boolean
+          is_sent?: boolean
+          notify_emails?: string[]
+          prospect_id?: string
+          relative_days?: number | null
+          sent_at?: string | null
+          snoozed_until?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_alerts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_alerts_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_interactions: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          interaction_date: string
+          notes: string | null
+          prospect_id: string
+          stage_at_interaction_id: string | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interaction_date?: string
+          notes?: string | null
+          prospect_id: string
+          stage_at_interaction_id?: string | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interaction_date?: string
+          notes?: string | null
+          prospect_id?: string
+          stage_at_interaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_interactions_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "contact_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_interactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_interactions_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_interactions_stage_at_interaction_id_fkey"
+            columns: ["stage_at_interaction_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_platforms: {
+        Row: {
+          created_at: string
+          id: string
+          platform_id: string
+          prospect_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform_id: string
+          prospect_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform_id?: string
+          prospect_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_platforms_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_platforms_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_stage_history: {
+        Row: {
+          changed_by_employee_id: string | null
+          created_at: string
+          entered_at: string
+          exited_at: string | null
+          id: string
+          prospect_id: string
+          stage_id: string
+        }
+        Insert: {
+          changed_by_employee_id?: string | null
+          created_at?: string
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          prospect_id: string
+          stage_id: string
+        }
+        Update: {
+          changed_by_employee_id?: string | null
+          created_at?: string
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          prospect_id?: string
+          stage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_stage_history_changed_by_employee_id_fkey"
+            columns: ["changed_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_stage_history_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_stage_history_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospects: {
+        Row: {
+          assigned_executive_id: string | null
+          business_name: string
+          city: string | null
+          contact_name: string | null
+          converted_to_client_id: string | null
+          country_id: string
+          created_at: string
+          created_by_employee_id: string | null
+          currency: string
+          current_stage_id: string
+          email: string | null
+          estimated_monthly_revenue: number
+          first_contact_channel_id: string | null
+          first_contact_date: string
+          id: string
+          last_interaction_at: string | null
+          lost_reason_id: string | null
+          notes: string | null
+          phone: string | null
+          stage_entered_at: string
+          status: Database["public"]["Enums"]["prospect_status"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_executive_id?: string | null
+          business_name: string
+          city?: string | null
+          contact_name?: string | null
+          converted_to_client_id?: string | null
+          country_id: string
+          created_at?: string
+          created_by_employee_id?: string | null
+          currency?: string
+          current_stage_id: string
+          email?: string | null
+          estimated_monthly_revenue?: number
+          first_contact_channel_id?: string | null
+          first_contact_date?: string
+          id?: string
+          last_interaction_at?: string | null
+          lost_reason_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          stage_entered_at?: string
+          status?: Database["public"]["Enums"]["prospect_status"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_executive_id?: string | null
+          business_name?: string
+          city?: string | null
+          contact_name?: string | null
+          converted_to_client_id?: string | null
+          country_id?: string
+          created_at?: string
+          created_by_employee_id?: string | null
+          currency?: string
+          current_stage_id?: string
+          email?: string | null
+          estimated_monthly_revenue?: number
+          first_contact_channel_id?: string | null
+          first_contact_date?: string
+          id?: string
+          last_interaction_at?: string | null
+          lost_reason_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          stage_entered_at?: string
+          status?: Database["public"]["Enums"]["prospect_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_assigned_executive_id_fkey"
+            columns: ["assigned_executive_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_converted_to_client_id_fkey"
+            columns: ["converted_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_created_by_employee_id_fkey"
+            columns: ["created_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_current_stage_id_fkey"
+            columns: ["current_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_first_contact_channel_id_fkey"
+            columns: ["first_contact_channel_id"]
+            isOneToOne: false
+            referencedRelation: "contact_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_lost_reason_id_fkey"
+            columns: ["lost_reason_id"]
+            isOneToOne: false
+            referencedRelation: "lost_reasons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provinces: {
         Row: {
@@ -694,11 +1131,13 @@ export type Database = {
     Enums: {
       app_role: "admin" | "executive"
       billing_frequency: "weekly" | "biweekly" | "monthly"
-      client_status: "active" | "inactive" | "suspended"
+      client_status: "active" | "inactive" | "suspended" | "pending_setup"
       collector: "dario" | "maria"
       expense_assignee: "dario" | "maria" | "company"
       invoice_status: "pending" | "overdue" | "paid"
       invoice_type: "formal" | "cash"
+      prospect_alert_type: "fixed_date" | "relative_days" | "inactivity_auto"
+      prospect_status: "active" | "converted" | "lost"
       recurrence_frequency: "weekly" | "monthly" | "annual"
       transaction_type: "income" | "expense"
     }
@@ -830,11 +1269,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "executive"],
       billing_frequency: ["weekly", "biweekly", "monthly"],
-      client_status: ["active", "inactive", "suspended"],
+      client_status: ["active", "inactive", "suspended", "pending_setup"],
       collector: ["dario", "maria"],
       expense_assignee: ["dario", "maria", "company"],
       invoice_status: ["pending", "overdue", "paid"],
       invoice_type: ["formal", "cash"],
+      prospect_alert_type: ["fixed_date", "relative_days", "inactivity_auto"],
+      prospect_status: ["active", "converted", "lost"],
       recurrence_frequency: ["weekly", "monthly", "annual"],
       transaction_type: ["income", "expense"],
     },
