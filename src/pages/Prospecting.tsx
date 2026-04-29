@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "@/integrations/supabase/client";
@@ -165,8 +165,13 @@ function KanbanView({ prospects, stages, onOpen }: any) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["prospects"] }); toast.success("Etapa actualizada"); },
     onError: (e: any) => toast.error(e.message),
   });
-  const onDragEnd = (event: DragEndEvent) => { if (!event.over || event.active.data.current?.stageId === event.over.id) return; moveStage.mutate({ id: String(event.active.id), stageId: String(event.over.id) }); };
-  return <DndContext sensors={sensors} onDragEnd={onDragEnd}><div className="grid min-h-[620px] auto-cols-[280px] grid-flow-col gap-4 overflow-x-auto pb-4">{stages.map((stage: any) => { const rows = prospects.filter((p: any) => p.current_stage_id === stage.id); return <SortableContext key={stage.id} items={rows.map((p: any) => p.id)} strategy={verticalListSortingStrategy}><div id={stage.id} className="rounded-md border border-border bg-card/30 p-3"><div className="mb-3 flex items-center justify-between"><StageBadge stage={stage} /><span className="text-xs text-muted-foreground">{rows.length}</span></div><div className="space-y-2">{rows.map((p: any) => <ProspectCard key={p.id} prospect={p} onOpen={onOpen} />)}</div></div></SortableContext>; })}</div></DndContext>;
+  const onDragEnd = (event: DragEndEvent) => { const targetStageId = event.over?.data.current?.stageId ?? event.over?.id; if (!targetStageId || event.active.data.current?.stageId === targetStageId) return; moveStage.mutate({ id: String(event.active.id), stageId: String(targetStageId) }); };
+  return <DndContext sensors={sensors} onDragEnd={onDragEnd}><div className="grid min-h-[620px] auto-cols-[280px] grid-flow-col gap-4 overflow-x-auto pb-4">{stages.map((stage: any) => { const rows = prospects.filter((p: any) => p.current_stage_id === stage.id); return <KanbanColumn key={stage.id} stage={stage} rows={rows} onOpen={onOpen} />; })}</div></DndContext>;
+}
+
+function KanbanColumn({ stage, rows, onOpen }: any) {
+  const { setNodeRef } = useDroppable({ id: stage.id, data: { stageId: stage.id } });
+  return <SortableContext items={rows.map((p: any) => p.id)} strategy={verticalListSortingStrategy}><div ref={setNodeRef} className="rounded-md border border-border bg-card/30 p-3"><div className="mb-3 flex items-center justify-between"><StageBadge stage={stage} /><span className="text-xs text-muted-foreground">{rows.length}</span></div><div className="space-y-2">{rows.map((p: any) => <ProspectCard key={p.id} prospect={p} onOpen={onOpen} />)}</div></div></SortableContext>;
 }
 
 function ProspectCard({ prospect, onOpen }: any) {
