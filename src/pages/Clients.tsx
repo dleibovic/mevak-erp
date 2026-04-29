@@ -182,6 +182,40 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const currentCountry = countries.find((c: any) => c.id === form.country_id);
   const defaultCurrency = currentCountry?.currency_code ?? newCountry?.currency_code ?? "ARS";
 
+  const addSubBrand = () => {
+    setSubBrands([
+      ...subBrands,
+      {
+        name: "",
+        country_id: form.country_id,
+        province_id: null,
+        city_id: null,
+        address: "",
+        billing_frequency: form.billing_frequency ?? "monthly",
+        status: "active",
+        monthly_fee: 0,
+        fee_currency: defaultCurrency,
+        cmv_cost: 0,
+        cmv_currency: defaultCurrency,
+        branches_count: 1,
+        contact_name: "",
+        contact_phone: "",
+        contact_email: "",
+        reports_email: "",
+        food_category_id: form.food_category_id ?? null,
+        notes: "",
+      },
+    ]);
+  };
+
+  const updateSubBrand = (index: number, patch: Record<string, any>) => {
+    setSubBrands(subBrands.map((brand, i) => (i === index ? { ...brand, ...patch } : brand)));
+  };
+
+  const removeSubBrand = (index: number) => {
+    setSubBrands(subBrands.filter((_, i) => i !== index));
+  };
+
   // Initialize form when dialog opens or client changes
   useEffect(() => {
     if (!open) return;
