@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCountries, usePlatforms, useExpenseCategories } from "@/hooks/useCatalogs";
+import { Switch } from "@/components/ui/switch";
+import { useCountries, usePlatforms, useExpenseCategories, useContactChannels, useLostReasons, useFunnelStages } from "@/hooks/useCatalogs";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,12 +21,14 @@ export default function Admin() {
           <TabsTrigger value="platforms">Plataformas</TabsTrigger>
           <TabsTrigger value="categories">Categorías de gastos</TabsTrigger>
           <TabsTrigger value="countries">Países</TabsTrigger>
+          <TabsTrigger value="prospecting">Prospecting</TabsTrigger>
           <TabsTrigger value="users">Usuarios y roles</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platforms"><CatalogManager table="platforms" hook={usePlatforms} label="plataforma" /></TabsContent>
         <TabsContent value="categories"><CatalogManager table="expense_categories" hook={useExpenseCategories} label="categoría" /></TabsContent>
         <TabsContent value="countries"><CountriesManager /></TabsContent>
+        <TabsContent value="prospecting"><ProspectingSettings /></TabsContent>
         <TabsContent value="users"><UsersManager /></TabsContent>
       </Tabs>
     </PageContainer>
@@ -81,6 +84,52 @@ function CountriesManager() {
       </div>
     </Card>
   );
+}
+
+function ProspectingSettings() {
+  return (
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <ContactChannelsManager />
+      <LostReasonsManager />
+      <FunnelStagesManager />
+      <AlertSettingsManager />
+    </div>
+  );
+}
+
+function ContactChannelsManager() {
+  const qc = useQueryClient();
+  const { data = [] } = useContactChannels();
+  const [name, setName] = useState("");
+  const [type, setType] = useState("social");
+  const add = useMutation({ mutationFn: async () => { const { error } = await (supabase as any).from("contact_channels").insert({ name, type, is_active: true }); if (error) throw error; }, onSuccess: () => { setName(""); qc.invalidateQueries({ queryKey: ["contact_channels"] }); toast.success("Canal agregado"); }, onError: (e: any) => toast.error(e.message) });
+  const update = useMutation({ mutationFn: async ({ id, patch }: any) => { const { error } = await (supabase as any).from("contact_channels").update(patch).eq("id", id); if (error) throw error; }, onSuccess: () => qc.invalidateQueries({ queryKey: ["contact_channels"] }) });
+  const del = useMutation({ mutationFn: async (id: string) => { const { error } = await (supabase as any).from("contact_channels").delete().eq("id", id); if (error) throw error; }, onSuccess: () => qc.invalidateQueries({ queryKey: ["contact_channels"] }) });
+  return <Card className="p-5 bg-gradient-card border-border/60"><h3 className="font-medium mb-3">Canales de contacto</h3><div className="flex gap-2 mb-4"><Input placeholder="Nuevo canal" value={name} onChange={(e) => setName(e.target.value)} /><Input className="w-32" placeholder="Tipo" value={type} onChange={(e) => setType(e.target.value)} /><Button onClick={() => add.mutate()} disabled={!name}><Plus className="h-4 w-4" /></Button></div><div className="space-y-2">{data.map((c: any) => <div key={c.id} className="flex items-center gap-2 rounded-md border border-border bg-card/40 p-2"><Input value={c.name} onChange={(e) => update.mutate({ id: c.id, patch: { name: e.target.value } })} /><Switch checked={c.is_active} onCheckedChange={(v) => update.mutate({ id: c.id, patch: { is_active: v } })} /><Button variant="ghost" size="icon" onClick={() => del.mutate(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}</div></Card>;
+}
+
+function LostReasonsManager() {
+  const qc = useQueryClient();
+  const { data = [] } = useLostReasons();
+  const [reason, setReason] = useState("");
+  const add = useMutation({ mutationFn: async () => { const { error } = await (supabase as any).from("lost_reasons").insert({ reason }); if (error) throw error; }, onSuccess: () => { setReason(""); qc.invalidateQueries({ queryKey: ["lost_reasons"] }); toast.success("Motivo agregado"); }, onError: (e: any) => toast.error(e.message) });
+  const del = useMutation({ mutationFn: async (id: string) => { const { error } = await (supabase as any).from("lost_reasons").delete().eq("id", id); if (error) throw error; }, onSuccess: () => qc.invalidateQueries({ queryKey: ["lost_reasons"] }) });
+  return <Card className="p-5 bg-gradient-card border-border/60"><h3 className="font-medium mb-3">Motivos de pérdida</h3><div className="flex gap-2 mb-4"><Input placeholder="Nuevo motivo" value={reason} onChange={(e) => setReason(e.target.value)} /><Button onClick={() => add.mutate()} disabled={!reason}><Plus className="h-4 w-4" /></Button></div><div className="space-y-2">{data.map((r: any) => <div key={r.id} className="flex items-center justify-between rounded-md border border-border bg-card/40 p-2"><span>{r.reason}</span><Button variant="ghost" size="icon" onClick={() => del.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}</div></Card>;
+}
+
+function FunnelStagesManager() {
+  const qc = useQueryClient();
+  const { data = [] } = useFunnelStages();
+  const update = useMutation({ mutationFn: async ({ id, patch }: any) => { const { error } = await (supabase as any).from("funnel_stages").update(patch).eq("id", id); if (error) throw error; }, onSuccess: () => qc.invalidateQueries({ queryKey: ["funnel_stages"] }) });
+  return <Card className="p-5 bg-gradient-card border-border/60"><h3 className="font-medium mb-3">Etapas del funnel</h3><div className="space-y-2">{data.map((s: any) => <div key={s.id} className="grid grid-cols-12 gap-2 rounded-md border border-border bg-card/40 p-2"><Input className="col-span-7" value={s.name} onChange={(e) => update.mutate({ id: s.id, patch: { name: e.target.value } })} /><Input className="col-span-2" type="number" value={s.stage_order} onChange={(e) => update.mutate({ id: s.id, patch: { stage_order: Number(e.target.value) } })} /><Input className="col-span-3" value={s.color} onChange={(e) => update.mutate({ id: s.id, patch: { color: e.target.value } })} /></div>)}</div></Card>;
+}
+
+function AlertSettingsManager() {
+  const qc = useQueryClient();
+  const { data: settings } = useQuery({ queryKey: ["alert_settings"], queryFn: async () => ((await (supabase as any).from("alert_settings").select("*").eq("id", 1).single()).data) });
+  const [emails, setEmails] = useState("");
+  const update = useMutation({ mutationFn: async (patch: any) => { const { error } = await (supabase as any).from("alert_settings").update(patch).eq("id", 1); if (error) throw error; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["alert_settings"] }); toast.success("Configuración actualizada"); } });
+  return <Card className="p-5 bg-gradient-card border-border/60"><h3 className="font-medium mb-3">Alertas de inactividad</h3><div className="space-y-3"><div><Label>Umbral en días</Label><Input type="number" min={1} value={settings?.inactivity_threshold_days ?? 7} onChange={(e) => update.mutate({ inactivity_threshold_days: Number(e.target.value) })} /></div><div className="flex items-center justify-between rounded-md border border-border bg-card/40 p-3"><span className="text-sm">Alertas automáticas activas</span><Switch checked={!!settings?.is_inactivity_alert_active} onCheckedChange={(v) => update.mutate({ is_inactivity_alert_active: v })} /></div><div><Label>Emails por defecto</Label><div className="flex gap-2"><Input placeholder={(settings?.default_notify_emails ?? []).join(", ") || "mail@empresa.com"} value={emails} onChange={(e) => setEmails(e.target.value)} /><Button onClick={() => update.mutate({ default_notify_emails: emails.split(",").map((x) => x.trim()).filter(Boolean) })}>Guardar</Button></div></div></div></Card>;
 }
 
 function UsersManager() {

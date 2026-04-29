@@ -13,6 +13,7 @@ import Expenses from "./pages/Expenses";
 import Analytics from "./pages/Analytics";
 import Alerts from "./pages/Alerts";
 import Admin from "./pages/Admin";
+import Prospecting from "./pages/Prospecting";
 import NotFound from "./pages/NotFound.tsx";
 import { CountryFilterProvider } from "./hooks/useCountryFilter";
 
@@ -30,6 +31,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/clientes" element={<Clients />} />
+            <Route path="/prospecting" element={<Prospecting />} />
             <Route path="/facturacion" element={<Billing />} />
             <Route path="/empleados" element={<Employees />} />
             <Route path="/gastos" element={<Expenses />} />

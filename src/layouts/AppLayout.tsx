@@ -1,5 +1,5 @@
 import { NavLink, useLocation, Outlet, Navigate } from "react-router-dom";
-import { LayoutDashboard, Users, Receipt, Wallet, UserCog, Settings, LogOut, AlertTriangle, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Wallet, UserCog, Settings, LogOut, AlertTriangle, BarChart3, Target } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/clientes", label: "Clientes", icon: Users },
+  { to: "/prospecting", label: "Prospecting", icon: Target },
   { to: "/facturacion", label: "Facturación", icon: Receipt },
   { to: "/empleados", label: "Empleados", icon: UserCog, adminOnly: true },
   { to: "/gastos", label: "Gastos", icon: Wallet, adminOnly: true },
@@ -58,7 +59,8 @@ export default function AppLayout() {
               )}
             >
               <it.icon className="h-4 w-4" />
-              {it.label}
+              <span className="flex-1">{it.label}</span>
+              {it.to === "/prospecting" && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] leading-none text-destructive-foreground">0</span>}
             </NavLink>
           ))}
         </nav>
