@@ -159,6 +159,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const qc = useQueryClient();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
+  const { data: foodCategories = [] } = useFoodCategories();
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-options"],
     queryFn: async () => {
@@ -172,6 +173,8 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; selected: boolean }>>({});
   const [commissions, setCommissions] = useState<Record<string, number>>({});
   const [newCountry, setNewCountry] = useState<{ name: string; currency_code: string; currency_symbol: string } | null>(null);
+  const [newFoodCategory, setNewFoodCategory] = useState("");
+  const [subBrands, setSubBrands] = useState<any[]>([]);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
   const { data: cities = [] } = useCities(form.province_id);
@@ -201,8 +204,10 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         contact_phone: client.contact_phone ?? "",
         contact_email: client.contact_email ?? "",
         reports_email: client.reports_email ?? "",
+        food_category_id: client.food_category_id ?? null,
         notes: client.notes ?? "",
       });
+      setSubBrands(client.client_sub_brands ?? []);
       const sp: any = {};
       client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, selected: true }; });
       setSelectedPlatforms(sp);
@@ -229,10 +234,12 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         contact_phone: "",
         contact_email: "",
         reports_email: "",
+        food_category_id: null,
         notes: "",
       });
       setSelectedPlatforms({});
       setCommissions({});
+      setSubBrands([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, client?.id, countries.length]);
