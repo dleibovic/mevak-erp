@@ -649,7 +649,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                       </div>
                       <div>
                         <Label>País *</Label>
-                        <Select value={brand.country_id ?? countryId ?? ""} onValueChange={(v) => {
+                        <Select value={brand.country_id ?? form.country_id ?? ""} onValueChange={(v) => {
                           const c = countries.find((x: any) => x.id === v);
                           updateSubBrand(index, { country_id: v, province_id: null, city_id: null, fee_currency: c?.currency_code ?? brand.fee_currency, cmv_currency: c?.currency_code ?? brand.cmv_currency });
                         }}>
