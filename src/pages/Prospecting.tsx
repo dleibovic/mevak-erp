@@ -22,7 +22,7 @@ import { useCountries, usePlatforms } from "@/hooks/useCatalogs";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { CURRENCY_SYMBOL, fmtDate, formatMoney } from "@/lib/format";
+import { fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 
 type Prospect = any;
@@ -105,7 +105,7 @@ export default function Prospecting() {
 
   const exportCsv = () => {
     const rows = filtered.map((p: any) => ({ Empresa: p.business_name, Contacto: p.contact_name ?? "", Pais: p.country?.name ?? "", Ciudad: p.city ?? "", Ejecutivo: p.executive?.full_name ?? "", Etapa: p.stage?.name ?? "", Canal: p.first_channel?.name ?? "", Revenue: p.estimated_monthly_revenue, Moneda: p.currency, Estado: p.status }));
-    const csv = [Object.keys(rows[0] ?? { Empresa: "" }).join(","), ...rows.map((r) => Object.values(r).map((v) => `"${String(v).replaceAll('"', '""')}"`).join(","))].join("\n");
+    const csv = [Object.keys(rows[0] ?? { Empresa: "" }).join(","), ...rows.map((r) => Object.values(r).map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     a.download = "prospectos.csv";
