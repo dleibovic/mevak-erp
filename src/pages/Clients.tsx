@@ -620,6 +620,60 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
             </div>
           </section>
 
+          {/* Sub-marcas */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sub-marcas</h3>
+              <Button type="button" variant="outline" size="sm" onClick={addSubBrand}><Plus className="h-4 w-4" />Agregar sub-marca</Button>
+            </div>
+            {subBrands.length > 0 && (
+              <div className="space-y-3">
+                {subBrands.map((brand, index) => (
+                  <div key={brand.id ?? index} className="space-y-3 rounded-md border border-border bg-card/40 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Sub-marca {index + 1}</Label>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeSubBrand(index)}><X className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label>Nombre *</Label><Input value={brand.name ?? ""} onChange={(e) => updateSubBrand(index, { name: e.target.value })} /></div>
+                      <div>
+                        <Label>Categoría de comida</Label>
+                        <Select value={brand.food_category_id ?? "none"} onValueChange={(v) => updateSubBrand(index, { food_category_id: v === "none" ? null : v })}>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sin especificar</SelectItem>
+                            {foodCategories.map((cat: any) => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                            <SelectItem value="__new__">Usar nueva categoría del cliente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>País *</Label>
+                        <Select value={brand.country_id ?? countryId ?? ""} onValueChange={(v) => {
+                          const c = countries.find((x: any) => x.id === v);
+                          updateSubBrand(index, { country_id: v, province_id: null, city_id: null, fee_currency: c?.currency_code ?? brand.fee_currency, cmv_currency: c?.currency_code ?? brand.cmv_currency });
+                        }}>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                          <SelectContent>{countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency_code})</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
+                      <div><Label>Fee mensual</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div><Label>CMV %</Label><Input type="number" step="0.01" min={0} max={100} value={brand.cmv_cost ?? 0} onChange={(e) => updateSubBrand(index, { cmv_cost: e.target.value })} /></div>
+                      <div><Label>Dirección</Label><Input value={brand.address ?? ""} onChange={(e) => updateSubBrand(index, { address: e.target.value })} /></div>
+                      <div><Label>Persona de contacto</Label><Input value={brand.contact_name ?? ""} onChange={(e) => updateSubBrand(index, { contact_name: e.target.value })} /></div>
+                      <div><Label>Celular</Label><Input value={brand.contact_phone ?? ""} onChange={(e) => updateSubBrand(index, { contact_phone: e.target.value })} /></div>
+                      <div><Label>Email de contacto</Label><Input type="email" value={brand.contact_email ?? ""} onChange={(e) => updateSubBrand(index, { contact_email: e.target.value })} /></div>
+                      <div><Label>Email informes</Label><Input type="email" value={brand.reports_email ?? ""} onChange={(e) => updateSubBrand(index, { reports_email: e.target.value })} /></div>
+                      <div><Label>Estado</Label><Select value={brand.status ?? "active"} onValueChange={(v) => updateSubBrand(index, { status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Activo</SelectItem><SelectItem value="inactive">Inactivo</SelectItem><SelectItem value="suspended">Suspendido</SelectItem></SelectContent></Select></div>
+                      <div className="col-span-2"><Label>Notas</Label><Textarea rows={2} value={brand.notes ?? ""} onChange={(e) => updateSubBrand(index, { notes: e.target.value })} /></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           {/* Plataformas */}
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Plataformas activas</h3>
