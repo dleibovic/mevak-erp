@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCountries, usePlatforms, useExpenseCategories } from "@/hooks/useCatalogs";
+import { Switch } from "@/components/ui/switch";
+import { useCountries, usePlatforms, useExpenseCategories, useContactChannels, useLostReasons, useFunnelStages } from "@/hooks/useCatalogs";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,12 +21,14 @@ export default function Admin() {
           <TabsTrigger value="platforms">Plataformas</TabsTrigger>
           <TabsTrigger value="categories">Categorías de gastos</TabsTrigger>
           <TabsTrigger value="countries">Países</TabsTrigger>
+          <TabsTrigger value="prospecting">Prospecting</TabsTrigger>
           <TabsTrigger value="users">Usuarios y roles</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platforms"><CatalogManager table="platforms" hook={usePlatforms} label="plataforma" /></TabsContent>
         <TabsContent value="categories"><CatalogManager table="expense_categories" hook={useExpenseCategories} label="categoría" /></TabsContent>
         <TabsContent value="countries"><CountriesManager /></TabsContent>
+        <TabsContent value="prospecting"><ProspectingSettings /></TabsContent>
         <TabsContent value="users"><UsersManager /></TabsContent>
       </Tabs>
     </PageContainer>
