@@ -5,7 +5,7 @@ import { PageContainer, PageHeader } from "@/components/PageShell";
 import { Card } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend } from "recharts";
 import { formatMoney } from "@/lib/format";
-import { TrendingUp, TrendingDown, Wallet, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Users, ReceiptText, AlertTriangle } from "lucide-react";
 import { format, parseISO, startOfMonth } from "date-fns";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 
@@ -17,6 +17,10 @@ export default function Dashboard() {
   const { data: invoicesAll = [] } = useQuery({
     queryKey: ["dash-invoices"],
     queryFn: async () => (await supabase.from("invoices").select("*, client:clients(company_name, country_id)")).data ?? [],
+  });
+  const { data: clientsAll = [] } = useQuery({
+    queryKey: ["dash-clients"],
+    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, status")).data ?? [],
   });
   const { data: expensesAll = [] } = useQuery({
     queryKey: ["dash-expenses"],
@@ -30,6 +34,10 @@ export default function Dashboard() {
   const invoices = useMemo(
     () => countryId ? invoicesAll.filter((i: any) => i.client?.country_id === countryId) : invoicesAll,
     [invoicesAll, countryId]
+  );
+  const clients = useMemo(
+    () => countryId ? clientsAll.filter((c: any) => c.country_id === countryId) : clientsAll,
+    [clientsAll, countryId]
   );
   const expenses = useMemo(
     () => countryId ? expensesAll.filter((e: any) => e.country_id === countryId) : expensesAll,
@@ -45,19 +53,27 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
+    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0), 0);
+    const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
     if (activeCurrency) {
       const c = activeCurrency;
       const income = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === c))[c] ?? 0;
+      const overdue = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === c))[c] ?? 0;
+      const totalBilling = sumClientFees(c);
       const exp = sumByCurr(expenses.filter((e: any) => e.currency === c))[c] ?? 0;
       const payroll = employees.reduce((acc: number, e: any) => {
         if (e.salary_currency !== c) return acc;
         const comm = (e.commissions ?? []).filter((cm: any) => cm.currency === c).reduce((a: number, cm: any) => a + Number(cm.commission_value), 0);
         return acc + Number(e.base_salary || 0) + comm;
       }, 0);
-      return { mode: "single" as const, currency: c, income, exp, payroll, net: income - exp - payroll };
+      return { mode: "single" as const, currency: c, clientCount: clients.length, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
     }
+    const totalBillingARS = sumClientFees("ARS");
+    const totalBillingEUR = sumClientFees("EUR");
     const incomeARS = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "ARS"))["ARS"] ?? 0;
     const incomeEUR = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "EUR"))["EUR"] ?? 0;
+    const overdueARS = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === "ARS"))["ARS"] ?? 0;
+    const overdueEUR = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === "EUR"))["EUR"] ?? 0;
     const expARS = sumByCurr(expenses.filter((e: any) => e.currency === "ARS"))["ARS"] ?? 0;
     const expEUR = sumByCurr(expenses.filter((e: any) => e.currency === "EUR"))["EUR"] ?? 0;
     const payrollARS = employees.reduce((acc: number, e: any) => {
@@ -70,8 +86,8 @@ export default function Dashboard() {
       const comm = (e.commissions ?? []).filter((c: any) => c.currency === "EUR").reduce((a: number, c: any) => a + Number(c.commission_value), 0);
       return acc + Number(e.base_salary || 0) + comm;
     }, 0);
-    return { mode: "dual" as const, incomeARS, incomeEUR, expARS, expEUR, payrollARS, payrollEUR, netARS: incomeARS - expARS - payrollARS, netEUR: incomeEUR - expEUR - payrollEUR };
-  }, [invoices, expenses, employees, activeCurrency]);
+    return { mode: "dual" as const, clientCount: clients.length, totalBillingARS, totalBillingEUR, incomeARS, incomeEUR, overdueARS, overdueEUR, expARS, expEUR, payrollARS, payrollEUR, netARS: incomeARS - expARS - payrollARS, netEUR: incomeEUR - expEUR - payrollEUR };
+  }, [invoices, clients, expenses, employees, activeCurrency]);
 
   const series = useMemo(() => {
     const map: Record<string, any> = {};
@@ -117,15 +133,23 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {stats.mode === "single" ? (
           <>
-            <KCard label={`Ingresos ${stats.currency}`} value={formatMoney(stats.income, stats.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label={`Facturación total ${stats.currency}`} value={formatMoney(stats.totalBilling, stats.currency)} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
+            <KCard label={`Clientes cobrados ${stats.currency}`} value={formatMoney(stats.income, stats.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label={`Clientes con mora ${stats.currency}`} value={formatMoney(stats.overdue, stats.currency)} accent={stats.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
             <KCard label={`Gastos ${stats.currency}`} value={formatMoney(stats.exp, stats.currency)} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
             <KCard label={`Nómina ${stats.currency}`} value={formatMoney(stats.payroll, stats.currency)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
             <KCard label={`Neto ${stats.currency}`} value={formatMoney(stats.net, stats.currency)} accent={stats.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
           </>
         ) : (
           <>
-            <KCard label="Ingresos ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-            <KCard label="Ingresos EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <KCard label="Facturación total ARS" value={formatMoney(stats.totalBillingARS, "ARS")} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
+            <KCard label="Facturación total EUR" value={formatMoney(stats.totalBillingEUR, "EUR")} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
+            <KCard label="Clientes cobrados ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes cobrados EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
+            <KCard label="Clientes con mora ARS" value={formatMoney(stats.overdueARS, "ARS")} accent={stats.overdueARS > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
+            <KCard label="Clientes con mora EUR" value={formatMoney(stats.overdueEUR, "EUR")} accent={stats.overdueEUR > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
             <KCard label="Gastos ARS" value={formatMoney(stats.expARS, "ARS")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
             <KCard label="Gastos EUR" value={formatMoney(stats.expEUR, "EUR")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
             <KCard label="Nómina ARS" value={formatMoney(stats.payrollARS, "ARS")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
