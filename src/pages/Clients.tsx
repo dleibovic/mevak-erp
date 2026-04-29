@@ -300,6 +300,15 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
       if (!countryId) throw new Error("Seleccioná un país");
 
+      let foodCategoryId = form.food_category_id || null;
+      if (foodCategoryId === "__new__") {
+        const name = newFoodCategory.trim();
+        if (!name) throw new Error("Completá la nueva categoría gastronómica");
+        const { data, error } = await (supabase as any).from("food_categories").insert({ name }).select().single();
+        if (error) throw error;
+        foodCategoryId = data.id;
+      }
+
       const payload = {
         company_name: form.company_name,
         country_id: countryId,
@@ -318,6 +327,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         contact_phone: form.contact_phone || null,
         contact_email: form.contact_email || null,
         reports_email: form.reports_email || null,
+        food_category_id: foodCategoryId,
         notes: form.notes || null,
       };
 
@@ -342,14 +352,43 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         .filter(([_, v]) => Number(v) > 0)
         .map(([employee_id, v]) => ({ client_id: clientId!, employee_id, commission_value: Number(v), currency: defaultCurrency }));
       if (commRows.length) await supabase.from("client_executive_commission").insert(commRows);
+
+      await (supabase as any).from("client_sub_brands").delete().eq("client_id", clientId);
+      const subBrandRows = subBrands
+        .filter((brand) => brand.name?.trim())
+        .map((brand) => ({
+          client_id: clientId!,
+          name: brand.name.trim(),
+          country_id: brand.country_id || countryId,
+          province_id: brand.province_id || null,
+          city_id: brand.city_id || null,
+          address: brand.address || null,
+          billing_frequency: brand.billing_frequency || "monthly",
+          status: brand.status || "active",
+          monthly_fee: Number(brand.monthly_fee) || 0,
+          fee_currency: brand.fee_currency || defaultCurrency,
+          cmv_cost: Number(brand.cmv_cost) || 0,
+          cmv_currency: brand.cmv_currency || defaultCurrency,
+          branches_count: Number(brand.branches_count) || 1,
+          contact_name: brand.contact_name || null,
+          contact_phone: brand.contact_phone || null,
+          contact_email: brand.contact_email || null,
+          reports_email: brand.reports_email || null,
+          food_category_id: brand.food_category_id === "__new__" ? foodCategoryId : brand.food_category_id || null,
+          notes: brand.notes || null,
+        }));
+      if (subBrandRows.length) await (supabase as any).from("client_sub_brands").insert(subBrandRows);
     },
     onSuccess: () => {
       toast.success(client ? "Cliente actualizado" : "Cliente creado");
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["countries"] });
+      qc.invalidateQueries({ queryKey: ["food_categories"] });
       onOpenChange(false);
       setForm({});
       setNewCountry(null);
+      setNewFoodCategory("");
+      setSubBrands([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
