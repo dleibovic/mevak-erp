@@ -76,3 +76,36 @@ export function useExpenseCategories() {
     },
   });
 }
+
+export function useContactChannels() {
+  return useQuery({
+    queryKey: ["contact_channels"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("contact_channels").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useLostReasons() {
+  return useQuery({
+    queryKey: ["lost_reasons"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("lost_reasons").select("*").order("reason");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useFunnelStages() {
+  return useQuery({
+    queryKey: ["funnel_stages"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("funnel_stages").select("*").order("stage_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
