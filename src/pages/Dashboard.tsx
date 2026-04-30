@@ -83,6 +83,53 @@ export default function Dashboard() {
     return { mode: "multi" as const, clientCount: clients.length, rows };
   }, [invoices, clients, expenses, employees, activeCurrency]);
 
+  const countrySummaries = useMemo(() => {
+    const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
+    const countryName = (countryId?: string | null) => countries.find((c) => c.id === countryId)?.name ?? "Sin país";
+    const countryIds = Array.from(new Set([
+      ...clients.map((c: any) => c.country_id),
+      ...expenses.map((e: any) => e.country_id),
+      ...employees.map((e: any) => e.country_id),
+      ...invoices.map((i: any) => i.client?.country_id),
+    ].filter(Boolean))).sort((a: any, b: any) => countryName(a).localeCompare(countryName(b)));
+    const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
+
+    return countryIds.map((countryId: string) => {
+      const countryClients = clients.filter((c: any) => c.country_id === countryId);
+      const countryInvoices = invoices.filter((i: any) => i.client?.country_id === countryId);
+      const countryExpenses = expenses.filter((e: any) => e.country_id === countryId);
+      const countryEmployees = employees.filter((e: any) => e.country_id === countryId);
+      const currencies = Array.from(new Set([
+        ...countryClients.map((c: any) => c.fee_currency),
+        ...countryInvoices.map((i: any) => i.currency),
+        ...countryExpenses.map((e: any) => e.currency),
+        ...countryEmployees.map((e: any) => e.salary_currency),
+      ].filter(Boolean))).sort();
+      const rows = currencies.map((currency) => {
+        const totalBilling = countryClients
+          .filter((c: any) => c.fee_currency === currency)
+          .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * billingMultiplier(c.billing_frequency), 0);
+        const income = countryInvoices
+          .filter((i: any) => i.status === "paid" && i.currency === currency)
+          .reduce((acc: number, i: any) => acc + Number(i.amount || 0), 0);
+        const overdue = countryInvoices
+          .filter((i: any) => isOverdue(i) && i.currency === currency)
+          .reduce((acc: number, i: any) => acc + Number(i.amount || 0), 0);
+        const exp = countryExpenses
+          .filter((e: any) => e.currency === currency)
+          .reduce((acc: number, e: any) => acc + Number(e.amount || 0), 0);
+        const payroll = countryEmployees.reduce((acc: number, e: any) => {
+          const base = e.salary_currency === currency ? Number(e.base_salary || 0) : 0;
+          const comm = (e.commissions ?? []).filter((c: any) => c.currency === currency).reduce((a: number, c: any) => a + Number(c.commission_value || 0), 0);
+          return acc + base + comm;
+        }, 0);
+        return { currency, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
+      });
+
+      return { countryId, countryName: countryName(countryId), clientCount: countryClients.length, rows };
+    });
+  }, [countries, clients, invoices, expenses, employees]);
+
   const series = useMemo(() => {
     const map: Record<string, any> = {};
     const okCurr = (r: any) => !activeCurrency || r.currency === activeCurrency;
@@ -138,17 +185,44 @@ export default function Dashboard() {
         description="Cuenta corriente general — todos los países"
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-        {stats.rows.flatMap((row: any) => [
-          <KCard key={`${row.currency}-billing`} label={`Facturación mensual ${row.currency}`} value={formatMoney(row.totalBilling, row.currency)} icon={<ReceiptText className="h-4 w-4 text-primary" />} />,
-          <KCard key={`${row.currency}-income`} label={`Clientes cobrados ${row.currency}`} value={formatMoney(row.income, row.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />,
-          <KCard key={`${row.currency}-overdue`} label={`Clientes con mora ${row.currency}`} value={formatMoney(row.overdue, row.currency)} accent={row.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />,
-          <KCard key={`${row.currency}-expenses`} label={`Gastos ${row.currency}`} value={formatMoney(row.exp, row.currency)} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />,
-          <KCard key={`${row.currency}-payroll`} label={`Nómina ${row.currency}`} value={formatMoney(row.payroll, row.currency)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />,
-          <KCard key={`${row.currency}-net`} label={`Neto ${row.currency}`} value={formatMoney(row.net, row.currency)} accent={row.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />,
-        ])}
       </div>
+
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Resumen por país</h2>
+          <span className="text-xs text-muted-foreground">Valores mensualizados por frecuencia de cobro</span>
+        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {countrySummaries.map((country: any) => (
+            <Card key={country.countryId} className="p-4 bg-gradient-card border-border/60">
+              <div className="flex items-start justify-between gap-3 border-b border-border pb-3 mb-3">
+                <div>
+                  <h3 className="font-semibold">{country.countryName}</h3>
+                  <p className="text-xs text-muted-foreground">{country.clientCount} clientes</p>
+                </div>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="space-y-4">
+                {country.rows.map((row: any) => (
+                  <div key={`${country.countryId}-${row.currency}`} className="space-y-2">
+                    <div className="text-xs font-semibold text-primary">{row.currency}</div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                      <Metric label="Facturación" value={formatMoney(row.totalBilling, row.currency)} icon={<ReceiptText className="h-3.5 w-3.5" />} />
+                      <Metric label="Cobrado" value={formatMoney(row.income, row.currency)} icon={<TrendingUp className="h-3.5 w-3.5" />} />
+                      <Metric label="Mora" value={formatMoney(row.overdue, row.currency)} accent={row.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-3.5 w-3.5" />} />
+                      <Metric label="Gastos" value={formatMoney(row.exp, row.currency)} icon={<TrendingDown className="h-3.5 w-3.5" />} />
+                      <Metric label="Nómina" value={formatMoney(row.payroll, row.currency)} icon={<Users className="h-3.5 w-3.5" />} />
+                      <Metric label="Neto" value={formatMoney(row.net, row.currency)} accent={row.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-3.5 w-3.5" />} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
 
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
@@ -232,5 +306,18 @@ function KCard({ label, value, icon, accent }: { label: string; value: string; i
       </div>
       <div className={`text-xl font-semibold mt-1 font-mono ${accentClass}`}>{value}</div>
     </Card>
+  );
+}
+
+function Metric({ label, value, icon, accent }: { label: string; value: string; icon?: React.ReactNode; accent?: "success" | "destructive" }) {
+  const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 p-3 min-w-0">
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="truncate">{label}</span>
+        {icon}
+      </div>
+      <div className={`mt-1 font-mono text-sm font-semibold truncate ${accentClass}`}>{value}</div>
+    </div>
   );
 }
