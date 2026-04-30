@@ -510,6 +510,10 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                       setForm((f: any) => ({ ...f, fee_currency: code || f.fee_currency, cmv_currency: code || f.cmv_currency }));
                     }} maxLength={5} />
                   </div>
+                  <div>
+                    <Label className="text-xs">Símbolo</Label>
+                    <Input value={newCountry.currency_symbol} onChange={(e) => setNewCountry({ ...newCountry, currency_symbol: e.target.value })} maxLength={5} />
+                  </div>
                   <p className="col-span-3 text-[11px] text-muted-foreground">Se creará el país con su moneda y, si los elegís, también su provincia/estado y ciudad inicial.</p>
                 </div>
               )}
