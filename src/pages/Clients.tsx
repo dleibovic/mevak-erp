@@ -293,7 +293,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
       setSubBrands([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, client?.id, countries.length]);
+  }, [open, client?.id, countries.length, paymentMethods.length]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -581,6 +581,23 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Forma de pago</Label>
+                <Select value={form.payment_method_id ?? "none"} onValueChange={(v) => setForm({ ...form, payment_method_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin especificar</SelectItem>
+                    {paymentMethods.map((method: any) => <SelectItem key={method.id} value={method.id}>{method.name}</SelectItem>)}
+                    <SelectItem value="__new__" className="text-primary font-medium">+ Crear nueva forma de pago…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.payment_method_id === "__new__" && (
+                <div>
+                  <Label>Nueva forma de pago *</Label>
+                  <Input placeholder="Ej: PayPal" value={newPaymentMethod} onChange={(e) => setNewPaymentMethod(e.target.value)} />
+                </div>
+              )}
               <div>
                 <Label>Ejecutivo asignado</Label>
                 <Select value={form.assigned_executive_id ?? "none"} onValueChange={(v) => setForm({ ...form, assigned_executive_id: v === "none" ? null : v })}>
