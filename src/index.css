@@ -67,9 +67,20 @@
   html, body, #root {
     @apply h-full;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv11", "ss01", "ss03";
+    overflow-x: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
   }
 }
 
