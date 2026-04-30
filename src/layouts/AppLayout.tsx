@@ -86,14 +86,14 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 gap-1 border-t border-sidebar-border bg-sidebar/95 px-2 py-2 backdrop-blur md:hidden">
-        {items.slice(0, 6).map((it) => (
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex gap-1 overflow-x-auto border-t border-sidebar-border bg-sidebar/95 px-2 py-2 backdrop-blur [-webkit-overflow-scrolling:touch] md:hidden">
+        {items.map((it) => (
           <NavLink
             key={it.to}
             to={it.to}
             end={it.end}
             className={({ isActive }) => cn(
-              "flex min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[10px] transition-colors",
+              "flex min-w-[4.5rem] flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[10px] transition-colors",
               isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
             )}
           >
