@@ -273,6 +273,7 @@ export type Database = {
           id: string
           monthly_fee: number
           notes: string | null
+          payment_method_id: string | null
           province_id: string | null
           reports_email: string | null
           status: Database["public"]["Enums"]["client_status"]
@@ -296,6 +297,7 @@ export type Database = {
           id?: string
           monthly_fee?: number
           notes?: string | null
+          payment_method_id?: string | null
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
@@ -319,6 +321,7 @@ export type Database = {
           id?: string
           monthly_fee?: number
           notes?: string | null
+          payment_method_id?: string | null
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
@@ -350,6 +353,13 @@ export type Database = {
             columns: ["food_category_id"]
             isOneToOne: false
             referencedRelation: "food_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           },
           {
@@ -647,6 +657,24 @@ export type Database = {
           created_at?: string
           id?: string
           reason?: string
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
