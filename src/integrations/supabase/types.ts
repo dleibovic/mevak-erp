@@ -424,36 +424,60 @@ export type Database = {
       }
       employees: {
         Row: {
+          address: string | null
           base_salary: number | null
+          birth_date: string | null
+          company_email: string | null
           country_id: string | null
           created_at: string
+          dni: string | null
+          end_date: string | null
           full_name: string
           id: string
           is_active: boolean
+          mobile_phone: string | null
+          personal_email: string | null
           role: string
           salary_currency: string
+          start_date: string | null
           user_id: string | null
         }
         Insert: {
+          address?: string | null
           base_salary?: number | null
+          birth_date?: string | null
+          company_email?: string | null
           country_id?: string | null
           created_at?: string
+          dni?: string | null
+          end_date?: string | null
           full_name: string
           id?: string
           is_active?: boolean
+          mobile_phone?: string | null
+          personal_email?: string | null
           role: string
           salary_currency?: string
+          start_date?: string | null
           user_id?: string | null
         }
         Update: {
+          address?: string | null
           base_salary?: number | null
+          birth_date?: string | null
+          company_email?: string | null
           country_id?: string | null
           created_at?: string
+          dni?: string | null
+          end_date?: string | null
           full_name?: string
           id?: string
           is_active?: boolean
+          mobile_phone?: string | null
+          personal_email?: string | null
           role?: string
           salary_currency?: string
+          start_date?: string | null
           user_id?: string | null
         }
         Relationships: [

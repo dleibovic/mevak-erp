@@ -80,6 +80,14 @@ export default function Employees() {
                   <div><div className="text-xs text-muted-foreground">Comisiones</div><div className="font-mono">{formatMoney(totalComm, emp.salary_currency)}</div></div>
                   <div><div className="text-xs text-muted-foreground">Total mensual</div><div className="font-mono text-primary font-semibold">{formatMoney(total, emp.salary_currency)}</div></div>
                 </div>
+                <div className="grid sm:grid-cols-2 gap-2 text-xs border-t border-border pt-3 mt-3 text-muted-foreground">
+                  {emp.company_email && <div><span className="text-foreground">Mail empresa:</span> {emp.company_email}</div>}
+                  {emp.personal_email && <div><span className="text-foreground">Mail personal:</span> {emp.personal_email}</div>}
+                  {emp.mobile_phone && <div><span className="text-foreground">Celular:</span> {emp.mobile_phone}</div>}
+                  {emp.dni && <div><span className="text-foreground">DNI:</span> {emp.dni}</div>}
+                  {emp.start_date && <div><span className="text-foreground">Inicio:</span> {emp.start_date}</div>}
+                  {emp.end_date && <div><span className="text-foreground">Fin:</span> {emp.end_date}</div>}
+                </div>
                 {emp.commissions.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border">
                     <div className="text-xs text-muted-foreground mb-2">Clientes asignados</div>
@@ -110,7 +118,7 @@ function EmployeeDialog({ open, onOpenChange, employee }: any) {
 
   useEffect(() => {
     if (!open) return;
-    setForm(employee ?? { full_name: "", role: "", country_id: countries[0]?.id, base_salary: 0, salary_currency: "ARS", is_active: true });
+    setForm(employee ?? { full_name: "", role: "", country_id: countries[0]?.id, base_salary: 0, salary_currency: "ARS", is_active: true, personal_email: "", company_email: "", address: "", mobile_phone: "", birth_date: "", dni: "", start_date: "", end_date: "" });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, employee?.id, countries.length]);
 
@@ -137,6 +145,20 @@ function EmployeeDialog({ open, onOpenChange, employee }: any) {
         <div className="grid gap-3">
           <div><Label>Nombre completo</Label><Input value={form.full_name ?? ""} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
           <div><Label>Rol</Label><Input value={form.role ?? ""} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Ej: Ejecutiva de cuentas" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Mail personal</Label><Input type="email" value={form.personal_email ?? ""} onChange={(e) => setForm({ ...form, personal_email: e.target.value })} /></div>
+            <div><Label>Mail empresa</Label><Input type="email" value={form.company_email ?? ""} onChange={(e) => setForm({ ...form, company_email: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Celular</Label><Input value={form.mobile_phone ?? ""} onChange={(e) => setForm({ ...form, mobile_phone: e.target.value })} /></div>
+            <div><Label>DNI</Label><Input value={form.dni ?? ""} onChange={(e) => setForm({ ...form, dni: e.target.value })} /></div>
+          </div>
+          <div><Label>Dirección</Label><Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Fecha de nacimiento</Label><Input type="date" value={form.birth_date ?? ""} onChange={(e) => setForm({ ...form, birth_date: e.target.value || null })} /></div>
+            <div><Label>Fecha de inicio</Label><Input type="date" value={form.start_date ?? ""} onChange={(e) => setForm({ ...form, start_date: e.target.value || null })} /></div>
+            <div><Label>Fecha de fin</Label><Input type="date" value={form.end_date ?? ""} onChange={(e) => setForm({ ...form, end_date: e.target.value || null })} /></div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>País</Label>
