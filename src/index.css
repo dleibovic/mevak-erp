@@ -91,4 +91,20 @@
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
   .shadow-card { box-shadow: var(--shadow-card); }
   .text-balance { text-wrap: balance; }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  @media (max-width: 640px) {
+    [role="dialog"] .grid-cols-2,
+    [role="dialog"] .grid-cols-3,
+    [role="dialog"] .grid-cols-4 {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    [role="dialog"] .col-span-2,
+    [role="dialog"] .col-span-3,
+    [role="dialog"] .col-span-4 {
+      grid-column: auto !important;
+    }
+  }
 }
