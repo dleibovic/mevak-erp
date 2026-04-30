@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Country = { id: string; name: string; currency_code: string; currency_symbol: string };
 
+const isHiddenCountry = (country: Country) => country.name.trim().toLowerCase() === "estados unidos";
+
 type Ctx = {
   countryId: string | null; // null = all countries
   setCountryId: (id: string | null) => void;
@@ -20,7 +22,7 @@ export function CountryFilterProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase.from("countries").select("*").order("name");
       if (error) throw error;
-      return data as Country[];
+      return (data as Country[]).filter((country) => !isHiddenCountry(country));
     },
   });
 
