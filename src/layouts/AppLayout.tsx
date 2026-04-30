@@ -34,7 +34,7 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
-      <aside className="w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
+      <aside className="hidden md:flex w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex-col">
         <div className="px-5 py-6">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-md bg-gradient-primary shadow-elevated" />
@@ -76,9 +76,9 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 relative">
+      <main className="flex-1 min-w-0 relative pb-20 md:pb-0">
         <div className="absolute inset-x-0 top-0 h-64 bg-glow pointer-events-none" />
-        <header className="relative z-10 h-14 border-b border-border/60 bg-background/60 backdrop-blur flex items-center justify-end px-6 gap-3">
+        <header className="relative z-10 min-h-14 border-b border-border/60 bg-background/80 backdrop-blur flex flex-wrap items-center justify-between md:justify-end px-4 md:px-6 py-3 gap-3">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Vista por país</span>
           <CountryFilterSelect />
         </header>
@@ -86,6 +86,22 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 gap-1 border-t border-sidebar-border bg-sidebar/95 px-2 py-2 backdrop-blur md:hidden">
+        {items.slice(0, 6).map((it) => (
+          <NavLink
+            key={it.to}
+            to={it.to}
+            end={it.end}
+            className={({ isActive }) => cn(
+              "flex min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[10px] transition-colors",
+              isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
+            )}
+          >
+            <it.icon className="h-4 w-4 shrink-0" />
+            <span className="max-w-full truncate">{it.label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
