@@ -166,16 +166,18 @@ export default function Dashboard() {
 
   const prospectSummary = useMemo(() => {
     const activeProspects = prospects.filter((p: any) => p.status === "active");
-    const map: Record<string, { countryName: string; currency: string; count: number; potential: number }> = {};
+    const map: Record<string, { countryName: string; count: number; currencies: Record<string, number> }> = {};
     activeProspects.forEach((p: any) => {
       const country = countries.find((c) => c.id === p.country_id);
       const key = p.country_id ?? "unknown";
-      const currency = country?.currency_code ?? p.currency ?? "ARS";
-      map[key] = map[key] ?? { countryName: country?.name ?? "Sin país", currency, count: 0, potential: 0 };
+      const currency = p.currency ?? country?.currency_code ?? "ARS";
+      map[key] = map[key] ?? { countryName: country?.name ?? "Sin país", count: 0, currencies: {} };
       map[key].count += 1;
-      if (p.currency === currency) map[key].potential += Number(p.estimated_monthly_revenue || 0);
+      map[key].currencies[currency] = (map[key].currencies[currency] ?? 0) + Number(p.estimated_monthly_revenue || 0);
     });
-    return Object.values(map).sort((a, b) => a.countryName.localeCompare(b.countryName));
+    return Object.values(map)
+      .map((item) => ({ ...item, rows: Object.entries(item.currencies).map(([currency, potential]) => ({ currency, potential })).sort((a, b) => a.currency.localeCompare(b.currency)) }))
+      .sort((a, b) => a.countryName.localeCompare(b.countryName));
   }, [prospects, countries]);
 
   return (
@@ -229,14 +231,22 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold">Posibles clientes</h2>
           <span className="text-xs text-muted-foreground">Valor potencial mensual a facturar</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {prospectSummary.length ? prospectSummary.map((item) => (
-            <KCard
-              key={`${item.countryName}-${item.currency}`}
-              label={`${item.countryName} · ${item.count} posibles clientes`}
-              value={formatMoney(item.potential, item.currency)}
-              icon={<TrendingUp className="h-4 w-4 text-primary" />}
-            />
+            <Card key={item.countryName} className="p-4 bg-gradient-card border-border/60">
+              <div className="flex items-start justify-between gap-3 border-b border-border pb-3 mb-3">
+                <div>
+                  <h3 className="font-semibold">{item.countryName}</h3>
+                  <p className="text-xs text-muted-foreground">{item.count} posibles clientes</p>
+                </div>
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {item.rows.map((row: any) => (
+                  <Metric key={`${item.countryName}-${row.currency}`} label={`Potencial ${row.currency}`} value={formatMoney(row.potential, row.currency)} icon={<TrendingUp className="h-3.5 w-3.5" />} />
+                ))}
+              </div>
+            </Card>
           )) : (
             <Card className="p-4 bg-gradient-card border-border/60 md:col-span-2 lg:col-span-4">
               <div className="text-sm text-muted-foreground">No hay posibles clientes activos para mostrar.</div>
