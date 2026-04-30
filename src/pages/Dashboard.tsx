@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { forwardRef, useEffect, useMemo, useState, type HTMLAttributes, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/PageShell";
@@ -13,6 +13,19 @@ const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(2
 
 export default function Dashboard() {
   const { countries } = useCountryFilter();
+  const [supportsCharts, setSupportsCharts] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const ua = window.navigator.userAgent ?? "";
+    const platform = window.navigator.platform ?? "";
+    const touchPoints = window.navigator.maxTouchPoints ?? 0;
+    const isIOS = /iP(hone|ad|od)/i.test(ua) || (platform === "MacIntel" && touchPoints > 1);
+    const hasResizeObserver = typeof window.ResizeObserver !== "undefined";
+
+    setSupportsCharts(hasResizeObserver && !isIOS);
+  }, []);
 
   const { data: invoicesAll = [] } = useQuery({
     queryKey: ["dash-invoices"],
@@ -258,71 +271,108 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-4 bg-gradient-card border-border/60 lg:col-span-2">
           <h3 className="font-semibold mb-3">Ingresos vs Gastos (mensual)</h3>
-          <div className="h-72">
-            <ResponsiveContainer>
-              <LineChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} />
-                <Legend />
-                <Line type="monotone" dataKey="ingresos" stroke="hsl(var(--success))" strokeWidth={2} />
-                <Line type="monotone" dataKey="gastos" stroke="hsl(var(--destructive))" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {supportsCharts ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={series}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="ingresos" stroke="hsl(var(--success))" strokeWidth={2} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="gastos" stroke="hsl(var(--destructive))" strokeWidth={2} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {series.slice(-6).map((row: any) => (
+                <Metric
+                  key={row.month}
+                  label={row.month}
+                  value={`Ingresos ${formatMoney(row.ingresos)} · Gastos ${formatMoney(row.gastos)}`}
+                />
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card className="p-4 bg-gradient-card border-border/60">
           <h3 className="font-semibold mb-3">Gastos por categoría</h3>
-          <div className="h-72">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                  {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {supportsCharts ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2} isAnimationActive={false}>
+                    {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {byCategory.slice(0, 6).map((item) => (
+                <Metric key={item.name} label={item.name} value={formatMoney(item.value)} />
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card className="p-4 bg-gradient-card border-border/60">
           <h3 className="font-semibold mb-3">Top clientes (ingresos cobrados)</h3>
-          <div className="h-72">
-            <ResponsiveContainer>
-              <BarChart data={byClient} layout="vertical" margin={{ left: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={100} />
-                <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {supportsCharts ? (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byClient} layout="vertical" margin={{ left: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={100} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {byClient.slice(0, 6).map((item) => (
+                <Metric key={item.name} label={item.name} value={formatMoney(item.value)} />
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </PageContainer>
   );
 }
 
-function KCard({ label, value, icon, accent }: { label: string; value: string; icon?: React.ReactNode; accent?: "success" | "destructive" }) {
+type MetricCardProps = HTMLAttributes<HTMLDivElement> & {
+  label: string;
+  value: string;
+  icon?: ReactNode;
+  accent?: "success" | "destructive";
+};
+
+const KCard = forwardRef<HTMLDivElement, MetricCardProps>(({ label, value, icon, accent, className, ...props }, ref) => {
   const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
   return (
-    <Card className="p-4 bg-gradient-card border-border/60">
+    <Card ref={ref} className={`p-4 bg-gradient-card border-border/60 ${className ?? ""}`.trim()} {...props}>
       <div className="flex justify-between items-center text-xs text-muted-foreground">
         <span>{label}</span>{icon}
       </div>
       <div className={`text-xl font-semibold mt-1 font-mono ${accentClass}`}>{value}</div>
     </Card>
   );
-}
+});
 
-function Metric({ label, value, icon, accent }: { label: string; value: string; icon?: React.ReactNode; accent?: "success" | "destructive" }) {
+KCard.displayName = "KCard";
+
+const Metric = forwardRef<HTMLDivElement, MetricCardProps>(({ label, value, icon, accent, className, ...props }, ref) => {
   const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
   return (
-    <div className="rounded-md border border-border/60 bg-background/40 p-3 min-w-0">
+    <div ref={ref} className={`rounded-md border border-border/60 bg-background/40 p-3 min-w-0 ${className ?? ""}`.trim()} {...props}>
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="truncate">{label}</span>
         {icon}
@@ -330,4 +380,6 @@ function Metric({ label, value, icon, accent }: { label: string; value: string; 
       <div className={`mt-1 font-mono text-sm font-semibold truncate ${accentClass}`}>{value}</div>
     </div>
   );
-}
+});
+
+Metric.displayName = "Metric";
