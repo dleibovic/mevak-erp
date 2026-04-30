@@ -12,7 +12,7 @@ import { useCountryFilter } from "@/hooks/useCountryFilter";
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 70% 50%)"];
 
 export default function Dashboard() {
-  const { countryId, current, countries } = useCountryFilter();
+  const { countries } = useCountryFilter();
 
   const { data: invoicesAll = [] } = useQuery({
     queryKey: ["dash-invoices"],
@@ -20,7 +20,7 @@ export default function Dashboard() {
   });
   const { data: clientsAll = [] } = useQuery({
     queryKey: ["dash-clients"],
-    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, status")).data ?? [],
+    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, billing_frequency, status")).data ?? [],
   });
   const { data: prospectsAll = [] } = useQuery({
     queryKey: ["dash-prospects"],
@@ -35,29 +35,12 @@ export default function Dashboard() {
     queryFn: async () => (await supabase.from("employees").select("*, commissions:client_executive_commission(commission_value, currency)")).data ?? [],
   });
 
-  const invoices = useMemo(
-    () => countryId ? invoicesAll.filter((i: any) => i.client?.country_id === countryId) : invoicesAll,
-    [invoicesAll, countryId]
-  );
-  const clients = useMemo(
-    () => countryId ? clientsAll.filter((c: any) => c.country_id === countryId) : clientsAll,
-    [clientsAll, countryId]
-  );
-  const prospects = useMemo(
-    () => countryId ? prospectsAll.filter((p: any) => p.country_id === countryId) : prospectsAll,
-    [prospectsAll, countryId]
-  );
-  const expenses = useMemo(
-    () => countryId ? expensesAll.filter((e: any) => e.country_id === countryId) : expensesAll,
-    [expensesAll, countryId]
-  );
-  const employees = useMemo(
-    () => countryId ? employeesAll.filter((e: any) => e.country_id === countryId) : employeesAll,
-    [employeesAll, countryId]
-  );
-
-  // When a country is selected, restrict everything to ITS currency only.
-  const activeCurrency = current?.currency_code ?? null;
+  const invoices = invoicesAll;
+  const clients = clientsAll;
+  const prospects = prospectsAll;
+  const expenses = expensesAll;
+  const employees = employeesAll;
+  const activeCurrency = null;
 
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
