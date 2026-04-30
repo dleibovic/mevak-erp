@@ -86,7 +86,7 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex gap-1 overflow-x-auto border-t border-sidebar-border bg-sidebar/95 px-2 py-2 backdrop-blur [-webkit-overflow-scrolling:touch] md:hidden">
+      <nav className="no-scrollbar fixed inset-x-0 bottom-0 z-40 flex max-w-[100vw] gap-1 overflow-x-auto border-t border-sidebar-border bg-sidebar/95 px-2 py-2 backdrop-blur [-webkit-overflow-scrolling:touch] md:hidden">
         {items.map((it) => (
           <NavLink
             key={it.to}
