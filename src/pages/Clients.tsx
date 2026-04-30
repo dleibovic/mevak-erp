@@ -711,7 +711,16 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                         </Select>
                       </div>
                       <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
-                      <div><Label>Fee mensual</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div><Label>Fee por cobro</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div>
+                        <Label>Frecuencia de cobro</Label>
+                        <Select value={brand.billing_frequency ?? "monthly"} onValueChange={(v) => updateSubBrand(index, { billing_frequency: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {BILLING_FREQUENCY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div><Label>CMV %</Label><Input type="number" step="0.01" min={0} max={100} value={brand.cmv_cost ?? 0} onChange={(e) => updateSubBrand(index, { cmv_cost: e.target.value })} /></div>
                       <div><Label>Dirección</Label><Input value={brand.address ?? ""} onChange={(e) => updateSubBrand(index, { address: e.target.value })} /></div>
                       <div><Label>Persona de contacto</Label><Input value={brand.contact_name ?? ""} onChange={(e) => updateSubBrand(index, { contact_name: e.target.value })} /></div>
