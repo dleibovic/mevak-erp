@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,13 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useAuth();
+  const from = (location.state as any)?.from?.pathname || "/";
 
   useEffect(() => {
-    if (!loading && user) navigate("/", { replace: true });
-  }, [user, loading, navigate]);
+    if (!loading && user) navigate(from, { replace: true });
+  }, [user, loading, navigate, from]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +41,7 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Bienvenido");
+        navigate(from, { replace: true });
       }
     } catch (err: any) {
       toast.error(err.message ?? "Error de autenticación");
