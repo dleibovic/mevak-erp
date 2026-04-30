@@ -469,7 +469,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                           name: selected?.name ?? "",
                           isoCode,
                           currency_code: currency,
-                          currency_symbol: selected?.currency ? selected.currencySymbol ?? currency : "",
+                          currency_symbol: currency,
                         });
                         setNewCountryProvince("");
                         setNewCountryCity("");
