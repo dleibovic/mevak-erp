@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
-import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories } from "@/hooks/useCatalogs";
+import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories, usePaymentMethods } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney } from "@/lib/format";
@@ -44,7 +44,7 @@ export default function Clients() {
     queryFn: async () => {
       let q = supabase
         .from("clients")
-        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*), client_sub_brands(*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name))")
+        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name), payment_method:payment_methods(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*), client_sub_brands(*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name))")
         .order("created_at", { ascending: false });
       if (countryId) q = q.eq("country_id", countryId);
       const { data, error } = await q;
@@ -99,6 +99,7 @@ export default function Clients() {
                 <TableHead>Sub-marcas</TableHead>
                 <TableHead>Sucursales</TableHead>
                 <TableHead>Fee cobro</TableHead>
+                <TableHead>Forma de pago</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Ejecutivo</TableHead>
@@ -115,6 +116,7 @@ export default function Clients() {
                   <TableCell>{c.client_sub_brands?.length ?? 0}</TableCell>
                   <TableCell>{c.branches_count}</TableCell>
                   <TableCell>{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
+                  <TableCell>{c.payment_method?.name ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {c.client_platforms?.map((cp: any) => (
@@ -165,6 +167,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const qc = useQueryClient();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
+  const { data: paymentMethods = [] } = usePaymentMethods();
   const { data: foodCategories = [] } = useFoodCategories();
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-options"],
@@ -182,6 +185,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [newCountryProvince, setNewCountryProvince] = useState("");
   const [newCountryCity, setNewCountryCity] = useState("");
   const [newFoodCategory, setNewFoodCategory] = useState("");
+  const [newPaymentMethod, setNewPaymentMethod] = useState("");
   const [subBrands, setSubBrands] = useState<any[]>([]);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
