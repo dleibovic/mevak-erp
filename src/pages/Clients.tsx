@@ -242,6 +242,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         city_id: client.city_id,
         address: client.address ?? "",
         billing_frequency: client.billing_frequency,
+        payment_method_id: client.payment_method_id ?? null,
         status: client.status,
         assigned_executive_id: client.assigned_executive_id ?? null,
         monthly_fee: client.monthly_fee ?? 0,
@@ -272,6 +273,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         city_id: null,
         address: "",
         billing_frequency: "monthly",
+        payment_method_id: paymentMethods.find((method: any) => method.name === "Depósito Bancario")?.id ?? paymentMethods[0]?.id ?? null,
         status: "active",
         assigned_executive_id: null,
         monthly_fee: 0,
@@ -339,6 +341,15 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         foodCategoryId = data.id;
       }
 
+      let paymentMethodId = form.payment_method_id || null;
+      if (paymentMethodId === "__new__") {
+        const name = newPaymentMethod.trim();
+        if (!name) throw new Error("Completá la nueva forma de pago");
+        const { data, error } = await (supabase as any).from("payment_methods").insert({ name }).select().single();
+        if (error) throw error;
+        paymentMethodId = data.id;
+      }
+
       const payload = {
         company_name: form.company_name,
         country_id: countryId,
@@ -346,6 +357,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         city_id: form.city_id || null,
         address: form.address || null,
         billing_frequency: form.billing_frequency,
+        payment_method_id: paymentMethodId,
         status: form.status,
         assigned_executive_id: form.assigned_executive_id,
         monthly_fee: Number(form.monthly_fee) || 0,
@@ -414,12 +426,14 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["countries"] });
       qc.invalidateQueries({ queryKey: ["food_categories"] });
+      qc.invalidateQueries({ queryKey: ["payment_methods"] });
       onOpenChange(false);
       setForm({});
       setNewCountry(null);
       setNewCountryProvince("");
       setNewCountryCity("");
       setNewFoodCategory("");
+      setNewPaymentMethod("");
       setSubBrands([]);
     },
     onError: (e: any) => toast.error(e.message),
