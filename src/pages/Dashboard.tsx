@@ -308,3 +308,16 @@ function KCard({ label, value, icon, accent }: { label: string; value: string; i
     </Card>
   );
 }
+
+function Metric({ label, value, icon, accent }: { label: string; value: string; icon?: React.ReactNode; accent?: "success" | "destructive" }) {
+  const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 p-3 min-w-0">
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="truncate">{label}</span>
+        {icon}
+      </div>
+      <div className={`mt-1 font-mono text-sm font-semibold truncate ${accentClass}`}>{value}</div>
+    </div>
+  );
+}
