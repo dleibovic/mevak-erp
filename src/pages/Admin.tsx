@@ -79,6 +79,81 @@ function CatalogManager({ table, hook, label }: { table: "platforms" | "expense_
   );
 }
 
+function PlatformsManager() {
+  const qc = useQueryClient();
+  const { data = [] } = usePlatforms();
+  const [name, setName] = useState("");
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
+  const existingNames = useMemo(() => new Set(data.map((p: any) => normalizePlatformName(p.name))), [data]);
+  const missingByRegion = useMemo(() => Object.entries(REGIONAL_PLATFORM_CATALOG).map(([region, platforms]) => ({
+    region,
+    platforms: platforms.filter((platform) => !existingNames.has(normalizePlatformName(platform))),
+  })), [existingNames]);
+  const missingUnique = useMemo(() => Array.from(new Map(missingByRegion.flatMap((item) => item.platforms).map((platform) => [normalizePlatformName(platform), platform])).values()), [missingByRegion]);
+
+  const add = useMutation({
+    mutationFn: async () => { const { error } = await supabase.from("platforms").insert({ name }); if (error) throw error; },
+    onSuccess: () => { setName(""); qc.invalidateQueries({ queryKey: ["platforms"] }); toast.success("Agregado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const addMissing = useMutation({
+    mutationFn: async () => {
+      if (!missingUnique.length) return;
+      const { error } = await supabase.from("platforms").insert(missingUnique.map((platform) => ({ name: platform })));
+      if (error) throw error;
+    },
+    onSuccess: () => { setSummaryOpen(false); qc.invalidateQueries({ queryKey: ["platforms"] }); toast.success("Plataformas faltantes agregadas"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const del = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("platforms").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["platforms"] }); toast.success("Eliminado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-5 bg-gradient-card border-border/60 mt-4">
+      <div className="flex flex-col gap-2 mb-4 md:flex-row">
+        <Input placeholder="Nueva plataforma" value={name} onChange={(e) => setName(e.target.value)} />
+        <Button onClick={() => add.mutate()} disabled={!name}><Plus className="h-4 w-4 mr-1" />Agregar</Button>
+        <Button variant="secondary" onClick={() => setSummaryOpen(true)}><SearchCheck className="h-4 w-4 mr-1" />Validar faltantes</Button>
+      </div>
+      <div className="space-y-1">
+        {data.map((it: any) => (
+          <div key={it.id} className="flex justify-between items-center px-3 py-2 rounded-md hover:bg-card/60">
+            <span>{it.name}</span>
+            <Button variant="ghost" size="icon" onClick={() => del.mutate(it.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          </div>
+        ))}
+      </div>
+      <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Resumen de plataformas faltantes</DialogTitle>
+            <DialogDescription>Validación automática para USA, LATAM, España y Brasil antes de insertar.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 md:grid-cols-2">
+            {missingByRegion.map((item) => (
+              <div key={item.region} className="rounded-md border border-border bg-card/40 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="font-medium">{item.region}</h4>
+                  <span className="text-xs text-muted-foreground">{item.platforms.length} faltantes</span>
+                </div>
+                {item.platforms.length ? <div className="flex flex-wrap gap-1.5">{item.platforms.map((platform) => <span key={platform} className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">{platform}</span>)}</div> : <div className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-primary" />Completo</div>}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSummaryOpen(false)}>Cancelar</Button>
+            <Button onClick={() => addMissing.mutate()} disabled={!missingUnique.length || addMissing.isPending}>Insertar {missingUnique.length} plataformas</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
 function CountriesManager() {
   const { data = [] } = useCountries();
   return (
