@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Country as CSCountry, State as CSState, City as CSCity } from "country-state-city";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
@@ -172,7 +173,9 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [form, setForm] = useState<any>({});
   const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, { commission_rate: number; selected: boolean }>>({});
   const [commissions, setCommissions] = useState<Record<string, number>>({});
-  const [newCountry, setNewCountry] = useState<{ name: string; currency_code: string; currency_symbol: string } | null>(null);
+  const [newCountry, setNewCountry] = useState<{ name: string; isoCode: string; currency_code: string; currency_symbol: string } | null>(null);
+  const [newCountryProvince, setNewCountryProvince] = useState("");
+  const [newCountryCity, setNewCountryCity] = useState("");
   const [newFoodCategory, setNewFoodCategory] = useState("");
   const [subBrands, setSubBrands] = useState<any[]>([]);
 
@@ -181,6 +184,9 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
 
   const currentCountry = countries.find((c: any) => c.id === form.country_id);
   const defaultCurrency = currentCountry?.currency_code ?? newCountry?.currency_code ?? "ARS";
+  const availableCountries = useMemo(() => CSCountry.getAllCountries(), []);
+  const availableStates = useMemo(() => newCountry?.isoCode ? CSState.getStatesOfCountry(newCountry.isoCode) : [], [newCountry?.isoCode]);
+  const availableCities = useMemo(() => newCountry?.isoCode && newCountryProvince ? CSCity.getCitiesOfState(newCountry.isoCode, newCountryProvince) : [], [newCountry?.isoCode, newCountryProvince]);
 
   const addSubBrand = () => {
     setSubBrands([
