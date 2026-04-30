@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
-import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories } from "@/hooks/useCatalogs";
+import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories, usePaymentMethods } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney } from "@/lib/format";
@@ -44,7 +44,7 @@ export default function Clients() {
     queryFn: async () => {
       let q = supabase
         .from("clients")
-        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*), client_sub_brands(*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name))")
+        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name), payment_method:payment_methods(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*), client_sub_brands(*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name))")
         .order("created_at", { ascending: false });
       if (countryId) q = q.eq("country_id", countryId);
       const { data, error } = await q;
@@ -99,6 +99,7 @@ export default function Clients() {
                 <TableHead>Sub-marcas</TableHead>
                 <TableHead>Sucursales</TableHead>
                 <TableHead>Fee cobro</TableHead>
+                <TableHead>Forma de pago</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Ejecutivo</TableHead>
@@ -115,6 +116,7 @@ export default function Clients() {
                   <TableCell>{c.client_sub_brands?.length ?? 0}</TableCell>
                   <TableCell>{c.branches_count}</TableCell>
                   <TableCell>{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
+                  <TableCell>{c.payment_method?.name ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {c.client_platforms?.map((cp: any) => (
@@ -165,6 +167,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const qc = useQueryClient();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
+  const { data: paymentMethods = [] } = usePaymentMethods();
   const { data: foodCategories = [] } = useFoodCategories();
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-options"],
@@ -182,6 +185,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
   const [newCountryProvince, setNewCountryProvince] = useState("");
   const [newCountryCity, setNewCountryCity] = useState("");
   const [newFoodCategory, setNewFoodCategory] = useState("");
+  const [newPaymentMethod, setNewPaymentMethod] = useState("");
   const [subBrands, setSubBrands] = useState<any[]>([]);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
@@ -238,6 +242,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         city_id: client.city_id,
         address: client.address ?? "",
         billing_frequency: client.billing_frequency,
+        payment_method_id: client.payment_method_id ?? null,
         status: client.status,
         assigned_executive_id: client.assigned_executive_id ?? null,
         monthly_fee: client.monthly_fee ?? 0,
@@ -268,6 +273,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         city_id: null,
         address: "",
         billing_frequency: "monthly",
+        payment_method_id: paymentMethods.find((method: any) => method.name === "Depósito Bancario")?.id ?? paymentMethods[0]?.id ?? null,
         status: "active",
         assigned_executive_id: null,
         monthly_fee: 0,
@@ -287,7 +293,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
       setSubBrands([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, client?.id, countries.length]);
+  }, [open, client?.id, countries.length, paymentMethods.length]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -335,6 +341,15 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         foodCategoryId = data.id;
       }
 
+      let paymentMethodId = form.payment_method_id || null;
+      if (paymentMethodId === "__new__") {
+        const name = newPaymentMethod.trim();
+        if (!name) throw new Error("Completá la nueva forma de pago");
+        const { data, error } = await (supabase as any).from("payment_methods").insert({ name }).select().single();
+        if (error) throw error;
+        paymentMethodId = data.id;
+      }
+
       const payload = {
         company_name: form.company_name,
         country_id: countryId,
@@ -342,6 +357,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         city_id: form.city_id || null,
         address: form.address || null,
         billing_frequency: form.billing_frequency,
+        payment_method_id: paymentMethodId,
         status: form.status,
         assigned_executive_id: form.assigned_executive_id,
         monthly_fee: Number(form.monthly_fee) || 0,
@@ -410,12 +426,14 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["countries"] });
       qc.invalidateQueries({ queryKey: ["food_categories"] });
+      qc.invalidateQueries({ queryKey: ["payment_methods"] });
       onOpenChange(false);
       setForm({});
       setNewCountry(null);
       setNewCountryProvince("");
       setNewCountryCity("");
       setNewFoodCategory("");
+      setNewPaymentMethod("");
       setSubBrands([]);
     },
     onError: (e: any) => toast.error(e.message),
@@ -563,6 +581,23 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Forma de pago</Label>
+                <Select value={form.payment_method_id ?? "none"} onValueChange={(v) => setForm({ ...form, payment_method_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin especificar</SelectItem>
+                    {paymentMethods.map((method: any) => <SelectItem key={method.id} value={method.id}>{method.name}</SelectItem>)}
+                    <SelectItem value="__new__" className="text-primary font-medium">+ Crear nueva forma de pago…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.payment_method_id === "__new__" && (
+                <div>
+                  <Label>Nueva forma de pago *</Label>
+                  <Input placeholder="Ej: PayPal" value={newPaymentMethod} onChange={(e) => setNewPaymentMethod(e.target.value)} />
+                </div>
+              )}
               <div>
                 <Label>Ejecutivo asignado</Label>
                 <Select value={form.assigned_executive_id ?? "none"} onValueChange={(v) => setForm({ ...form, assigned_executive_id: v === "none" ? null : v })}>

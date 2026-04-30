@@ -23,6 +23,17 @@ export function usePlatforms() {
   });
 }
 
+export function usePaymentMethods() {
+  return useQuery({
+    queryKey: ["payment_methods"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("payment_methods").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useFoodCategories() {
   return useQuery({
     queryKey: ["food_categories"],
