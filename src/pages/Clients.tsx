@@ -25,6 +25,11 @@ type Client = any;
 
 const STATUS_LABEL: Record<string, string> = { active: "Activo", inactive: "Inactivo", suspended: "Suspendido" };
 const FREQ_LABEL: Record<string, string> = { weekly: "Semanal", biweekly: "Quincenal", monthly: "Mensual" };
+const BILLING_FREQUENCY_OPTIONS = [
+  { value: "monthly", label: "Mensual" },
+  { value: "biweekly", label: "Quincenal" },
+  { value: "weekly", label: "Semanal" },
+];
 
 export default function Clients() {
   const qc = useQueryClient();
@@ -93,7 +98,7 @@ export default function Clients() {
                 <TableHead>Categoría</TableHead>
                 <TableHead>Sub-marcas</TableHead>
                 <TableHead>Sucursales</TableHead>
-                <TableHead>Fee mensual</TableHead>
+                <TableHead>Fee cobro</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Ejecutivo</TableHead>
@@ -554,9 +559,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                 <Select value={form.billing_frequency ?? "monthly"} onValueChange={(v) => setForm({ ...form, billing_frequency: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="weekly">Semanal</SelectItem>
-                    <SelectItem value="biweekly">Quincenal</SelectItem>
-                    <SelectItem value="monthly">Mensual</SelectItem>
+                    {BILLING_FREQUENCY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -578,7 +581,7 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Económico</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Fee mensual *</Label>
+                <Label>Fee por cobro *</Label>
                 <div className="flex gap-2">
                   <Input type="number" step="0.01" min={0} value={form.monthly_fee ?? 0} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} />
                   <Select value={form.fee_currency ?? defaultCurrency} onValueChange={(v) => setForm({ ...form, fee_currency: v })}>
@@ -708,7 +711,16 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                         </Select>
                       </div>
                       <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
-                      <div><Label>Fee mensual</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div><Label>Fee por cobro</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div>
+                        <Label>Frecuencia de cobro</Label>
+                        <Select value={brand.billing_frequency ?? "monthly"} onValueChange={(v) => updateSubBrand(index, { billing_frequency: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {BILLING_FREQUENCY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div><Label>CMV %</Label><Input type="number" step="0.01" min={0} max={100} value={brand.cmv_cost ?? 0} onChange={(e) => updateSubBrand(index, { cmv_cost: e.target.value })} /></div>
                       <div><Label>Dirección</Label><Input value={brand.address ?? ""} onChange={(e) => updateSubBrand(index, { address: e.target.value })} /></div>
                       <div><Label>Persona de contacto</Label><Input value={brand.contact_name ?? ""} onChange={(e) => updateSubBrand(index, { contact_name: e.target.value })} /></div>
