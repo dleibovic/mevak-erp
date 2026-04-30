@@ -12,7 +12,7 @@ import { useCountryFilter } from "@/hooks/useCountryFilter";
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 70% 50%)"];
 
 export default function Dashboard() {
-  const { countryId, current, countries } = useCountryFilter();
+  const { countries } = useCountryFilter();
 
   const { data: invoicesAll = [] } = useQuery({
     queryKey: ["dash-invoices"],
@@ -20,7 +20,7 @@ export default function Dashboard() {
   });
   const { data: clientsAll = [] } = useQuery({
     queryKey: ["dash-clients"],
-    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, status")).data ?? [],
+    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, billing_frequency, status")).data ?? [],
   });
   const { data: prospectsAll = [] } = useQuery({
     queryKey: ["dash-prospects"],
@@ -35,33 +35,18 @@ export default function Dashboard() {
     queryFn: async () => (await supabase.from("employees").select("*, commissions:client_executive_commission(commission_value, currency)")).data ?? [],
   });
 
-  const invoices = useMemo(
-    () => countryId ? invoicesAll.filter((i: any) => i.client?.country_id === countryId) : invoicesAll,
-    [invoicesAll, countryId]
-  );
-  const clients = useMemo(
-    () => countryId ? clientsAll.filter((c: any) => c.country_id === countryId) : clientsAll,
-    [clientsAll, countryId]
-  );
-  const prospects = useMemo(
-    () => countryId ? prospectsAll.filter((p: any) => p.country_id === countryId) : prospectsAll,
-    [prospectsAll, countryId]
-  );
-  const expenses = useMemo(
-    () => countryId ? expensesAll.filter((e: any) => e.country_id === countryId) : expensesAll,
-    [expensesAll, countryId]
-  );
-  const employees = useMemo(
-    () => countryId ? employeesAll.filter((e: any) => e.country_id === countryId) : employeesAll,
-    [employeesAll, countryId]
-  );
-
-  // When a country is selected, restrict everything to ITS currency only.
-  const activeCurrency = current?.currency_code ?? null;
+  const invoices = invoicesAll;
+  const clients = clientsAll;
+  const prospects = prospectsAll;
+  const expenses = expensesAll;
+  const employees = employeesAll;
+  const activeCurrency = null;
 
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
-    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0), 0);
+    const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
+    const normalizedClientFee = (c: any) => Number(c.monthly_fee || 0) * billingMultiplier(c.billing_frequency);
+    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
     const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
     if (activeCurrency) {
       const c = activeCurrency;
@@ -76,25 +61,26 @@ export default function Dashboard() {
       }, 0);
       return { mode: "single" as const, currency: c, clientCount: clients.length, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
     }
-    const totalBillingARS = sumClientFees("ARS");
-    const totalBillingEUR = sumClientFees("EUR");
-    const incomeARS = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "ARS"))["ARS"] ?? 0;
-    const incomeEUR = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "EUR"))["EUR"] ?? 0;
-    const overdueARS = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === "ARS"))["ARS"] ?? 0;
-    const overdueEUR = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === "EUR"))["EUR"] ?? 0;
-    const expARS = sumByCurr(expenses.filter((e: any) => e.currency === "ARS"))["ARS"] ?? 0;
-    const expEUR = sumByCurr(expenses.filter((e: any) => e.currency === "EUR"))["EUR"] ?? 0;
-    const payrollARS = employees.reduce((acc: number, e: any) => {
-      if (e.salary_currency !== "ARS") return acc;
-      const comm = (e.commissions ?? []).filter((c: any) => c.currency === "ARS").reduce((a: number, c: any) => a + Number(c.commission_value), 0);
-      return acc + Number(e.base_salary || 0) + comm;
-    }, 0);
-    const payrollEUR = employees.reduce((acc: number, e: any) => {
-      if (e.salary_currency !== "EUR") return acc;
-      const comm = (e.commissions ?? []).filter((c: any) => c.currency === "EUR").reduce((a: number, c: any) => a + Number(c.commission_value), 0);
-      return acc + Number(e.base_salary || 0) + comm;
-    }, 0);
-    return { mode: "dual" as const, clientCount: clients.length, totalBillingARS, totalBillingEUR, incomeARS, incomeEUR, overdueARS, overdueEUR, expARS, expEUR, payrollARS, payrollEUR, netARS: incomeARS - expARS - payrollARS, netEUR: incomeEUR - expEUR - payrollEUR };
+    const currencies = Array.from(new Set([
+      ...clients.map((c: any) => c.fee_currency),
+      ...invoices.map((i: any) => i.currency),
+      ...expenses.map((e: any) => e.currency),
+      ...employees.map((e: any) => e.salary_currency),
+    ].filter(Boolean))).sort();
+    const paidByCurrency = sumByCurr(invoices.filter((i: any) => i.status === "paid"));
+    const overdueByCurrency = sumByCurr(invoices.filter(isOverdue));
+    const expensesByCurrency = sumByCurr(expenses);
+    const rows = currencies.map((currency) => {
+      const payroll = employees.reduce((acc: number, e: any) => {
+        const base = e.salary_currency === currency ? Number(e.base_salary || 0) : 0;
+        const comm = (e.commissions ?? []).filter((c: any) => c.currency === currency).reduce((a: number, c: any) => a + Number(c.commission_value), 0);
+        return acc + base + comm;
+      }, 0);
+      const income = paidByCurrency[currency] ?? 0;
+      const exp = expensesByCurrency[currency] ?? 0;
+      return { currency, totalBilling: sumClientFees(currency), income, overdue: overdueByCurrency[currency] ?? 0, exp, payroll, net: income - exp - payroll };
+    });
+    return { mode: "multi" as const, clientCount: clients.length, rows };
   }, [invoices, clients, expenses, employees, activeCurrency]);
 
   const series = useMemo(() => {
@@ -149,37 +135,19 @@ export default function Dashboard() {
     <PageContainer>
       <PageHeader
         title="Dashboard"
-        description={current ? `Vista filtrada: ${current.name}` : "Cuenta corriente general — visión consolidada"}
+        description="Cuenta corriente general — todos los países"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {stats.mode === "single" ? (
-          <>
-            <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-            <KCard label={`Facturación total ${stats.currency}`} value={formatMoney(stats.totalBilling, stats.currency)} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
-            <KCard label={`Clientes cobrados ${stats.currency}`} value={formatMoney(stats.income, stats.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-            <KCard label={`Clientes con mora ${stats.currency}`} value={formatMoney(stats.overdue, stats.currency)} accent={stats.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
-            <KCard label={`Gastos ${stats.currency}`} value={formatMoney(stats.exp, stats.currency)} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
-            <KCard label={`Nómina ${stats.currency}`} value={formatMoney(stats.payroll, stats.currency)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-            <KCard label={`Neto ${stats.currency}`} value={formatMoney(stats.net, stats.currency)} accent={stats.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
-          </>
-        ) : (
-          <>
-            <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-            <KCard label="Facturación total ARS" value={formatMoney(stats.totalBillingARS, "ARS")} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
-            <KCard label="Facturación total EUR" value={formatMoney(stats.totalBillingEUR, "EUR")} icon={<ReceiptText className="h-4 w-4 text-primary" />} />
-            <KCard label="Clientes cobrados ARS" value={formatMoney(stats.incomeARS, "ARS")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-            <KCard label="Clientes cobrados EUR" value={formatMoney(stats.incomeEUR, "EUR")} icon={<TrendingUp className="h-4 w-4 text-success" />} />
-            <KCard label="Clientes con mora ARS" value={formatMoney(stats.overdueARS, "ARS")} accent={stats.overdueARS > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
-            <KCard label="Clientes con mora EUR" value={formatMoney(stats.overdueEUR, "EUR")} accent={stats.overdueEUR > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />
-            <KCard label="Gastos ARS" value={formatMoney(stats.expARS, "ARS")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
-            <KCard label="Gastos EUR" value={formatMoney(stats.expEUR, "EUR")} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />
-            <KCard label="Nómina ARS" value={formatMoney(stats.payrollARS, "ARS")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-            <KCard label="Nómina EUR" value={formatMoney(stats.payrollEUR, "EUR")} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-            <KCard label="Neto ARS" value={formatMoney(stats.netARS, "ARS")} accent={stats.netARS >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
-            <KCard label="Neto EUR" value={formatMoney(stats.netEUR, "EUR")} accent={stats.netEUR >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />
-          </>
-        )}
+        <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+        {stats.rows.flatMap((row: any) => [
+          <KCard key={`${row.currency}-billing`} label={`Facturación mensual ${row.currency}`} value={formatMoney(row.totalBilling, row.currency)} icon={<ReceiptText className="h-4 w-4 text-primary" />} />,
+          <KCard key={`${row.currency}-income`} label={`Clientes cobrados ${row.currency}`} value={formatMoney(row.income, row.currency)} icon={<TrendingUp className="h-4 w-4 text-success" />} />,
+          <KCard key={`${row.currency}-overdue`} label={`Clientes con mora ${row.currency}`} value={formatMoney(row.overdue, row.currency)} accent={row.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-4 w-4 text-destructive" />} />,
+          <KCard key={`${row.currency}-expenses`} label={`Gastos ${row.currency}`} value={formatMoney(row.exp, row.currency)} icon={<TrendingDown className="h-4 w-4 text-destructive" />} />,
+          <KCard key={`${row.currency}-payroll`} label={`Nómina ${row.currency}`} value={formatMoney(row.payroll, row.currency)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />,
+          <KCard key={`${row.currency}-net`} label={`Neto ${row.currency}`} value={formatMoney(row.net, row.currency)} accent={row.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4" />} />,
+        ])}
       </div>
 
       <section className="mb-6">
