@@ -458,38 +458,59 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
               </div>
               {newCountry && (
                 <div className="col-span-2 grid grid-cols-3 gap-3 p-3 rounded-md border border-primary/40 bg-primary/5">
-                  <div>
-                    <Label className="text-xs">Nombre del país *</Label>
-                    <Input
-                      placeholder="Ej: Brasil"
-                      value={newCountry.name}
-                      onChange={(e) => setNewCountry({ ...newCountry, name: e.target.value })}
-                      maxLength={80}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Código moneda *</Label>
-                    <Input
-                      placeholder="BRL"
-                      value={newCountry.currency_code}
-                      onChange={(e) => {
-                        const code = e.target.value.toUpperCase();
-                        setNewCountry({ ...newCountry, currency_code: code });
-                        setForm((f: any) => ({ ...f, fee_currency: code || f.fee_currency, cmv_currency: code || f.cmv_currency }));
+                  <div className="col-span-3">
+                    <Label className="text-xs">País *</Label>
+                    <Select
+                      value={newCountry.isoCode || "none"}
+                      onValueChange={(isoCode) => {
+                        const selected = availableCountries.find((country) => country.isoCode === isoCode);
+                        const currency = selected?.currency?.split(",")?.[0]?.trim() ?? "";
+                        setNewCountry({
+                          name: selected?.name ?? "",
+                          isoCode,
+                          currency_code: currency,
+                          currency_symbol: selected?.currency ? selected.currencySymbol ?? currency : "",
+                        });
+                        setNewCountryProvince("");
+                        setNewCountryCity("");
+                        setForm((f: any) => ({ ...f, fee_currency: currency || f.fee_currency, cmv_currency: currency || f.cmv_currency, province_id: null, city_id: null }));
                       }}
-                      maxLength={5}
-                    />
+                    >
+                      <SelectTrigger><SelectValue placeholder="Seleccionar país" /></SelectTrigger>
+                      <SelectContent>
+                        {availableCountries.map((country) => <SelectItem key={country.isoCode} value={country.isoCode}>{country.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">Símbolo *</Label>
-                    <Input
-                      placeholder="R$"
-                      value={newCountry.currency_symbol}
-                      onChange={(e) => setNewCountry({ ...newCountry, currency_symbol: e.target.value })}
-                      maxLength={5}
-                    />
+                    <Label className="text-xs">Estado / Provincia</Label>
+                    <Select value={newCountryProvince || "none"} onValueChange={(v) => { setNewCountryProvince(v === "none" ? "" : v); setNewCountryCity(""); }} disabled={!newCountry.isoCode}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin especificar</SelectItem>
+                        {availableStates.map((state) => <SelectItem key={state.isoCode} value={state.isoCode}>{state.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <p className="col-span-3 text-[11px] text-muted-foreground">Se creará al guardar el cliente y quedará disponible para futuros usos.</p>
+                  <div>
+                    <Label className="text-xs">Ciudad</Label>
+                    <Select value={newCountryCity || "none"} onValueChange={(v) => setNewCountryCity(v === "none" ? "" : v)} disabled={!newCountryProvince}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin especificar</SelectItem>
+                        {availableCities.map((city) => <SelectItem key={`${city.name}-${city.latitude}-${city.longitude}`} value={city.name}>{city.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Moneda</Label>
+                    <Input value={newCountry.currency_code} onChange={(e) => {
+                      const code = e.target.value.toUpperCase();
+                      setNewCountry({ ...newCountry, currency_code: code });
+                      setForm((f: any) => ({ ...f, fee_currency: code || f.fee_currency, cmv_currency: code || f.cmv_currency }));
+                    }} maxLength={5} />
+                  </div>
+                  <p className="col-span-3 text-[11px] text-muted-foreground">Se creará el país con su moneda y, si los elegís, también su provincia/estado y ciudad inicial.</p>
                 </div>
               )}
               <div>
