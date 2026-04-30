@@ -438,7 +438,9 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
                   value={newCountry ? "__new__" : (form.country_id ?? "")}
                   onValueChange={(v) => {
                     if (v === "__new__") {
-                      setNewCountry({ name: "", currency_code: "", currency_symbol: "" });
+                      setNewCountry({ name: "", isoCode: "", currency_code: "", currency_symbol: "" });
+                      setNewCountryProvince("");
+                      setNewCountryCity("");
                       setForm({ ...form, country_id: "", province_id: null, city_id: null });
                       return;
                     }
