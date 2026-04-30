@@ -11,25 +11,33 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    let mounted = true;
+
+    const applySession = (s: Session | null) => {
+      if (!mounted) return;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        // defer role fetch
         setTimeout(() => fetchRole(s.user.id), 0);
       } else {
         setRole(null);
       }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      applySession(s);
+      if (mounted) setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) fetchRole(s.user.id);
-      setLoading(false);
+    const timeout = new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 3500));
+    Promise.race([
+      supabase.auth.getSession().then(({ data: { session: s } }) => s),
+      timeout,
+    ]).then((s) => applySession(s)).catch(() => applySession(null)).finally(() => {
+      if (mounted) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
   async function fetchRole(uid: string) {
