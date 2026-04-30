@@ -44,7 +44,9 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
-    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0), 0);
+    const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
+    const normalizedClientFee = (c: any) => Number(c.monthly_fee || 0) * billingMultiplier(c.billing_frequency);
+    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
     const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
     if (activeCurrency) {
       const c = activeCurrency;
@@ -59,25 +61,26 @@ export default function Dashboard() {
       }, 0);
       return { mode: "single" as const, currency: c, clientCount: clients.length, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
     }
-    const totalBillingARS = sumClientFees("ARS");
-    const totalBillingEUR = sumClientFees("EUR");
-    const incomeARS = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "ARS"))["ARS"] ?? 0;
-    const incomeEUR = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === "EUR"))["EUR"] ?? 0;
-    const overdueARS = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === "ARS"))["ARS"] ?? 0;
-    const overdueEUR = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === "EUR"))["EUR"] ?? 0;
-    const expARS = sumByCurr(expenses.filter((e: any) => e.currency === "ARS"))["ARS"] ?? 0;
-    const expEUR = sumByCurr(expenses.filter((e: any) => e.currency === "EUR"))["EUR"] ?? 0;
-    const payrollARS = employees.reduce((acc: number, e: any) => {
-      if (e.salary_currency !== "ARS") return acc;
-      const comm = (e.commissions ?? []).filter((c: any) => c.currency === "ARS").reduce((a: number, c: any) => a + Number(c.commission_value), 0);
-      return acc + Number(e.base_salary || 0) + comm;
-    }, 0);
-    const payrollEUR = employees.reduce((acc: number, e: any) => {
-      if (e.salary_currency !== "EUR") return acc;
-      const comm = (e.commissions ?? []).filter((c: any) => c.currency === "EUR").reduce((a: number, c: any) => a + Number(c.commission_value), 0);
-      return acc + Number(e.base_salary || 0) + comm;
-    }, 0);
-    return { mode: "dual" as const, clientCount: clients.length, totalBillingARS, totalBillingEUR, incomeARS, incomeEUR, overdueARS, overdueEUR, expARS, expEUR, payrollARS, payrollEUR, netARS: incomeARS - expARS - payrollARS, netEUR: incomeEUR - expEUR - payrollEUR };
+    const currencies = Array.from(new Set([
+      ...clients.map((c: any) => c.fee_currency),
+      ...invoices.map((i: any) => i.currency),
+      ...expenses.map((e: any) => e.currency),
+      ...employees.map((e: any) => e.salary_currency),
+    ].filter(Boolean))).sort();
+    const paidByCurrency = sumByCurr(invoices.filter((i: any) => i.status === "paid"));
+    const overdueByCurrency = sumByCurr(invoices.filter(isOverdue));
+    const expensesByCurrency = sumByCurr(expenses);
+    const rows = currencies.map((currency) => {
+      const payroll = employees.reduce((acc: number, e: any) => {
+        const base = e.salary_currency === currency ? Number(e.base_salary || 0) : 0;
+        const comm = (e.commissions ?? []).filter((c: any) => c.currency === currency).reduce((a: number, c: any) => a + Number(c.commission_value), 0);
+        return acc + base + comm;
+      }, 0);
+      const income = paidByCurrency[currency] ?? 0;
+      const exp = expensesByCurrency[currency] ?? 0;
+      return { currency, totalBilling: sumClientFees(currency), income, overdue: overdueByCurrency[currency] ?? 0, exp, payroll, net: income - exp - payroll };
+    });
+    return { mode: "multi" as const, clientCount: clients.length, rows };
   }, [invoices, clients, expenses, employees, activeCurrency]);
 
   const series = useMemo(() => {
