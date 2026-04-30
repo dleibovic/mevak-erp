@@ -12,7 +12,7 @@ import { useCountryFilter } from "@/hooks/useCountryFilter";
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 70% 50%)"];
 
 export default function Dashboard() {
-  const { countryId, current } = useCountryFilter();
+  const { countryId, current, countries } = useCountryFilter();
 
   const { data: invoicesAll = [] } = useQuery({
     queryKey: ["dash-invoices"],
@@ -21,6 +21,10 @@ export default function Dashboard() {
   const { data: clientsAll = [] } = useQuery({
     queryKey: ["dash-clients"],
     queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, status")).data ?? [],
+  });
+  const { data: prospectsAll = [] } = useQuery({
+    queryKey: ["dash-prospects"],
+    queryFn: async () => (await supabase.from("prospects").select("id, country_id, currency, estimated_monthly_revenue, status")).data ?? [],
   });
   const { data: expensesAll = [] } = useQuery({
     queryKey: ["dash-expenses"],
@@ -38,6 +42,10 @@ export default function Dashboard() {
   const clients = useMemo(
     () => countryId ? clientsAll.filter((c: any) => c.country_id === countryId) : clientsAll,
     [clientsAll, countryId]
+  );
+  const prospects = useMemo(
+    () => countryId ? prospectsAll.filter((p: any) => p.country_id === countryId) : prospectsAll,
+    [prospectsAll, countryId]
   );
   const expenses = useMemo(
     () => countryId ? expensesAll.filter((e: any) => e.country_id === countryId) : expensesAll,
@@ -123,6 +131,20 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
   }, [invoices, activeCurrency]);
 
+  const prospectSummary = useMemo(() => {
+    const activeProspects = prospects.filter((p: any) => p.status === "active");
+    const map: Record<string, { countryName: string; currency: string; count: number; potential: number }> = {};
+    activeProspects.forEach((p: any) => {
+      const country = countries.find((c) => c.id === p.country_id);
+      const key = p.country_id ?? "unknown";
+      const currency = country?.currency_code ?? p.currency ?? "ARS";
+      map[key] = map[key] ?? { countryName: country?.name ?? "Sin país", currency, count: 0, potential: 0 };
+      map[key].count += 1;
+      if (p.currency === currency) map[key].potential += Number(p.estimated_monthly_revenue || 0);
+    });
+    return Object.values(map).sort((a, b) => a.countryName.localeCompare(b.countryName));
+  }, [prospects, countries]);
+
   return (
     <PageContainer>
       <PageHeader
@@ -159,6 +181,27 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Posibles clientes</h2>
+          <span className="text-xs text-muted-foreground">Valor potencial mensual a facturar</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {prospectSummary.length ? prospectSummary.map((item) => (
+            <KCard
+              key={`${item.countryName}-${item.currency}`}
+              label={`${item.countryName} · ${item.count} posibles clientes`}
+              value={formatMoney(item.potential, item.currency)}
+              icon={<TrendingUp className="h-4 w-4 text-primary" />}
+            />
+          )) : (
+            <Card className="p-4 bg-gradient-card border-border/60 md:col-span-2 lg:col-span-4">
+              <div className="text-sm text-muted-foreground">No hay posibles clientes activos para mostrar.</div>
+            </Card>
+          )}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-4 bg-gradient-card border-border/60 lg:col-span-2">
