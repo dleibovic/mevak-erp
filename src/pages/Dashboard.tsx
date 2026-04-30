@@ -192,7 +192,7 @@ export default function Dashboard() {
       </div>
 
       <section className="mb-6">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
           <h2 className="text-lg font-semibold">Resumen por país</h2>
           <span className="text-xs text-muted-foreground">Valores mensualizados por frecuencia de cobro</span>
         </div>
@@ -210,7 +210,7 @@ export default function Dashboard() {
                 {country.rows.map((row: any) => (
                   <div key={`${country.countryId}-${row.currency}`} className="space-y-2">
                     <div className="text-xs font-semibold text-primary">{row.currency}</div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                    <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                       <Metric label="Facturación" value={formatMoney(row.totalBilling, row.currency)} icon={<ReceiptText className="h-3.5 w-3.5" />} />
                       <Metric label="Cobrado" value={formatMoney(row.income, row.currency)} icon={<TrendingUp className="h-3.5 w-3.5" />} />
                       <Metric label="Mora" value={formatMoney(row.overdue, row.currency)} accent={row.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-3.5 w-3.5" />} />
@@ -227,7 +227,7 @@ export default function Dashboard() {
       </section>
 
       <section className="mb-6">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
           <h2 className="text-lg font-semibold">Posibles clientes</h2>
           <span className="text-xs text-muted-foreground">Valor potencial mensual a facturar</span>
         </div>
