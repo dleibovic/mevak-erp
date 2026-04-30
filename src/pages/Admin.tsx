@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/PageShell";
@@ -8,9 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCountries, usePlatforms, useExpenseCategories, useContactChannels, useLostReasons, useFunnelStages } from "@/hooks/useCatalogs";
-import { Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Plus, SearchCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+const REGIONAL_PLATFORM_CATALOG = {
+  USA: ["DoorDash", "Grubhub", "Uber Eats", "Postmates", "Caviar", "Seamless", "ChowNow", "Toast TakeOut"],
+  LATAM: ["Rappi", "PedidosYa", "DiDi Food", "Uber Eats", "Yummy", "Hugo"],
+  España: ["Just Eat", "Glovo", "Uber Eats"],
+  Brasil: ["iFood", "Aiqfome", "Rappi"],
+} as const;
+
+const normalizePlatformName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 export default function Admin() {
   return (
@@ -25,7 +35,7 @@ export default function Admin() {
           <TabsTrigger value="users">Usuarios y roles</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="platforms"><CatalogManager table="platforms" hook={usePlatforms} label="plataforma" /></TabsContent>
+        <TabsContent value="platforms"><PlatformsManager /></TabsContent>
         <TabsContent value="categories"><CatalogManager table="expense_categories" hook={useExpenseCategories} label="categoría" /></TabsContent>
         <TabsContent value="countries"><CountriesManager /></TabsContent>
         <TabsContent value="prospecting"><ProspectingSettings /></TabsContent>
