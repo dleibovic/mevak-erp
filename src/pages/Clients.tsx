@@ -302,6 +302,21 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
           .single();
         if (error) throw error;
         countryId = data.id;
+
+        let provinceId: string | null = null;
+        if (newCountryProvince) {
+          const provinceName = availableStates.find((s) => s.isoCode === newCountryProvince)?.name ?? newCountryProvince;
+          const { data: province, error: provinceError } = await supabase.from("provinces").insert({ country_id: countryId, name: provinceName }).select().single();
+          if (provinceError) throw provinceError;
+          provinceId = province.id;
+          form.province_id = provinceId;
+        }
+        if (provinceId && newCountryCity) {
+          const cityName = availableCities.find((c) => c.name === newCountryCity)?.name ?? newCountryCity;
+          const { data: city, error: cityError } = await supabase.from("cities").insert({ province_id: provinceId, name: cityName }).select().single();
+          if (cityError) throw cityError;
+          form.city_id = city.id;
+        }
       }
 
       if (!countryId) throw new Error("Seleccioná un país");
@@ -393,6 +408,8 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
       onOpenChange(false);
       setForm({});
       setNewCountry(null);
+      setNewCountryProvince("");
+      setNewCountryCity("");
       setNewFoodCategory("");
       setSubBrands([]);
     },
