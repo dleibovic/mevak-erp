@@ -49,11 +49,12 @@ export default function Dashboard() {
     queryFn: async () => (await supabase.from("employees").select("*, commissions:client_executive_commission(commission_value, currency)")).data ?? [],
   });
 
-  const invoices = invoicesAll;
-  const clients = clientsAll;
-  const prospects = prospectsAll;
-  const expenses = expensesAll;
-  const employees = employeesAll;
+  const matchesCountry = (cid?: string | null) => !countryId || cid === countryId;
+  const invoices = invoicesAll.filter((i: any) => matchesCountry(i.client?.country_id));
+  const clients = clientsAll.filter((c: any) => matchesCountry(c.country_id));
+  const prospects = prospectsAll.filter((p: any) => matchesCountry(p.country_id));
+  const expenses = expensesAll.filter((e: any) => matchesCountry(e.country_id));
+  const employees = employeesAll.filter((e: any) => matchesCountry(e.country_id));
   const activeCurrency = null;
 
   const stats = useMemo(() => {
