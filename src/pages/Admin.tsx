@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCountries, usePlatforms, useExpenseCategories, useContactChannels, useLostReasons, useFunnelStages } from "@/hooks/useCatalogs";
-import { CheckCircle2, Plus, SearchCheck, Trash2 } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, SearchCheck, Trash2 } from "lucide-react";
+import { COUNTRY_OPTIONS, flagForCountry } from "@/lib/countries";
 import { toast } from "sonner";
 
 const REGIONAL_PLATFORM_CATALOG = {
