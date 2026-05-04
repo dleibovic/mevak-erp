@@ -1,6 +1,7 @@
 import { Globe2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { flagForCountry } from "@/lib/countries";
 
 type Props = {
   /** When true, hides the "Todos" option (forces a specific country). */
@@ -32,7 +33,9 @@ export function CountryFilterSelect({ required, value, onChange, className, size
       <SelectContent>
         {!required && <SelectItem value="all">Todos los países</SelectItem>}
         {countries.map((c) => (
-          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+          <SelectItem key={c.id} value={c.id}>
+            <span className="mr-2">{flagForCountry(c.name)}</span>{c.name}
+          </SelectItem>
         ))}
       </SelectContent>
     </Select>
