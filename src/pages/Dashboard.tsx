@@ -12,7 +12,7 @@ import { useCountryFilter } from "@/hooks/useCountryFilter";
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 70% 50%)"];
 
 export default function Dashboard() {
-  const { countries } = useCountryFilter();
+  const { countries, countryId } = useCountryFilter();
   const [supportsCharts, setSupportsCharts] = useState(false);
 
   useEffect(() => {
