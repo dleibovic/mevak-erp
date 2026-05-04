@@ -155,18 +155,92 @@ function PlatformsManager() {
 }
 
 function CountriesManager() {
+  const qc = useQueryClient();
   const { data = [] } = useCountries();
+  const [selected, setSelected] = useState<string>("");
+  const [editing, setEditing] = useState<{ id: string; name: string; currency_code: string; currency_symbol: string } | null>(null);
+
+  const existingNames = useMemo(() => new Set((data as any[]).map((c) => c.name.trim().toLowerCase())), [data]);
+  const available = COUNTRY_OPTIONS.filter((c) => !existingNames.has(c.name.toLowerCase()));
+
+  const add = useMutation({
+    mutationFn: async () => {
+      const opt = COUNTRY_OPTIONS.find((c) => c.iso2 === selected);
+      if (!opt) throw new Error("Elegí un país");
+      const { error } = await supabase.from("countries").insert({ name: opt.name, currency_code: opt.currency_code, currency_symbol: opt.currency_symbol });
+      if (error) throw error;
+    },
+    onSuccess: () => { setSelected(""); qc.invalidateQueries({ queryKey: ["countries"] }); toast.success("País agregado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const update = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const { error } = await supabase.from("countries").update({ name: editing.name, currency_code: editing.currency_code, currency_symbol: editing.currency_symbol }).eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { setEditing(null); qc.invalidateQueries({ queryKey: ["countries"] }); toast.success("País actualizado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("countries").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["countries"] }); toast.success("Eliminado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <Card className="p-5 bg-gradient-card border-border/60 mt-4">
-      <p className="text-sm text-muted-foreground mb-3">Los países y monedas vienen preconfigurados (Argentina/España).</p>
+      <div className="flex flex-col md:flex-row gap-2 mb-4">
+        <Select value={selected} onValueChange={setSelected}>
+          <SelectTrigger className="md:w-80"><SelectValue placeholder="Seleccionar país a agregar" /></SelectTrigger>
+          <SelectContent>
+            {available.map((c) => (
+              <SelectItem key={c.iso2} value={c.iso2}>
+                <span className="mr-2">{c.flag}</span>{c.name} <span className="text-muted-foreground ml-1">({c.currency_code})</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button onClick={() => add.mutate()} disabled={!selected || add.isPending}><Plus className="h-4 w-4 mr-1" />Agregar</Button>
+      </div>
       <div className="space-y-2">
-        {data.map((c: any) => (
+        {(data as any[]).map((c) => (
           <div key={c.id} className="flex justify-between items-center px-3 py-2 rounded-md bg-card/40 border border-border">
-            <span className="font-medium">{c.name}</span>
-            <span className="text-sm text-muted-foreground">{c.currency_code} ({c.currency_symbol})</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{flagForCountry(c.name)}</span>
+              <span className="font-medium">{c.name}</span>
+              <span className="text-sm text-muted-foreground">{c.currency_code} ({c.currency_symbol})</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={() => setEditing({ id: c.id, name: c.name, currency_code: c.currency_code, currency_symbol: c.currency_symbol })}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => { if (confirm(`¿Eliminar ${c.name}?`)) del.mutate(c.id); }}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
           </div>
         ))}
       </div>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar país</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div><Label>Nombre</Label><Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>Código de moneda</Label><Input value={editing.currency_code} onChange={(e) => setEditing({ ...editing, currency_code: e.target.value })} /></div>
+              <div><Label>Símbolo</Label><Input value={editing.currency_symbol} onChange={(e) => setEditing({ ...editing, currency_symbol: e.target.value })} /></div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={() => update.mutate()} disabled={update.isPending}>Guardar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
