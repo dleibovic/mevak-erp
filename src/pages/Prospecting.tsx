@@ -211,7 +211,7 @@ function ProspectDialog({ open, onOpenChange, prospect, stages, employees }: any
       const rows = Object.entries(selectedPlatforms).filter(([, v]) => v).map(([platform_id]) => ({ prospect_id: id, platform_id }));
       if (rows.length) await (supabase as any).from("prospect_platforms").insert(rows);
     },
-    onSuccess: () => { toast.success(prospect ? "Prospecto actualizado" : "Prospecto creado"); qc.invalidateQueries({ queryKey: ["prospects"] }); onOpenChange(false); },
+    onSuccess: () => { toast.success(prospect ? "Prospecto actualizado" : "Prospecto creado"); qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["dash-prospects"] }); onOpenChange(false); },
     onError: (e: any) => toast.error(e.message),
   });
 
