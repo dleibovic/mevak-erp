@@ -159,7 +159,7 @@ function ExpenseDialog({ open, onOpenChange, expense }: any) {
               <Label>Moneda</Label>
               <Select value={form.currency ?? "ARS"} onValueChange={(v) => setForm({ ...form, currency: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="ARS">ARS ($)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="ARS">ARS ($)</SelectItem><SelectItem value="USD">USD (US$)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem></SelectContent>
               </Select>
             </div>
             <div>
