@@ -80,7 +80,7 @@ export default function Prospecting() {
   const { data: prospects = [], isLoading } = useQuery({
     queryKey: ["prospects", countryId],
     queryFn: async () => {
-      let q = (supabase as any).from("prospects").select("*, country:countries(*), first_channel:contact_channels(*), stage:funnel_stages(*), executive:employees(id,full_name), lost_reason:lost_reasons(*), platforms:prospect_platforms(*, platform:platforms(*)), alerts:prospect_alerts(*), interactions:prospect_interactions(*, channel:contact_channels(*), stage:funnel_stages(*), employee:employees(id,full_name)), stage_history:prospect_stage_history(*, stage:funnel_stages(*))").order("created_at", { ascending: false });
+      let q = (supabase as any).from("prospects").select("*, country:countries(*), first_channel:contact_channels(*), stage:funnel_stages(*), executive:employees!prospects_assigned_executive_id_fkey(id,full_name), lost_reason:lost_reasons(*), platforms:prospect_platforms(*, platform:platforms(*)), alerts:prospect_alerts(*), interactions:prospect_interactions(*, channel:contact_channels(*), stage:funnel_stages!prospect_interactions_stage_at_interaction_id_fkey(*), employee:employees!prospect_interactions_created_by_fkey(id,full_name)), stage_history:prospect_stage_history(*, stage:funnel_stages(*))").order("created_at", { ascending: false });
       if (countryId) q = q.eq("country_id", countryId);
       const { data, error } = await q;
       if (error) throw error;
