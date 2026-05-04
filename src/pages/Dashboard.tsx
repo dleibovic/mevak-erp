@@ -38,6 +38,7 @@ export default function Dashboard() {
   const { data: prospectsAll = [] } = useQuery({
     queryKey: ["dash-prospects"],
     queryFn: async () => (await supabase.from("prospects").select("id, country_id, currency, estimated_monthly_revenue, status")).data ?? [],
+    refetchOnMount: "always",
   });
   const { data: expensesAll = [] } = useQuery({
     queryKey: ["dash-expenses"],
