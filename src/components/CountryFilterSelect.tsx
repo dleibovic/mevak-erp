@@ -1,6 +1,7 @@
 import { Globe2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { flagForCountry } from "@/lib/countries";
 
 type Props = {
   /** When true, hides the "Todos" option (forces a specific country). */
