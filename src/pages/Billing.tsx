@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { addDaysFromFrequency, daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,16 +23,14 @@ export default function Billing() {
   const { isAdmin } = useAuth();
   const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [localCountry, setLocalCountry] = useState<string | null>(null);
 
-  // refresh overdue statuses on mount
   useQuery({
     queryKey: ["refresh-statuses"],
-    queryFn: async () => {
-      await supabase.rpc("refresh_invoice_statuses");
-      return true;
-    },
+    queryFn: async () => { await supabase.rpc("refresh_invoice_statuses"); return true; },
     refetchOnWindowFocus: false,
   });
 
@@ -47,7 +46,6 @@ export default function Billing() {
     },
   });
 
-  // effective country = local override OR global
   const effectiveCountry = localCountry ?? countryId;
 
   const markPaid = useMutation({
@@ -56,6 +54,15 @@ export default function Billing() {
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Marcado como cobrado"); qc.invalidateQueries({ queryKey: ["invoices"] }); },
+  });
+
+  const removeInvoice = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("invoices").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Factura eliminada"); qc.invalidateQueries({ queryKey: ["invoices"] }); setDeleteId(null); },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const byCountry = useMemo(
@@ -75,7 +82,7 @@ export default function Billing() {
       <PageHeader
         title="Facturación"
         description="Cuentas corrientes, vencimientos y cobranzas"
-        actions={isAdmin && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />Nueva factura</Button>}
+        actions={isAdmin && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nueva factura</Button>}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -128,9 +135,13 @@ export default function Billing() {
                     <TableCell className="capitalize text-muted-foreground">{inv.collected_by ?? "—"}</TableCell>
                     {isAdmin && (
                       <TableCell className="text-right">
-                        {inv.status !== "paid" && (
-                          <CollectMenu onPick={(by) => markPaid.mutate({ id: inv.id, collected_by: by })} />
-                        )}
+                        <div className="inline-flex gap-1 items-center justify-end flex-wrap">
+                          {inv.status !== "paid" && (
+                            <CollectMenu onPick={(by) => markPaid.mutate({ id: inv.id, collected_by: by })} />
+                          )}
+                          <Button size="icon" variant="ghost" onClick={() => { setEditing(inv); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -141,7 +152,20 @@ export default function Billing() {
         }
       </Card>
 
-      <InvoiceDialog open={open} onOpenChange={setOpen} />
+      <InvoiceDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }} editing={editing} />
+
+      <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar factura?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && removeInvoice.mutate(deleteId)}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 }
@@ -167,51 +191,99 @@ function CollectMenu({ onPick }: { onPick: (by: "dario" | "maria") => void }) {
   );
 }
 
-function InvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenChange: (v: boolean) => void; editing?: any }) {
   const qc = useQueryClient();
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-for-invoice"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("id, company_name, billing_frequency, country:countries(*)").eq("status", "active");
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, company_name, billing_frequency, monthly_fee, fee_currency, country:countries(*)")
+        .eq("status", "active");
       if (error) throw error;
       return data;
     },
   });
 
   const [form, setForm] = useState<any>({ amount: 0, invoice_type: "formal" });
+
+  // Initialize form when opening or when editing changes
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      setForm({
+        client_id: editing.client_id,
+        amount: editing.amount,
+        invoice_type: editing.invoice_type,
+        due_date: editing.due_date,
+        notes: editing.notes ?? "",
+        currency: editing.currency,
+      });
+    } else {
+      setForm({ amount: 0, invoice_type: "formal" });
+    }
+  }, [open, editing]);
+
   const selectedClient = clients.find((c: any) => c.id === form.client_id);
 
-  const create = useMutation({
+  // Auto-fill amount with client's fee when client changes (only if creating or amount empty)
+  const handleClientChange = (v: string) => {
+    const c = clients.find((cl: any) => cl.id === v);
+    setForm((f: any) => ({
+      ...f,
+      client_id: v,
+      amount: c?.monthly_fee ?? f.amount ?? 0,
+      currency: c?.fee_currency ?? c?.country?.currency_code ?? f.currency,
+    }));
+  };
+
+  const save = useMutation({
     mutationFn: async () => {
       if (!selectedClient) throw new Error("Seleccione un cliente");
       const due = form.due_date || addDaysFromFrequency(selectedClient.billing_frequency);
-      const { error } = await supabase.from("invoices").insert({
+      const currency = form.currency || selectedClient.fee_currency || selectedClient.country?.currency_code || "ARS";
+      const payload = {
         client_id: form.client_id,
         amount: form.amount,
-        currency: selectedClient.country?.currency_code ?? "ARS",
+        currency,
         due_date: due,
         invoice_type: form.invoice_type,
         notes: form.notes || null,
-      });
-      if (error) throw error;
+      };
+      if (editing) {
+        const { error } = await supabase.from("invoices").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("invoices").insert(payload);
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { toast.success("Factura creada"); qc.invalidateQueries({ queryKey: ["invoices"] }); onOpenChange(false); setForm({ amount: 0, invoice_type: "formal" }); },
+    onSuccess: () => {
+      toast.success(editing ? "Factura actualizada" : "Factura creada");
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      onOpenChange(false);
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nueva factura</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Editar factura" : "Nueva factura"}</DialogTitle></DialogHeader>
         <div className="grid gap-4">
           <div>
             <Label>Cliente</Label>
-            <Select value={form.client_id ?? ""} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+            <Select value={form.client_id ?? ""} onValueChange={handleClientChange}>
               <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
               <SelectContent>
-                {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.company_name} ({c.country?.currency_code})</SelectItem>)}
+                {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.company_name} ({c.fee_currency ?? c.country?.currency_code})</SelectItem>)}
               </SelectContent>
             </Select>
+            {selectedClient && !editing && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Fee del cliente: {formatMoney(selectedClient.monthly_fee, selectedClient.fee_currency ?? selectedClient.country?.currency_code)}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -229,7 +301,7 @@ function InvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
               </Select>
             </div>
             <div className="col-span-2">
-              <Label>Vencimiento {selectedClient && <span className="text-xs text-muted-foreground">(auto: {addDaysFromFrequency(selectedClient.billing_frequency)})</span>}</Label>
+              <Label>Vencimiento {selectedClient && !editing && <span className="text-xs text-muted-foreground">(auto: {addDaysFromFrequency(selectedClient.billing_frequency)})</span>}</Label>
               <Input type="date" value={form.due_date ?? ""} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
             </div>
             <div className="col-span-2">
@@ -240,7 +312,7 @@ function InvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => create.mutate()} disabled={create.isPending || !form.client_id || !form.amount}>Crear</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || !form.client_id || !form.amount}>{editing ? "Guardar" : "Crear"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
