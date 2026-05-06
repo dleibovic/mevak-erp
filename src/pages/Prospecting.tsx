@@ -43,6 +43,39 @@ const flagFor = (name?: string) => name?.toLowerCase().includes("espa") ? "ðŸ‡ªð
 const daysBetween = (from?: string | null, to = new Date()) => from ? Math.max(0, Math.floor((to.getTime() - new Date(from).getTime()) / 86400000)) : 0;
 const toDateInput = (d?: string | null) => d ? new Date(d).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
 
+async function convertProspectToClient(prospect: any, wonStageId?: string) {
+  if (prospect?.converted_to_client_id || prospect?.status === "converted") return prospect.converted_to_client_id;
+  const { data, error } = await (supabase as any).from("clients").insert({
+    company_name: prospect.business_name,
+    country_id: prospect.country_id,
+    province_id: null,
+    city_id: null,
+    assigned_executive_id: prospect.assigned_executive_id,
+    billing_frequency: "monthly",
+    status: "pending_setup",
+    monthly_fee: Number(prospect.estimated_monthly_revenue) || 0,
+    fee_currency: prospect.currency,
+    cmv_cost: 0,
+    cmv_currency: prospect.currency,
+    branches_count: 1,
+    contact_name: prospect.contact_name,
+    contact_phone: prospect.phone,
+    contact_email: prospect.email,
+    reports_email: prospect.email,
+    notes: `Convertido desde prospecto. ${prospect.notes ?? ""}`,
+  }).select().single();
+  if (error) throw error;
+  const platformRows = (prospect.platforms ?? []).map((p: any) => ({ client_id: data.id, platform_id: p.platform_id, commission_rate: 0 }));
+  if (platformRows.length) await (supabase as any).from("client_platforms").insert(platformRows);
+  await (supabase as any).from("prospects").update({
+    converted_to_client_id: data.id,
+    status: "converted",
+    current_stage_id: wonStageId ?? prospect.current_stage_id,
+    stage_entered_at: new Date().toISOString(),
+  }).eq("id", prospect.id);
+  return data.id;
+}
+
 function useProspectCatalogs() {
   const { data: stages = [] } = useQuery({ queryKey: ["funnel_stages"], queryFn: async () => ((await (supabase as any).from("funnel_stages").select("*").order("stage_order")).data ?? []) });
   const { data: channels = [] } = useQuery({ queryKey: ["contact_channels"], queryFn: async () => ((await (supabase as any).from("contact_channels").select("*").eq("is_active", true).order("name")).data ?? []) });
