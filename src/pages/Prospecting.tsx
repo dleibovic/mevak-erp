@@ -43,6 +43,39 @@ const flagFor = (name?: string) => name?.toLowerCase().includes("espa") ? "🇪�
 const daysBetween = (from?: string | null, to = new Date()) => from ? Math.max(0, Math.floor((to.getTime() - new Date(from).getTime()) / 86400000)) : 0;
 const toDateInput = (d?: string | null) => d ? new Date(d).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
 
+async function convertProspectToClient(prospect: any, wonStageId?: string) {
+  if (prospect?.converted_to_client_id || prospect?.status === "converted") return prospect.converted_to_client_id;
+  const { data, error } = await (supabase as any).from("clients").insert({
+    company_name: prospect.business_name,
+    country_id: prospect.country_id,
+    province_id: null,
+    city_id: null,
+    assigned_executive_id: prospect.assigned_executive_id,
+    billing_frequency: "monthly",
+    status: "pending_setup",
+    monthly_fee: Number(prospect.estimated_monthly_revenue) || 0,
+    fee_currency: prospect.currency,
+    cmv_cost: 0,
+    cmv_currency: prospect.currency,
+    branches_count: 1,
+    contact_name: prospect.contact_name,
+    contact_phone: prospect.phone,
+    contact_email: prospect.email,
+    reports_email: prospect.email,
+    notes: `Convertido desde prospecto. ${prospect.notes ?? ""}`,
+  }).select().single();
+  if (error) throw error;
+  const platformRows = (prospect.platforms ?? []).map((p: any) => ({ client_id: data.id, platform_id: p.platform_id, commission_rate: 0 }));
+  if (platformRows.length) await (supabase as any).from("client_platforms").insert(platformRows);
+  await (supabase as any).from("prospects").update({
+    converted_to_client_id: data.id,
+    status: "converted",
+    current_stage_id: wonStageId ?? prospect.current_stage_id,
+    stage_entered_at: new Date().toISOString(),
+  }).eq("id", prospect.id);
+  return data.id;
+}
+
 function useProspectCatalogs() {
   const { data: stages = [] } = useQuery({ queryKey: ["funnel_stages"], queryFn: async () => ((await (supabase as any).from("funnel_stages").select("*").order("stage_order")).data ?? []) });
   const { data: channels = [] } = useQuery({ queryKey: ["contact_channels"], queryFn: async () => ((await (supabase as any).from("contact_channels").select("*").eq("is_active", true).order("name")).data ?? []) });
@@ -158,11 +191,18 @@ function KanbanView({ prospects, stages, onOpen }: any) {
   const sensors = useSensors(useSensor(PointerSensor));
   const moveStage = useMutation({
     mutationFn: async ({ id, stageId }: { id: string; stageId: string }) => {
+      const target = stages.find((s: any) => s.id === stageId);
+      const prospect = prospects.find((p: any) => p.id === id);
       const { error } = await (supabase as any).from("prospects").update({ current_stage_id: stageId, stage_entered_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
       await (supabase as any).from("prospect_stage_history").insert({ prospect_id: id, stage_id: stageId });
+      if (target?.name === "Cerrado Ganado" && prospect) {
+        await convertProspectToClient(prospect, stageId);
+        return { converted: true };
+      }
+      return { converted: false };
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["prospects"] }); toast.success("Etapa actualizada"); },
+    onSuccess: (res: any) => { qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["clients"] }); toast.success(res?.converted ? "Prospecto convertido a cliente" : "Etapa actualizada"); },
     onError: (e: any) => toast.error(e.message),
   });
   const onDragEnd = (event: DragEndEvent) => { const targetStageId = event.over?.data.current?.stageId ?? event.over?.id; if (!targetStageId || event.active.data.current?.stageId === targetStageId) return; moveStage.mutate({ id: String(event.active.id), stageId: String(targetStageId) }); };
@@ -210,8 +250,15 @@ function ProspectDialog({ open, onOpenChange, prospect, stages, employees }: any
       await (supabase as any).from("prospect_platforms").delete().eq("prospect_id", id);
       const rows = Object.entries(selectedPlatforms).filter(([, v]) => v).map(([platform_id]) => ({ prospect_id: id, platform_id }));
       if (rows.length) await (supabase as any).from("prospect_platforms").insert(rows);
+      const targetStage = stages.find((s: any) => s.id === payload.current_stage_id);
+      let converted = false;
+      if (targetStage?.name === "Cerrado Ganado") {
+        const fresh: any = (await (supabase as any).from("prospects").select("*, platforms:prospect_platforms(*)").eq("id", id).single()).data;
+        if (fresh && !fresh.converted_to_client_id) { await convertProspectToClient(fresh, targetStage.id); converted = true; }
+      }
+      return { converted };
     },
-    onSuccess: () => { toast.success(prospect ? "Prospecto actualizado" : "Prospecto creado"); qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["dash-prospects"] }); onOpenChange(false); },
+    onSuccess: (res: any) => { toast.success(res?.converted ? "Prospecto convertido a cliente" : (prospect ? "Prospecto actualizado" : "Prospecto creado")); qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["dash-prospects"] }); qc.invalidateQueries({ queryKey: ["clients"] }); onOpenChange(false); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -234,7 +281,7 @@ function ProspectDetail({ prospect, onOpenChange, stages, employees, onEdit }: a
 
   const addInteraction = useMutation({ mutationFn: async () => { const nextStage = interaction.next_stage_id !== "same" ? interaction.next_stage_id : prospect.current_stage_id; const { error } = await (supabase as any).from("prospect_interactions").insert({ prospect_id: prospect.id, interaction_date: interaction.interaction_date, channel_id: interaction.channel_id, stage_at_interaction_id: prospect.current_stage_id, notes: interaction.notes, created_by: currentEmployee?.id }); if (error) throw error; await (supabase as any).from("prospects").update({ last_interaction_at: new Date(interaction.interaction_date).toISOString(), current_stage_id: nextStage, stage_entered_at: nextStage !== prospect.current_stage_id ? new Date().toISOString() : prospect.stage_entered_at }).eq("id", prospect.id); if (nextStage !== prospect.current_stage_id) await (supabase as any).from("prospect_stage_history").insert({ prospect_id: prospect.id, stage_id: nextStage, changed_by_employee_id: currentEmployee?.id }); }, onSuccess: () => { toast.success("Interacción registrada"); refresh(); setInteraction({ interaction_date: toDateInput(), channel_id: null, notes: "", next_stage_id: "same" }); }, onError: (e: any) => toast.error(e.message) });
   const addAlert = useMutation({ mutationFn: async () => { const emails = String(alert.notify_emails || settings?.default_notify_emails?.join(",") || "").split(",").map((x) => x.trim()).filter(Boolean); const d = alert.alert_type === "relative_days" ? new Date(Date.now() + Number(alert.relative_days || 1) * 86400000) : new Date(alert.alert_date); const { error } = await (supabase as any).from("prospect_alerts").insert({ prospect_id: prospect.id, title: alert.title, description: alert.description || null, alert_type: alert.alert_type, alert_date: d.toISOString(), relative_days: alert.alert_type === "relative_days" ? Number(alert.relative_days) : null, notify_emails: emails, created_by: currentEmployee?.id }); if (error) throw error; }, onSuccess: () => { toast.success("Alerta creada"); refresh(); setAlert({ title: "", description: "", alert_type: "fixed_date", alert_date: toDateInput(), relative_days: 1, notify_emails: "" }); }, onError: (e: any) => toast.error(e.message) });
-  const moveStage = useMutation({ mutationFn: async (dir: number) => { const next = stages[stageIndex + dir]; if (!next) return; if (next.name === "Cerrado Perdido" && !lostReason) throw new Error("Seleccioná un motivo de pérdida"); if (next.name === "Cerrado Ganado") { setConvertOpen(true); return; } const payload: any = { current_stage_id: next.id, stage_entered_at: new Date().toISOString(), status: next.name === "Cerrado Perdido" ? "lost" : prospect.status, lost_reason_id: next.name === "Cerrado Perdido" ? lostReason : null }; const { error } = await (supabase as any).from("prospects").update(payload).eq("id", prospect.id); if (error) throw error; await (supabase as any).from("prospect_stage_history").insert({ prospect_id: prospect.id, stage_id: next.id, changed_by_employee_id: currentEmployee?.id }); }, onSuccess: () => { refresh(); toast.success("Etapa actualizada"); }, onError: (e: any) => toast.error(e.message) });
+  const moveStage = useMutation({ mutationFn: async (dir: number) => { const next = stages[stageIndex + dir]; if (!next) return; if (next.name === "Cerrado Perdido" && !lostReason) throw new Error("Seleccioná un motivo de pérdida"); const payload: any = { current_stage_id: next.id, stage_entered_at: new Date().toISOString(), status: next.name === "Cerrado Perdido" ? "lost" : prospect.status, lost_reason_id: next.name === "Cerrado Perdido" ? lostReason : null }; const { error } = await (supabase as any).from("prospects").update(payload).eq("id", prospect.id); if (error) throw error; await (supabase as any).from("prospect_stage_history").insert({ prospect_id: prospect.id, stage_id: next.id, changed_by_employee_id: currentEmployee?.id }); if (next.name === "Cerrado Ganado" && !prospect.converted_to_client_id) { await convertProspectToClient(prospect, next.id); return { converted: true }; } return { converted: false }; }, onSuccess: (res: any) => { refresh(); qc.invalidateQueries({ queryKey: ["clients"] }); toast.success(res?.converted ? "Prospecto convertido a cliente" : "Etapa actualizada"); }, onError: (e: any) => toast.error(e.message) });
   const dismissAlert = useMutation({ mutationFn: async (id: string) => { const { error } = await (supabase as any).from("prospect_alerts").update({ is_dismissed: true }).eq("id", id); if (error) throw error; }, onSuccess: refresh });
 
   if (!prospect) return null;
@@ -246,7 +293,7 @@ function Info({ label, value }: { label: string; value?: any }) { return <div cl
 function ConversionModal({ open, onOpenChange, prospect, stages }: any) {
   const qc = useQueryClient();
   const wonStage = stages.find((s: any) => s.name === "Cerrado Ganado");
-  const convert = useMutation({ mutationFn: async () => { const { data, error } = await (supabase as any).from("clients").insert({ company_name: prospect.business_name, country_id: prospect.country_id, province_id: null, city_id: null, assigned_executive_id: prospect.assigned_executive_id, billing_frequency: "monthly", status: "pending_setup", monthly_fee: 0, fee_currency: prospect.currency, cmv_cost: 0, cmv_currency: prospect.currency, branches_count: 1, contact_name: prospect.contact_name, contact_phone: prospect.phone, contact_email: prospect.email, reports_email: prospect.email, notes: `Convertido desde prospecto. ${prospect.notes ?? ""}` }).select().single(); if (error) throw error; const platformRows = (prospect.platforms ?? []).map((p: any) => ({ client_id: data.id, platform_id: p.platform_id, commission_rate: 0 })); if (platformRows.length) await (supabase as any).from("client_platforms").insert(platformRows); await (supabase as any).from("prospects").update({ converted_to_client_id: data.id, status: "converted", current_stage_id: wonStage?.id ?? prospect.current_stage_id, stage_entered_at: new Date().toISOString() }).eq("id", prospect.id); }, onSuccess: () => { toast.success("Prospecto convertido a cliente. Completar campos pendientes en Clientes."); qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["clients"] }); onOpenChange(false); }, onError: (e: any) => toast.error(e.message) });
+  const convert = useMutation({ mutationFn: async () => { await convertProspectToClient(prospect, wonStage?.id); }, onSuccess: () => { toast.success("Prospecto convertido a cliente. Completar campos pendientes en Clientes."); qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["clients"] }); onOpenChange(false); }, onError: (e: any) => toast.error(e.message) });
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Convertir a cliente</DialogTitle></DialogHeader><div className="space-y-3 text-sm"><p>Se creará el cliente <strong>{prospect?.business_name}</strong> con país, ejecutivo y plataformas preseleccionadas.</p><div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-warning">Quedarán pendientes: frecuencia final de facturación, comisión por plataforma, CMV, comisión ejecutiva y tipo de factura.</div></div><DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={() => convert.mutate()} disabled={convert.isPending}>Confirmar conversión</Button></DialogFooter></DialogContent></Dialog>;
 }
 
