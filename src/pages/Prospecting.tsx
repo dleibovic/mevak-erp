@@ -191,11 +191,18 @@ function KanbanView({ prospects, stages, onOpen }: any) {
   const sensors = useSensors(useSensor(PointerSensor));
   const moveStage = useMutation({
     mutationFn: async ({ id, stageId }: { id: string; stageId: string }) => {
+      const target = stages.find((s: any) => s.id === stageId);
+      const prospect = prospects.find((p: any) => p.id === id);
       const { error } = await (supabase as any).from("prospects").update({ current_stage_id: stageId, stage_entered_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
       await (supabase as any).from("prospect_stage_history").insert({ prospect_id: id, stage_id: stageId });
+      if (target?.name === "Cerrado Ganado" && prospect) {
+        await convertProspectToClient(prospect, stageId);
+        return { converted: true };
+      }
+      return { converted: false };
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["prospects"] }); toast.success("Etapa actualizada"); },
+    onSuccess: (res: any) => { qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["clients"] }); toast.success(res?.converted ? "Prospecto convertido a cliente" : "Etapa actualizada"); },
     onError: (e: any) => toast.error(e.message),
   });
   const onDragEnd = (event: DragEndEvent) => { const targetStageId = event.over?.data.current?.stageId ?? event.over?.id; if (!targetStageId || event.active.data.current?.stageId === targetStageId) return; moveStage.mutate({ id: String(event.active.id), stageId: String(targetStageId) }); };
