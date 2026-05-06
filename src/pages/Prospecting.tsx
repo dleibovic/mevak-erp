@@ -250,8 +250,15 @@ function ProspectDialog({ open, onOpenChange, prospect, stages, employees }: any
       await (supabase as any).from("prospect_platforms").delete().eq("prospect_id", id);
       const rows = Object.entries(selectedPlatforms).filter(([, v]) => v).map(([platform_id]) => ({ prospect_id: id, platform_id }));
       if (rows.length) await (supabase as any).from("prospect_platforms").insert(rows);
+      const targetStage = stages.find((s: any) => s.id === payload.current_stage_id);
+      let converted = false;
+      if (targetStage?.name === "Cerrado Ganado") {
+        const fresh: any = (await (supabase as any).from("prospects").select("*, platforms:prospect_platforms(*)").eq("id", id).single()).data;
+        if (fresh && !fresh.converted_to_client_id) { await convertProspectToClient(fresh, targetStage.id); converted = true; }
+      }
+      return { converted };
     },
-    onSuccess: () => { toast.success(prospect ? "Prospecto actualizado" : "Prospecto creado"); qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["dash-prospects"] }); onOpenChange(false); },
+    onSuccess: (res: any) => { toast.success(res?.converted ? "Prospecto convertido a cliente" : (prospect ? "Prospecto actualizado" : "Prospecto creado")); qc.invalidateQueries({ queryKey: ["prospects"] }); qc.invalidateQueries({ queryKey: ["dash-prospects"] }); qc.invalidateQueries({ queryKey: ["clients"] }); onOpenChange(false); },
     onError: (e: any) => toast.error(e.message),
   });
 
