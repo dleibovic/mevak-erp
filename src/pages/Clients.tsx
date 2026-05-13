@@ -122,13 +122,50 @@ export default function Clients() {
         )}
       />
 
+      {isAdmin && incompleteCount > 0 && (
+        <Card className="p-3 mb-4 border-warning/40 bg-warning/10 flex items-center gap-2 text-sm">
+          <AlertCircle className="h-4 w-4 text-warning" />
+          <span><strong>{incompleteCount}</strong> cliente(s) sin método o responsable de cobro asignado.</span>
+        </Card>
+      )}
+
       <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <CountryFilterSelect className="w-[200px]" />
+        <Select value={filterChannel} onValueChange={setFilterChannel}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Quién cobra" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los canales</SelectItem>
+            {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Responsable de facturar" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los responsables</SelectItem>
+            <SelectItem value="__none__">Sin asignar</SelectItem>
+            {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </Card>
+
+      {isAdmin && selected.size > 0 && (
+        <Card className="p-3 mb-3 bg-primary/5 border-primary/30 flex flex-wrap items-center gap-3">
+          <span className="text-sm">{selected.size} seleccionado(s)</span>
+          <Select value={bulkUserId} onValueChange={setBulkUserId}>
+            <SelectTrigger className="w-[220px]"><SelectValue placeholder="Reasignar responsable…" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sin asignar</SelectItem>
+              {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" disabled={!bulkUserId || bulkAssign.isPending} onClick={() => bulkAssign.mutate()}>Aplicar</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Cancelar</Button>
+        </Card>
+      )}
 
       <Card className="bg-gradient-card border-border/60 overflow-hidden">
         {isLoading ? (
@@ -139,13 +176,15 @@ export default function Clients() {
           <Table>
             <TableHeader>
               <TableRow>
+                {isAdmin && <TableHead className="w-8"></TableHead>}
                 <TableHead>Empresa</TableHead>
                 <TableHead>País</TableHead>
-                <TableHead>Categoría</TableHead>
                 <TableHead>Sub-marcas</TableHead>
                 <TableHead>Sucursales</TableHead>
                 <TableHead>Fee cobro</TableHead>
-                <TableHead>Forma de pago</TableHead>
+                <TableHead>Quién cobra</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead>Descuento</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Ejecutivo</TableHead>
@@ -154,15 +193,38 @@ export default function Clients() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((c: any) => (
+              {filtered.map((c: any) => {
+                const discountVigent = c.discount_active && c.discount_percentage && (!c.discount_ends_at || c.discount_ends_at >= today);
+                const discountExpired = c.discount_percentage && c.discount_ends_at && c.discount_ends_at < today;
+                return (
                 <TableRow key={c.id}>
+                  {isAdmin && (
+                    <TableCell>
+                      <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => {
+                        const n = new Set(selected);
+                        if (v) n.add(c.id); else n.delete(c.id);
+                        setSelected(n);
+                      }} />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">{c.company_name}</TableCell>
                   <TableCell>{c.country?.name}</TableCell>
-                  <TableCell>{c.food_category?.name ?? "—"}</TableCell>
                   <TableCell>{c.client_sub_brands?.length ?? 0}</TableCell>
                   <TableCell>{c.branches_count}</TableCell>
-                  <TableCell>{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
-                  <TableCell>{c.payment_method?.name ?? "—"}</TableCell>
+                  <TableCell className="font-mono">{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
+                  <TableCell>
+                    {c.payment_channel
+                      ? <Badge variant="outline">{PAYMENT_CHANNEL_LABEL[c.payment_channel]}</Badge>
+                      : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}
+                  </TableCell>
+                  <TableCell className="text-sm">{c.billing_user_id ? profileName(c.billing_user_id) : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}</TableCell>
+                  <TableCell>
+                    {discountVigent ? (
+                      <Badge className="bg-primary text-primary-foreground hover:bg-primary text-[10px]">{c.discount_percentage}% · vence {c.discount_ends_at ? fmtDate(c.discount_ends_at) : "—"}</Badge>
+                    ) : discountExpired ? (
+                      <Badge variant="destructive" className="text-[10px]">vencido {fmtDate(c.discount_ends_at)}</Badge>
+                    ) : "—"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {c.client_platforms?.map((cp: any) => (
@@ -198,13 +260,14 @@ export default function Clients() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}
       </Card>
 
-      <ClientDialog open={open} onOpenChange={setOpen} client={editing} />
+      <ClientDialog open={open} onOpenChange={setOpen} client={editing} profiles={profiles} />
     </PageContainer>
   );
 }
