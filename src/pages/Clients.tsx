@@ -13,13 +13,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X, AlertCircle } from "lucide-react";
 import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories, usePaymentMethods } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, fmtDate } from "@/lib/format";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
+import { PAYMENT_CHANNEL_OPTIONS, PAYMENT_CHANNEL_LABEL, DISCOUNT_DURATION_OPTIONS, addDaysISO } from "@/lib/billing";
+import { PriceHistoryTimeline } from "@/components/PriceHistoryTimeline";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Client = any;
 
@@ -38,6 +41,19 @@ export default function Clients() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [open, setOpen] = useState(false);
+  const [filterChannel, setFilterChannel] = useState<string>("all");
+  const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkUserId, setBulkUserId] = useState<string>("");
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-billing"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients", countryId],
@@ -53,6 +69,8 @@ export default function Clients() {
     },
   });
 
+  const profileName = (id?: string | null) => profiles.find((p: any) => p.id === id)?.full_name ?? profiles.find((p: any) => p.id === id)?.email ?? "—";
+
   const del = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("clients").delete().eq("id", id);
@@ -62,7 +80,35 @@ export default function Clients() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const filtered = clients.filter((c: any) => c.company_name.toLowerCase().includes(search.toLowerCase()));
+  const bulkAssign = useMutation({
+    mutationFn: async () => {
+      if (!bulkUserId || selected.size === 0) return;
+      const { error } = await supabase
+        .from("clients")
+        .update({ billing_user_id: bulkUserId === "__none__" ? null : bulkUserId })
+        .in("id", [...selected]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Responsables actualizados");
+      setSelected(new Set());
+      setBulkUserId("");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const filtered = clients.filter((c: any) => {
+    if (search && !c.company_name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
+    if (filterBillingUser !== "all") {
+      if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
+    }
+    return true;
+  });
+
+  const incompleteCount = clients.filter((c: any) => !c.payment_channel || !c.billing_user_id).length;
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <PageContainer>
@@ -76,13 +122,50 @@ export default function Clients() {
         )}
       />
 
+      {isAdmin && incompleteCount > 0 && (
+        <Card className="p-3 mb-4 border-warning/40 bg-warning/10 flex items-center gap-2 text-sm">
+          <AlertCircle className="h-4 w-4 text-warning" />
+          <span><strong>{incompleteCount}</strong> cliente(s) sin método o responsable de cobro asignado.</span>
+        </Card>
+      )}
+
       <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <CountryFilterSelect className="w-[200px]" />
+        <Select value={filterChannel} onValueChange={setFilterChannel}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Quién cobra" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los canales</SelectItem>
+            {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Responsable de facturar" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los responsables</SelectItem>
+            <SelectItem value="__none__">Sin asignar</SelectItem>
+            {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </Card>
+
+      {isAdmin && selected.size > 0 && (
+        <Card className="p-3 mb-3 bg-primary/5 border-primary/30 flex flex-wrap items-center gap-3">
+          <span className="text-sm">{selected.size} seleccionado(s)</span>
+          <Select value={bulkUserId} onValueChange={setBulkUserId}>
+            <SelectTrigger className="w-[220px]"><SelectValue placeholder="Reasignar responsable…" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sin asignar</SelectItem>
+              {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" disabled={!bulkUserId || bulkAssign.isPending} onClick={() => bulkAssign.mutate()}>Aplicar</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Cancelar</Button>
+        </Card>
+      )}
 
       <Card className="bg-gradient-card border-border/60 overflow-hidden">
         {isLoading ? (
@@ -93,13 +176,15 @@ export default function Clients() {
           <Table>
             <TableHeader>
               <TableRow>
+                {isAdmin && <TableHead className="w-8"></TableHead>}
                 <TableHead>Empresa</TableHead>
                 <TableHead>País</TableHead>
-                <TableHead>Categoría</TableHead>
                 <TableHead>Sub-marcas</TableHead>
                 <TableHead>Sucursales</TableHead>
                 <TableHead>Fee cobro</TableHead>
-                <TableHead>Forma de pago</TableHead>
+                <TableHead>Quién cobra</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead>Descuento</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Ejecutivo</TableHead>
@@ -108,15 +193,38 @@ export default function Clients() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((c: any) => (
+              {filtered.map((c: any) => {
+                const discountVigent = c.discount_active && c.discount_percentage && (!c.discount_ends_at || c.discount_ends_at >= today);
+                const discountExpired = c.discount_percentage && c.discount_ends_at && c.discount_ends_at < today;
+                return (
                 <TableRow key={c.id}>
+                  {isAdmin && (
+                    <TableCell>
+                      <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => {
+                        const n = new Set(selected);
+                        if (v) n.add(c.id); else n.delete(c.id);
+                        setSelected(n);
+                      }} />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">{c.company_name}</TableCell>
                   <TableCell>{c.country?.name}</TableCell>
-                  <TableCell>{c.food_category?.name ?? "—"}</TableCell>
                   <TableCell>{c.client_sub_brands?.length ?? 0}</TableCell>
                   <TableCell>{c.branches_count}</TableCell>
-                  <TableCell>{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
-                  <TableCell>{c.payment_method?.name ?? "—"}</TableCell>
+                  <TableCell className="font-mono">{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
+                  <TableCell>
+                    {c.payment_channel
+                      ? <Badge variant="outline">{PAYMENT_CHANNEL_LABEL[c.payment_channel]}</Badge>
+                      : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}
+                  </TableCell>
+                  <TableCell className="text-sm">{c.billing_user_id ? profileName(c.billing_user_id) : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}</TableCell>
+                  <TableCell>
+                    {discountVigent ? (
+                      <Badge className="bg-primary text-primary-foreground hover:bg-primary text-[10px]">{c.discount_percentage}% · vence {c.discount_ends_at ? fmtDate(c.discount_ends_at) : "—"}</Badge>
+                    ) : discountExpired ? (
+                      <Badge variant="destructive" className="text-[10px]">vencido {fmtDate(c.discount_ends_at)}</Badge>
+                    ) : "—"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {c.client_platforms?.map((cp: any) => (
@@ -152,18 +260,19 @@ export default function Clients() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}
       </Card>
 
-      <ClientDialog open={open} onOpenChange={setOpen} client={editing} />
+      <ClientDialog open={open} onOpenChange={setOpen} client={editing} profiles={profiles} />
     </PageContainer>
   );
 }
 
-function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenChange: (v: boolean) => void; client: Client | null }) {
+function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boolean; onOpenChange: (v: boolean) => void; client: Client | null; profiles?: any[] }) {
   const qc = useQueryClient();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
@@ -256,6 +365,13 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         reports_email: client.reports_email ?? "",
         food_category_id: client.food_category_id ?? null,
         notes: client.notes ?? "",
+        payment_channel: client.payment_channel ?? null,
+        billing_user_id: client.billing_user_id ?? null,
+        discount_percentage: client.discount_percentage ?? null,
+        discount_duration: client.discount_duration ?? null,
+        discount_starts_at: client.discount_starts_at ?? null,
+        discount_ends_at: client.discount_ends_at ?? null,
+        discount_active: client.discount_active ?? false,
       });
       setSubBrands(client.client_sub_brands ?? []);
       const sp: any = {};
@@ -287,6 +403,13 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         reports_email: "",
         food_category_id: null,
         notes: "",
+        payment_channel: null,
+        billing_user_id: null,
+        discount_percentage: null,
+        discount_duration: null,
+        discount_starts_at: null,
+        discount_ends_at: null,
+        discount_active: false,
       });
       setSelectedPlatforms({});
       setCommissions({});
@@ -371,6 +494,13 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
         reports_email: form.reports_email || null,
         food_category_id: foodCategoryId,
         notes: form.notes || null,
+        payment_channel: form.payment_channel || null,
+        billing_user_id: form.billing_user_id || null,
+        discount_percentage: form.discount_percentage != null && form.discount_percentage !== "" ? Number(form.discount_percentage) : null,
+        discount_duration: form.discount_duration || null,
+        discount_starts_at: form.discount_starts_at || null,
+        discount_ends_at: form.discount_ends_at || null,
+        discount_active: !!form.discount_active && !!form.discount_percentage,
       };
 
       let clientId = client?.id;
@@ -817,6 +947,84 @@ function ClientDialog({ open, onOpenChange, client }: { open: boolean; onOpenCha
               ))}
             </div>
           </section>
+
+          {/* Cobranza */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cobranza</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Quién cobra</Label>
+                <Select value={form.payment_channel ?? "none"} onValueChange={(v) => setForm({ ...form, payment_channel: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar canal" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Usuario asignado a facturar</Label>
+                <Select value={form.billing_user_id ?? "none"} onValueChange={(v) => setForm({ ...form, billing_user_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+
+          {/* Descuento */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Descuento</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Porcentaje (%)</Label>
+                <Input type="number" min={0} max={100} step="0.01" value={form.discount_percentage ?? ""} onChange={(e) => {
+                  const v = e.target.value;
+                  setForm({ ...form, discount_percentage: v === "" ? null : v, discount_active: v !== "" && Number(v) > 0 });
+                }} />
+              </div>
+              <div>
+                <Label>Duración</Label>
+                <Select value={form.discount_duration ?? "none"} onValueChange={(v) => {
+                  if (v === "none") {
+                    setForm({ ...form, discount_duration: null, discount_starts_at: null, discount_ends_at: null });
+                    return;
+                  }
+                  const opt = DISCOUNT_DURATION_OPTIONS.find((o) => o.value === v);
+                  const starts = new Date().toISOString().slice(0, 10);
+                  const ends = opt?.days ? addDaysISO(opt.days) : form.discount_ends_at ?? null;
+                  setForm({ ...form, discount_duration: v, discount_starts_at: starts, discount_ends_at: ends });
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Sin descuento" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin descuento</SelectItem>
+                    {DISCOUNT_DURATION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Vence el</Label>
+                <Input type="date" value={form.discount_ends_at ?? ""} disabled={form.discount_duration && form.discount_duration !== "custom"} onChange={(e) => setForm({ ...form, discount_ends_at: e.target.value || null })} />
+              </div>
+              {form.discount_percentage && Number(form.discount_percentage) > 0 && (
+                <div className="col-span-3 text-sm rounded-md border border-primary/30 bg-primary/5 p-2">
+                  Monto con descuento: <span className="font-mono font-semibold">{formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage)/100), form.fee_currency)}</span>
+                  {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Historial de precios */}
+          {client && (
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Historial de precios</h3>
+              <PriceHistoryTimeline clientId={client.id} />
+            </section>
+          )}
 
           {/* Notas */}
           <section className="space-y-3">

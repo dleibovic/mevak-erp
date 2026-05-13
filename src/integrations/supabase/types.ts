@@ -145,6 +145,68 @@ export type Database = {
           },
         ]
       }
+      client_price_history: {
+        Row: {
+          change_type: Database["public"]["Enums"]["price_change_type"]
+          client_id: string
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          discount_duration:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at: string | null
+          effective_date: string
+          id: string
+          new_amount: number | null
+          percentage_change: number | null
+          previous_amount: number | null
+          reason: string | null
+        }
+        Insert: {
+          change_type: Database["public"]["Enums"]["price_change_type"]
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          discount_duration?:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at?: string | null
+          effective_date?: string
+          id?: string
+          new_amount?: number | null
+          percentage_change?: number | null
+          previous_amount?: number | null
+          reason?: string | null
+        }
+        Update: {
+          change_type?: Database["public"]["Enums"]["price_change_type"]
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          discount_duration?:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at?: string | null
+          effective_date?: string
+          id?: string
+          new_amount?: number | null
+          percentage_change?: number | null
+          previous_amount?: number | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_price_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_sub_brands: {
         Row: {
           address: string | null
@@ -258,6 +320,7 @@ export type Database = {
           address: string | null
           assigned_executive_id: string | null
           billing_frequency: Database["public"]["Enums"]["billing_frequency"]
+          billing_user_id: string | null
           branches_count: number
           city_id: string | null
           cmv_cost: number
@@ -268,20 +331,30 @@ export type Database = {
           contact_phone: string | null
           country_id: string
           created_at: string
+          discount_active: boolean
+          discount_duration:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at: string | null
+          discount_percentage: number | null
+          discount_starts_at: string | null
           fee_currency: string
           food_category_id: string | null
           id: string
           monthly_fee: number
           notes: string | null
+          payment_channel: Database["public"]["Enums"]["payment_channel"] | null
           payment_method_id: string | null
           province_id: string | null
           reports_email: string | null
           status: Database["public"]["Enums"]["client_status"]
+          updated_at: string
         }
         Insert: {
           address?: string | null
           assigned_executive_id?: string | null
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          billing_user_id?: string | null
           branches_count?: number
           city_id?: string | null
           cmv_cost?: number
@@ -292,20 +365,32 @@ export type Database = {
           contact_phone?: string | null
           country_id: string
           created_at?: string
+          discount_active?: boolean
+          discount_duration?:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at?: string | null
+          discount_percentage?: number | null
+          discount_starts_at?: string | null
           fee_currency?: string
           food_category_id?: string | null
           id?: string
           monthly_fee?: number
           notes?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
           payment_method_id?: string | null
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          updated_at?: string
         }
         Update: {
           address?: string | null
           assigned_executive_id?: string | null
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          billing_user_id?: string | null
           branches_count?: number
           city_id?: string | null
           cmv_cost?: number
@@ -316,15 +401,26 @@ export type Database = {
           contact_phone?: string | null
           country_id?: string
           created_at?: string
+          discount_active?: boolean
+          discount_duration?:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at?: string | null
+          discount_percentage?: number | null
+          discount_starts_at?: string | null
           fee_currency?: string
           food_category_id?: string | null
           id?: string
           monthly_fee?: number
           notes?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
           payment_method_id?: string | null
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          updated_at?: string
         }
         Relationships: [
           {
@@ -684,6 +780,102 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_invoices: {
+        Row: {
+          amount: number
+          billing_user_id: string | null
+          client_id: string
+          created_at: string
+          currency: string
+          id: string
+          invoiced_at: string | null
+          invoiced_by: string | null
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_channel: Database["public"]["Enums"]["payment_channel"] | null
+          period_month: string
+          status: Database["public"]["Enums"]["monthly_invoice_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_user_id?: string | null
+          client_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          invoiced_at?: string | null
+          invoiced_by?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
+          period_month: string
+          status?: Database["public"]["Enums"]["monthly_invoice_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_user_id?: string | null
+          client_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          invoiced_at?: string | null
+          invoiced_by?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
+          period_month?: string
+          status?: Database["public"]["Enums"]["monthly_invoice_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_methods: {
         Row: {
           created_at: string
@@ -969,6 +1161,12 @@ export type Database = {
           created_by_employee_id: string | null
           currency: string
           current_stage_id: string
+          discount_duration:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at: string | null
+          discount_percentage: number | null
+          discount_starts_at: string | null
           email: string | null
           estimated_monthly_revenue: number
           first_contact_channel_id: string | null
@@ -993,6 +1191,12 @@ export type Database = {
           created_by_employee_id?: string | null
           currency?: string
           current_stage_id: string
+          discount_duration?:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at?: string | null
+          discount_percentage?: number | null
+          discount_starts_at?: string | null
           email?: string | null
           estimated_monthly_revenue?: number
           first_contact_channel_id?: string | null
@@ -1017,6 +1221,12 @@ export type Database = {
           created_by_employee_id?: string | null
           currency?: string
           current_stage_id?: string
+          discount_duration?:
+            | Database["public"]["Enums"]["discount_duration"]
+            | null
+          discount_ends_at?: string | null
+          discount_percentage?: number | null
+          discount_starts_at?: string | null
           email?: string | null
           estimated_monthly_revenue?: number
           first_contact_channel_id?: string | null
@@ -1170,6 +1380,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      effective_monthly_fee: { Args: { _client_id: string }; Returns: number }
+      expire_discounts: {
+        Args: never
+        Returns: {
+          billing_user_id: string
+          client_id: string
+          company_name: string
+          currency: string
+          new_amount: number
+          previous_amount: number
+        }[]
+      }
+      generate_monthly_invoices: { Args: { _period?: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1185,9 +1408,24 @@ export type Database = {
       billing_frequency: "weekly" | "biweekly" | "monthly"
       client_status: "active" | "inactive" | "suspended" | "pending_setup"
       collector: "dario" | "maria"
+      discount_duration: "30_days" | "60_days" | "90_days" | "custom"
       expense_assignee: "dario" | "maria" | "company"
       invoice_status: "pending" | "overdue" | "paid"
       invoice_type: "formal" | "cash"
+      monthly_invoice_status: "pending" | "invoiced" | "paid" | "overdue"
+      payment_channel:
+        | "stripe_dario"
+        | "us_dario"
+        | "maria_transferencia"
+        | "maria_efectivo"
+        | "dario_transferencia"
+        | "dario_efectivo"
+      price_change_type:
+        | "increase"
+        | "decrease"
+        | "discount_applied"
+        | "discount_expired"
+        | "manual_adjustment"
       prospect_alert_type: "fixed_date" | "relative_days" | "inactivity_auto"
       prospect_status: "active" | "converted" | "lost"
       recurrence_frequency: "weekly" | "monthly" | "annual"
@@ -1323,9 +1561,26 @@ export const Constants = {
       billing_frequency: ["weekly", "biweekly", "monthly"],
       client_status: ["active", "inactive", "suspended", "pending_setup"],
       collector: ["dario", "maria"],
+      discount_duration: ["30_days", "60_days", "90_days", "custom"],
       expense_assignee: ["dario", "maria", "company"],
       invoice_status: ["pending", "overdue", "paid"],
       invoice_type: ["formal", "cash"],
+      monthly_invoice_status: ["pending", "invoiced", "paid", "overdue"],
+      payment_channel: [
+        "stripe_dario",
+        "us_dario",
+        "maria_transferencia",
+        "maria_efectivo",
+        "dario_transferencia",
+        "dario_efectivo",
+      ],
+      price_change_type: [
+        "increase",
+        "decrease",
+        "discount_applied",
+        "discount_expired",
+        "manual_adjustment",
+      ],
       prospect_alert_type: ["fixed_date", "relative_days", "inactivity_auto"],
       prospect_status: ["active", "converted", "lost"],
       recurrence_frequency: ["weekly", "monthly", "annual"],
