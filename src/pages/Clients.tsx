@@ -41,6 +41,19 @@ export default function Clients() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [open, setOpen] = useState(false);
+  const [filterChannel, setFilterChannel] = useState<string>("all");
+  const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkUserId, setBulkUserId] = useState<string>("");
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-billing"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients", countryId],
@@ -56,6 +69,8 @@ export default function Clients() {
     },
   });
 
+  const profileName = (id?: string | null) => profiles.find((p: any) => p.id === id)?.full_name ?? profiles.find((p: any) => p.id === id)?.email ?? "—";
+
   const del = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("clients").delete().eq("id", id);
@@ -65,7 +80,35 @@ export default function Clients() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const filtered = clients.filter((c: any) => c.company_name.toLowerCase().includes(search.toLowerCase()));
+  const bulkAssign = useMutation({
+    mutationFn: async () => {
+      if (!bulkUserId || selected.size === 0) return;
+      const { error } = await supabase
+        .from("clients")
+        .update({ billing_user_id: bulkUserId === "__none__" ? null : bulkUserId })
+        .in("id", [...selected]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Responsables actualizados");
+      setSelected(new Set());
+      setBulkUserId("");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const filtered = clients.filter((c: any) => {
+    if (search && !c.company_name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
+    if (filterBillingUser !== "all") {
+      if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
+    }
+    return true;
+  });
+
+  const incompleteCount = clients.filter((c: any) => !c.payment_channel || !c.billing_user_id).length;
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <PageContainer>
