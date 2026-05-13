@@ -87,6 +87,16 @@ export default function Billing() {
         actions={isAdmin && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nueva factura</Button>}
       />
 
+      <Tabs defaultValue="invoices" className="mb-4">
+        <TabsList>
+          <TabsTrigger value="invoices">Facturas</TabsTrigger>
+          <TabsTrigger value="monthly">Facturación mensual</TabsTrigger>
+        </TabsList>
+        <TabsContent value="monthly" className="mt-4">
+          <MonthlyBillingView />
+        </TabsContent>
+        <TabsContent value="invoices" className="mt-4">
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <KPI label="Facturas vencidas" value={stats.overdueCount} accent="destructive" icon={<AlertTriangle className="h-4 w-4" />} />
         <KPI label="Por vencer" value={stats.pendingCount} accent="warning" />
