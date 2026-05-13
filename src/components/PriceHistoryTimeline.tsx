@@ -11,11 +11,17 @@ export function PriceHistoryTimeline({ clientId }: { clientId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_price_history")
-        .select("*, creator:profiles!client_price_history_created_by_fkey(full_name)")
+        .select("*")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      const ids = Array.from(new Set((data ?? []).map((r: any) => r.created_by).filter(Boolean)));
+      let names: Record<string, string> = {};
+      if (ids.length) {
+        const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+        names = Object.fromEntries((profs ?? []).map((p: any) => [p.id, p.full_name]));
+      }
+      return (data ?? []).map((r: any) => ({ ...r, _creator_name: r.created_by ? names[r.created_by] : null }));
     },
     enabled: !!clientId,
   });
