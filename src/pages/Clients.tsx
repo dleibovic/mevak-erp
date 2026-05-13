@@ -365,6 +365,13 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         reports_email: client.reports_email ?? "",
         food_category_id: client.food_category_id ?? null,
         notes: client.notes ?? "",
+        payment_channel: client.payment_channel ?? null,
+        billing_user_id: client.billing_user_id ?? null,
+        discount_percentage: client.discount_percentage ?? null,
+        discount_duration: client.discount_duration ?? null,
+        discount_starts_at: client.discount_starts_at ?? null,
+        discount_ends_at: client.discount_ends_at ?? null,
+        discount_active: client.discount_active ?? false,
       });
       setSubBrands(client.client_sub_brands ?? []);
       const sp: any = {};
