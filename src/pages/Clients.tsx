@@ -494,6 +494,13 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         reports_email: form.reports_email || null,
         food_category_id: foodCategoryId,
         notes: form.notes || null,
+        payment_channel: form.payment_channel || null,
+        billing_user_id: form.billing_user_id || null,
+        discount_percentage: form.discount_percentage != null && form.discount_percentage !== "" ? Number(form.discount_percentage) : null,
+        discount_duration: form.discount_duration || null,
+        discount_starts_at: form.discount_starts_at || null,
+        discount_ends_at: form.discount_ends_at || null,
+        discount_active: !!form.discount_active && !!form.discount_percentage,
       };
 
       let clientId = client?.id;
