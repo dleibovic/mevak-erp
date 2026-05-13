@@ -14,6 +14,7 @@ import { useCountries, usePlatforms, useExpenseCategories, useContactChannels, u
 import { CheckCircle2, Pencil, Plus, SearchCheck, Trash2 } from "lucide-react";
 import { COUNTRY_OPTIONS, flagForCountry } from "@/lib/countries";
 import { toast } from "sonner";
+import { GlobalPriceHistory } from "@/components/GlobalPriceHistory";
 
 const REGIONAL_PLATFORM_CATALOG = {
   USA: ["DoorDash", "Grubhub", "Uber Eats", "Postmates", "Caviar", "Seamless", "ChowNow", "Toast TakeOut"],
@@ -29,11 +30,12 @@ export default function Admin() {
     <PageContainer>
       <PageHeader title="Configuración" description="Catálogos y administración del sistema" />
       <Tabs defaultValue="platforms">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="platforms">Plataformas</TabsTrigger>
           <TabsTrigger value="categories">Categorías de gastos</TabsTrigger>
           <TabsTrigger value="countries">Países</TabsTrigger>
           <TabsTrigger value="prospecting">Prospecting</TabsTrigger>
+          <TabsTrigger value="price_history">Historial de precios</TabsTrigger>
           <TabsTrigger value="users">Usuarios y roles</TabsTrigger>
         </TabsList>
 
@@ -41,6 +43,7 @@ export default function Admin() {
         <TabsContent value="categories"><CatalogManager table="expense_categories" hook={useExpenseCategories} label="categoría" /></TabsContent>
         <TabsContent value="countries"><CountriesManager /></TabsContent>
         <TabsContent value="prospecting"><ProspectingSettings /></TabsContent>
+        <TabsContent value="price_history"><GlobalPriceHistory /></TabsContent>
         <TabsContent value="users"><UsersManager /></TabsContent>
       </Tabs>
     </PageContainer>
