@@ -948,6 +948,84 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
             </div>
           </section>
 
+          {/* Cobranza */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cobranza</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Quién cobra</Label>
+                <Select value={form.payment_channel ?? "none"} onValueChange={(v) => setForm({ ...form, payment_channel: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar canal" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Usuario asignado a facturar</Label>
+                <Select value={form.billing_user_id ?? "none"} onValueChange={(v) => setForm({ ...form, billing_user_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+
+          {/* Descuento */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Descuento</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Porcentaje (%)</Label>
+                <Input type="number" min={0} max={100} step="0.01" value={form.discount_percentage ?? ""} onChange={(e) => {
+                  const v = e.target.value;
+                  setForm({ ...form, discount_percentage: v === "" ? null : v, discount_active: v !== "" && Number(v) > 0 });
+                }} />
+              </div>
+              <div>
+                <Label>Duración</Label>
+                <Select value={form.discount_duration ?? "none"} onValueChange={(v) => {
+                  if (v === "none") {
+                    setForm({ ...form, discount_duration: null, discount_starts_at: null, discount_ends_at: null });
+                    return;
+                  }
+                  const opt = DISCOUNT_DURATION_OPTIONS.find((o) => o.value === v);
+                  const starts = new Date().toISOString().slice(0, 10);
+                  const ends = opt?.days ? addDaysISO(opt.days) : form.discount_ends_at ?? null;
+                  setForm({ ...form, discount_duration: v, discount_starts_at: starts, discount_ends_at: ends });
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Sin descuento" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin descuento</SelectItem>
+                    {DISCOUNT_DURATION_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Vence el</Label>
+                <Input type="date" value={form.discount_ends_at ?? ""} disabled={form.discount_duration && form.discount_duration !== "custom"} onChange={(e) => setForm({ ...form, discount_ends_at: e.target.value || null })} />
+              </div>
+              {form.discount_percentage && Number(form.discount_percentage) > 0 && (
+                <div className="col-span-3 text-sm rounded-md border border-primary/30 bg-primary/5 p-2">
+                  Monto con descuento: <span className="font-mono font-semibold">{formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage)/100), form.fee_currency)}</span>
+                  {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Historial de precios */}
+          {client && (
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Historial de precios</h3>
+              <PriceHistoryTimeline clientId={client.id} />
+            </section>
+          )}
+
           {/* Notas */}
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Notas</h3>
