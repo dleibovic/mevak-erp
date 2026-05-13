@@ -403,6 +403,13 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         reports_email: "",
         food_category_id: null,
         notes: "",
+        payment_channel: null,
+        billing_user_id: null,
+        discount_percentage: null,
+        discount_duration: null,
+        discount_starts_at: null,
+        discount_ends_at: null,
+        discount_active: false,
       });
       setSelectedPlatforms({});
       setCommissions({});
