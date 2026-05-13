@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
+import { NotificationsBell } from "@/components/NotificationsBell";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -81,6 +82,7 @@ export default function AppLayout() {
         <header className="relative z-10 min-h-14 border-b border-border/60 bg-background/80 backdrop-blur flex flex-wrap items-center justify-between md:justify-end px-4 md:px-6 py-3 gap-3">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Vista por país</span>
           <CountryFilterSelect />
+          <NotificationsBell />
         </header>
         <div className="relative">
           <Outlet />

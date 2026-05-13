@@ -11,12 +11,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { addDaysFromFrequency, daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
+import { MonthlyBillingView } from "@/components/MonthlyBillingView";
 
 export default function Billing() {
   const qc = useQueryClient();
@@ -84,6 +86,16 @@ export default function Billing() {
         description="Cuentas corrientes, vencimientos y cobranzas"
         actions={isAdmin && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nueva factura</Button>}
       />
+
+      <Tabs defaultValue="invoices" className="mb-4">
+        <TabsList>
+          <TabsTrigger value="invoices">Facturas</TabsTrigger>
+          <TabsTrigger value="monthly">Facturación mensual</TabsTrigger>
+        </TabsList>
+        <TabsContent value="monthly" className="mt-4">
+          <MonthlyBillingView />
+        </TabsContent>
+        <TabsContent value="invoices" className="mt-4">
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <KPI label="Facturas vencidas" value={stats.overdueCount} accent="destructive" icon={<AlertTriangle className="h-4 w-4" />} />
@@ -166,6 +178,8 @@ export default function Billing() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   );
 }
