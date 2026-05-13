@@ -51,7 +51,7 @@ export function PriceHistoryTimeline({ clientId }: { clientId: string }) {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant="outline">{PRICE_CHANGE_LABEL[row.change_type] ?? row.change_type}</Badge>
               <span className="text-muted-foreground">{fmtDate(row.created_at)}</span>
-              {row.creator?.full_name && <span className="text-xs text-muted-foreground">· {row.creator.full_name}</span>}
+              {row._creator_name && <span className="text-xs text-muted-foreground">· {row._creator_name}</span>}
             </div>
             <div className="text-sm font-mono mt-1">
               {row.previous_amount != null && <span className="line-through text-muted-foreground mr-2">{formatMoney(row.previous_amount, row.currency)}</span>}
