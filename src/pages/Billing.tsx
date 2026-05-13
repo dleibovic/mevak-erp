@@ -11,12 +11,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { addDaysFromFrequency, daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
+import { MonthlyBillingView } from "@/components/MonthlyBillingView";
 
 export default function Billing() {
   const qc = useQueryClient();
