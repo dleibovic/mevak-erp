@@ -479,6 +479,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
 
       const payload = {
         company_name: form.company_name,
+        legal_name: form.legal_name || null,
+        tax_id: form.tax_id || null,
         country_id: countryId,
         province_id: form.province_id || null,
         city_id: form.city_id || null,
