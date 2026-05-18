@@ -346,6 +346,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
     if (client) {
       setForm({
         company_name: client.company_name,
+        legal_name: (client as any).legal_name ?? "",
+        tax_id: (client as any).tax_id ?? "",
         country_id: client.country_id,
         province_id: client.province_id,
         city_id: client.city_id,
