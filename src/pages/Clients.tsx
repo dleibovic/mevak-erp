@@ -592,6 +592,14 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                 <Input value={form.company_name ?? ""} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
               </div>
               <div>
+                <Label>Razón social</Label>
+                <Input value={form.legal_name ?? ""} onChange={(e) => setForm({ ...form, legal_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>CUIT</Label>
+                <Input value={form.tax_id ?? ""} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} placeholder="20-12345678-9" />
+              </div>
+              <div>
                 <Label>País *</Label>
                 <Select
                   value={newCountry ? "__new__" : (form.country_id ?? "")}
