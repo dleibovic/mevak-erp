@@ -386,6 +386,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
       const defCountry = countries[0];
       setForm({
         company_name: "",
+        legal_name: "",
+        tax_id: "",
         country_id: defCountry?.id ?? "",
         province_id: null,
         city_id: null,
