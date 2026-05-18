@@ -341,6 +341,7 @@ export type Database = {
           fee_currency: string
           food_category_id: string | null
           id: string
+          legal_name: string | null
           monthly_fee: number
           notes: string | null
           payment_channel: Database["public"]["Enums"]["payment_channel"] | null
@@ -348,6 +349,7 @@ export type Database = {
           province_id: string | null
           reports_email: string | null
           status: Database["public"]["Enums"]["client_status"]
+          tax_id: string | null
           updated_at: string
         }
         Insert: {
@@ -375,6 +377,7 @@ export type Database = {
           fee_currency?: string
           food_category_id?: string | null
           id?: string
+          legal_name?: string | null
           monthly_fee?: number
           notes?: string | null
           payment_channel?:
@@ -384,6 +387,7 @@ export type Database = {
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          tax_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -411,6 +415,7 @@ export type Database = {
           fee_currency?: string
           food_category_id?: string | null
           id?: string
+          legal_name?: string | null
           monthly_fee?: number
           notes?: string | null
           payment_channel?:
@@ -420,6 +425,7 @@ export type Database = {
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          tax_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1173,11 +1179,13 @@ export type Database = {
           first_contact_date: string
           id: string
           last_interaction_at: string | null
+          legal_name: string | null
           lost_reason_id: string | null
           notes: string | null
           phone: string | null
           stage_entered_at: string
           status: Database["public"]["Enums"]["prospect_status"]
+          tax_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1203,11 +1211,13 @@ export type Database = {
           first_contact_date?: string
           id?: string
           last_interaction_at?: string | null
+          legal_name?: string | null
           lost_reason_id?: string | null
           notes?: string | null
           phone?: string | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["prospect_status"]
+          tax_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1233,11 +1243,13 @@ export type Database = {
           first_contact_date?: string
           id?: string
           last_interaction_at?: string | null
+          legal_name?: string | null
           lost_reason_id?: string | null
           notes?: string | null
           phone?: string | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["prospect_status"]
+          tax_id?: string | null
           updated_at?: string
         }
         Relationships: [

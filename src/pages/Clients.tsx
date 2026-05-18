@@ -346,6 +346,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
     if (client) {
       setForm({
         company_name: client.company_name,
+        legal_name: (client as any).legal_name ?? "",
+        tax_id: (client as any).tax_id ?? "",
         country_id: client.country_id,
         province_id: client.province_id,
         city_id: client.city_id,
@@ -384,6 +386,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
       const defCountry = countries[0];
       setForm({
         company_name: "",
+        legal_name: "",
+        tax_id: "",
         country_id: defCountry?.id ?? "",
         province_id: null,
         city_id: null,
@@ -475,6 +479,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
 
       const payload = {
         company_name: form.company_name,
+        legal_name: form.legal_name || null,
+        tax_id: form.tax_id || null,
         country_id: countryId,
         province_id: form.province_id || null,
         city_id: form.city_id || null,
@@ -584,6 +590,14 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
               <div>
                 <Label>Empresa *</Label>
                 <Input value={form.company_name ?? ""} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Razón social</Label>
+                <Input value={form.legal_name ?? ""} onChange={(e) => setForm({ ...form, legal_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>CUIT</Label>
+                <Input value={form.tax_id ?? ""} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} placeholder="20-12345678-9" />
               </div>
               <div>
                 <Label>País *</Label>
