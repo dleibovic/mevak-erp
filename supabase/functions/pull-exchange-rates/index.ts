@@ -27,17 +27,29 @@ Deno.serve(async (req) => {
   }
 
   const results: any[] = [];
-  for (const cur of CURRENCIES) {
-    try {
-      // exchangerate.host: convert X currency -> USD
-      const apiUrl = `https://api.exchangerate.host/convert?from=${cur}&to=USD&date=${rateDate}`;
-      const res = await fetch(apiUrl);
-      const json = await res.json();
-      const rate = json?.result ?? json?.info?.rate;
-      if (!rate || typeof rate !== "number") {
-        results.push({ currency: cur, ok: false, error: "no rate", raw: json });
+  // open.er-api.com: free, no key, returns USD-base rates for all currencies (latest only)
+  let usdRates: Record<string, number> | null = null;
+  try {
+    const apiUrl = `https://open.er-api.com/v6/latest/USD`;
+    const res = await fetch(apiUrl);
+    const json = await res.json();
+    if (json?.result === "success" && json?.rates) {
+      usdRates = json.rates as Record<string, number>;
+    } else {
+      results.push({ ok: false, error: "open.er-api.com error", raw: json });
+    }
+  } catch (e) {
+    results.push({ ok: false, error: String(e) });
+  }
+
+  if (usdRates) {
+    for (const cur of CURRENCIES) {
+      const usdToCur = usdRates[cur];
+      if (!usdToCur) {
+        results.push({ currency: cur, ok: false, error: `no rate for ${cur}` });
         continue;
       }
+      const rate = 1 / usdToCur; // cur -> USD
       const { error } = await supabase
         .from("exchange_rates")
         .upsert(
@@ -47,7 +59,7 @@ Deno.serve(async (req) => {
             rate_date: rateDate,
             rate,
             source: "api",
-            notes: "exchangerate.host",
+            notes: "open.er-api.com (USD base, inverted)",
           },
           { onConflict: "base_currency,quote_currency,rate_date" },
         );
@@ -56,8 +68,6 @@ Deno.serve(async (req) => {
       } else {
         results.push({ currency: cur, ok: true, rate, rate_date: rateDate });
       }
-    } catch (e) {
-      results.push({ currency: cur, ok: false, error: String(e) });
     }
   }
 
