@@ -274,6 +274,7 @@ export default function Clients() {
 
 function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boolean; onOpenChange: (v: boolean) => void; client: Client | null; profiles?: any[] }) {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
   const { data: paymentMethods = [] } = usePaymentMethods();
@@ -374,6 +375,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         discount_starts_at: client.discount_starts_at ?? null,
         discount_ends_at: client.discount_ends_at ?? null,
         discount_active: client.discount_active ?? false,
+        activated_at: client.activated_at ?? null,
+        paused_at: client.paused_at ?? null,
+        churned_at: client.churned_at ?? null,
       });
       setSubBrands(client.client_sub_brands ?? []);
       const sp: any = {};
@@ -414,6 +418,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         discount_starts_at: null,
         discount_ends_at: null,
         discount_active: false,
+        activated_at: null,
+        paused_at: null,
+        churned_at: null,
       });
       setSelectedPlatforms({});
       setCommissions({});
@@ -507,6 +514,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         discount_starts_at: form.discount_starts_at || null,
         discount_ends_at: form.discount_ends_at || null,
         discount_active: !!form.discount_active && !!form.discount_percentage,
+        ...(isAdmin ? { activated_at: form.activated_at || null } : {}),
       };
 
       let clientId = client?.id;
@@ -715,6 +723,21 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                     <SelectItem value="suspended">Suspendido</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label>Fecha de alta (activated_at)</Label>
+                <Input
+                  type="date"
+                  value={form.activated_at ?? ""}
+                  max={new Date().toISOString().slice(0, 10)}
+                  disabled={!isAdmin}
+                  onChange={(e) => setForm({ ...form, activated_at: e.target.value || null })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isAdmin ? "Solo Dirección. Usada para MRR histórico. No puede ser futura ni posterior a pausa/baja." : "Solo editable por Dirección."}
+                  {form.paused_at && <> · Pausado: {form.paused_at}</>}
+                  {form.churned_at && <> · Baja: {form.churned_at}</>}
+                </p>
               </div>
               <div>
                 <Label>Frecuencia de cobro</Label>

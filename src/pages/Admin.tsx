@@ -15,6 +15,7 @@ import { CheckCircle2, Pencil, Plus, SearchCheck, Trash2 } from "lucide-react";
 import { COUNTRY_OPTIONS, flagForCountry } from "@/lib/countries";
 import { toast } from "sonner";
 import { GlobalPriceHistory } from "@/components/GlobalPriceHistory";
+import { SaasMetricsConfig } from "@/components/SaasMetricsConfig";
 
 const REGIONAL_PLATFORM_CATALOG = {
   USA: ["DoorDash", "Grubhub", "Uber Eats", "Postmates", "Caviar", "Seamless", "ChowNow", "Toast TakeOut"],
@@ -37,6 +38,7 @@ export default function Admin() {
           <TabsTrigger value="prospecting">Prospecting</TabsTrigger>
           <TabsTrigger value="price_history">Historial de precios</TabsTrigger>
           <TabsTrigger value="users">Usuarios y roles</TabsTrigger>
+          <TabsTrigger value="saas_metrics">Métricas SaaS</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platforms"><PlatformsManager /></TabsContent>
@@ -45,6 +47,7 @@ export default function Admin() {
         <TabsContent value="prospecting"><ProspectingSettings /></TabsContent>
         <TabsContent value="price_history"><GlobalPriceHistory /></TabsContent>
         <TabsContent value="users"><UsersManager /></TabsContent>
+        <TabsContent value="saas_metrics"><SaasMetricsConfig /></TabsContent>
       </Tabs>
     </PageContainer>
   );
