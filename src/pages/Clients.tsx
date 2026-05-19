@@ -274,6 +274,7 @@ export default function Clients() {
 
 function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boolean; onOpenChange: (v: boolean) => void; client: Client | null; profiles?: any[] }) {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
   const { data: paymentMethods = [] } = usePaymentMethods();
