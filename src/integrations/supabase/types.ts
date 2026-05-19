@@ -41,6 +41,69 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          created_at: string
+          id: number
+          mrr_base_currency: string
+          paused_to_churned_days: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          mrr_base_currency?: string
+          paused_to_churned_days?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          mrr_base_currency?: string
+          paused_to_churned_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      churn_events: {
+        Row: {
+          churned_at: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          mrr_lost: number
+          mrr_lost_usd: number | null
+          reason_code: Database["public"]["Enums"]["churn_reason_code"]
+          reason_detail: string | null
+        }
+        Insert: {
+          churned_at?: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          currency: string
+          id?: string
+          mrr_lost?: number
+          mrr_lost_usd?: number | null
+          reason_code?: Database["public"]["Enums"]["churn_reason_code"]
+          reason_detail?: string | null
+        }
+        Update: {
+          churned_at?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          mrr_lost?: number
+          mrr_lost_usd?: number | null
+          reason_code?: Database["public"]["Enums"]["churn_reason_code"]
+          reason_detail?: string | null
+        }
+        Relationships: []
+      }
       cities: {
         Row: {
           created_at: string
@@ -101,6 +164,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_executive_commission_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "client_executive_commission_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -108,6 +178,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_mrr_history: {
+        Row: {
+          client_id: string
+          created_at: string
+          currency: string
+          delta: number | null
+          id: string
+          is_estimated: boolean
+          movement_type: Database["public"]["Enums"]["mrr_movement_type"]
+          mrr_amount: number
+          mrr_amount_usd: number | null
+          notes: string | null
+          previous_mrr: number | null
+          snapshot_month: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          currency: string
+          delta?: number | null
+          id?: string
+          is_estimated?: boolean
+          movement_type: Database["public"]["Enums"]["mrr_movement_type"]
+          mrr_amount?: number
+          mrr_amount_usd?: number | null
+          notes?: string | null
+          previous_mrr?: number | null
+          snapshot_month: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          currency?: string
+          delta?: number | null
+          id?: string
+          is_estimated?: boolean
+          movement_type?: Database["public"]["Enums"]["mrr_movement_type"]
+          mrr_amount?: number
+          mrr_amount_usd?: number | null
+          notes?: string | null
+          previous_mrr?: number | null
+          snapshot_month?: string
+        }
+        Relationships: []
       }
       client_platforms: {
         Row: {
@@ -135,6 +250,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_platforms_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "client_platforms_platform_id_fkey"
@@ -204,6 +326,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_price_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -293,6 +422,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_sub_brands_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "client_sub_brands_country_id_fkey"
             columns: ["country_id"]
             isOneToOne: false
@@ -317,11 +453,13 @@ export type Database = {
       }
       clients: {
         Row: {
+          activated_at: string | null
           address: string | null
           assigned_executive_id: string | null
           billing_frequency: Database["public"]["Enums"]["billing_frequency"]
           billing_user_id: string | null
           branches_count: number
+          churned_at: string | null
           city_id: string | null
           cmv_cost: number
           cmv_currency: string
@@ -344,6 +482,7 @@ export type Database = {
           legal_name: string | null
           monthly_fee: number
           notes: string | null
+          paused_at: string | null
           payment_channel: Database["public"]["Enums"]["payment_channel"] | null
           payment_method_id: string | null
           province_id: string | null
@@ -353,11 +492,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
           address?: string | null
           assigned_executive_id?: string | null
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           billing_user_id?: string | null
           branches_count?: number
+          churned_at?: string | null
           city_id?: string | null
           cmv_cost?: number
           cmv_currency?: string
@@ -380,6 +521,7 @@ export type Database = {
           legal_name?: string | null
           monthly_fee?: number
           notes?: string | null
+          paused_at?: string | null
           payment_channel?:
             | Database["public"]["Enums"]["payment_channel"]
             | null
@@ -391,11 +533,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
           address?: string | null
           assigned_executive_id?: string | null
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           billing_user_id?: string | null
           branches_count?: number
+          churned_at?: string | null
           city_id?: string | null
           cmv_cost?: number
           cmv_currency?: string
@@ -418,6 +562,7 @@ export type Database = {
           legal_name?: string | null
           monthly_fee?: number
           notes?: string | null
+          paused_at?: string | null
           payment_channel?:
             | Database["public"]["Enums"]["payment_channel"]
             | null
@@ -591,6 +736,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      exchange_rates: {
+        Row: {
+          base_currency: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          quote_currency: string
+          rate: number
+          rate_date: string
+          source: Database["public"]["Enums"]["exchange_rate_source"]
+          updated_at: string
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          quote_currency?: string
+          rate: number
+          rate_date: string
+          source?: Database["public"]["Enums"]["exchange_rate_source"]
+          updated_at?: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          quote_currency?: string
+          rate?: number
+          rate_date?: string
+          source?: Database["public"]["Enums"]["exchange_rate_source"]
+          updated_at?: string
+        }
+        Relationships: []
       }
       expense_categories: {
         Row: {
@@ -766,6 +950,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       lost_reasons: {
@@ -850,7 +1041,65 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "monthly_invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
         ]
+      }
+      mrr_snapshots: {
+        Row: {
+          active_clients_count: number
+          churn_mrr: number
+          computed_at: string
+          contraction_mrr: number
+          currency: string
+          expansion_mrr: number
+          id: string
+          is_consolidated: boolean
+          is_estimated: boolean
+          mrr_amount: number
+          net_new_mrr: number | null
+          new_mrr: number
+          reactivation_mrr: number
+          snapshot_month: string
+        }
+        Insert: {
+          active_clients_count?: number
+          churn_mrr?: number
+          computed_at?: string
+          contraction_mrr?: number
+          currency: string
+          expansion_mrr?: number
+          id?: string
+          is_consolidated?: boolean
+          is_estimated?: boolean
+          mrr_amount?: number
+          net_new_mrr?: number | null
+          new_mrr?: number
+          reactivation_mrr?: number
+          snapshot_month: string
+        }
+        Update: {
+          active_clients_count?: number
+          churn_mrr?: number
+          computed_at?: string
+          contraction_mrr?: number
+          currency?: string
+          expansion_mrr?: number
+          id?: string
+          is_consolidated?: boolean
+          is_estimated?: boolean
+          mrr_amount?: number
+          net_new_mrr?: number | null
+          new_mrr?: number
+          reactivation_mrr?: number
+          snapshot_month?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1268,6 +1517,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "prospects_converted_to_client_id_fkey"
+            columns: ["converted_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "prospects_country_id_fkey"
             columns: ["country_id"]
             isOneToOne: false
@@ -1389,9 +1645,129 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_churn_summary_monthly: {
+        Row: {
+          churn_count: number | null
+          currency: string | null
+          month: string | null
+          mrr_lost: number | null
+          mrr_lost_usd: number | null
+          reason_code: Database["public"]["Enums"]["churn_reason_code"] | null
+        }
+        Relationships: []
+      }
+      v_client_metrics: {
+        Row: {
+          activated_at: string | null
+          assigned_executive_id: string | null
+          churned_at: string | null
+          client_id: string | null
+          company_name: string | null
+          country_id: string | null
+          currency: string | null
+          current_mrr: number | null
+          current_mrr_usd: number | null
+          lifetime_months: number | null
+          status: Database["public"]["Enums"]["client_status"] | null
+          total_revenue_client_currency: number | null
+        }
+        Insert: {
+          activated_at?: string | null
+          assigned_executive_id?: string | null
+          churned_at?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          country_id?: string | null
+          currency?: string | null
+          current_mrr?: never
+          current_mrr_usd?: never
+          lifetime_months?: never
+          status?: Database["public"]["Enums"]["client_status"] | null
+          total_revenue_client_currency?: never
+        }
+        Update: {
+          activated_at?: string | null
+          assigned_executive_id?: string | null
+          churned_at?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          country_id?: string | null
+          currency?: string | null
+          current_mrr?: never
+          current_mrr_usd?: never
+          lifetime_months?: never
+          status?: Database["public"]["Enums"]["client_status"] | null
+          total_revenue_client_currency?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_assigned_executive_id_fkey"
+            columns: ["assigned_executive_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_mrr_actual: {
+        Row: {
+          active_clients_count: number | null
+          churn_mrr: number | null
+          computed_at: string | null
+          contraction_mrr: number | null
+          currency: string | null
+          expansion_mrr: number | null
+          is_consolidated: boolean | null
+          is_estimated: boolean | null
+          mrr_amount: number | null
+          net_new_mrr: number | null
+          new_mrr: number | null
+          reactivation_mrr: number | null
+          snapshot_month: string | null
+        }
+        Insert: {
+          active_clients_count?: number | null
+          churn_mrr?: number | null
+          computed_at?: string | null
+          contraction_mrr?: number | null
+          currency?: string | null
+          expansion_mrr?: number | null
+          is_consolidated?: boolean | null
+          is_estimated?: boolean | null
+          mrr_amount?: number | null
+          net_new_mrr?: number | null
+          new_mrr?: number | null
+          reactivation_mrr?: number | null
+          snapshot_month?: string | null
+        }
+        Update: {
+          active_clients_count?: number | null
+          churn_mrr?: number | null
+          computed_at?: string | null
+          contraction_mrr?: number | null
+          currency?: string | null
+          expansion_mrr?: number | null
+          is_consolidated?: boolean | null
+          is_estimated?: boolean | null
+          mrr_amount?: number | null
+          net_new_mrr?: number | null
+          new_mrr?: number | null
+          reactivation_mrr?: number | null
+          snapshot_month?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      auto_churn_paused_clients: { Args: never; Returns: number }
+      backfill_mrr_snapshots: { Args: { _months?: number }; Returns: number }
       effective_monthly_fee: { Args: { _client_id: string }; Returns: number }
       expire_discounts: {
         Args: never
@@ -1405,6 +1781,10 @@ export type Database = {
         }[]
       }
       generate_monthly_invoices: { Args: { _period?: string }; Returns: number }
+      get_exchange_rate: {
+        Args: { _currency: string; _period_month: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1413,18 +1793,45 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      prorated_mrr: {
+        Args: {
+          _activated_at: string
+          _churned_at: string
+          _fee: number
+          _period_month: string
+        }
+        Returns: number
+      }
+      recompute_mrr_for_month: { Args: { _period: string }; Returns: undefined }
       refresh_invoice_statuses: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "executive"
       billing_frequency: "weekly" | "biweekly" | "monthly"
-      client_status: "active" | "inactive" | "suspended" | "pending_setup"
+      churn_reason_code:
+        | "manual"
+        | "paused_timeout"
+        | "non_payment"
+        | "dissatisfied"
+        | "price"
+        | "competitor"
+        | "closed_business"
+        | "other"
+      client_status: "onboarding" | "active" | "paused" | "churned"
       collector: "dario" | "maria"
       discount_duration: "30_days" | "60_days" | "90_days" | "custom"
+      exchange_rate_source: "api" | "manual"
       expense_assignee: "dario" | "maria" | "company"
       invoice_status: "pending" | "overdue" | "paid"
       invoice_type: "formal" | "cash"
       monthly_invoice_status: "pending" | "invoiced" | "paid" | "overdue"
+      mrr_movement_type:
+        | "new"
+        | "expansion"
+        | "contraction"
+        | "churn"
+        | "reactivation"
+        | "currency_switch"
       payment_channel:
         | "stripe_dario"
         | "us_dario"
@@ -1571,13 +1978,32 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "executive"],
       billing_frequency: ["weekly", "biweekly", "monthly"],
-      client_status: ["active", "inactive", "suspended", "pending_setup"],
+      churn_reason_code: [
+        "manual",
+        "paused_timeout",
+        "non_payment",
+        "dissatisfied",
+        "price",
+        "competitor",
+        "closed_business",
+        "other",
+      ],
+      client_status: ["onboarding", "active", "paused", "churned"],
       collector: ["dario", "maria"],
       discount_duration: ["30_days", "60_days", "90_days", "custom"],
+      exchange_rate_source: ["api", "manual"],
       expense_assignee: ["dario", "maria", "company"],
       invoice_status: ["pending", "overdue", "paid"],
       invoice_type: ["formal", "cash"],
       monthly_invoice_status: ["pending", "invoiced", "paid", "overdue"],
+      mrr_movement_type: [
+        "new",
+        "expansion",
+        "contraction",
+        "churn",
+        "reactivation",
+        "currency_switch",
+      ],
       payment_channel: [
         "stripe_dario",
         "us_dario",
