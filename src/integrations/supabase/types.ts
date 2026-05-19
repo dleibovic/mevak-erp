@@ -65,6 +65,45 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          entity: string
+          entity_id: string | null
+          field: string | null
+          id: string
+          new_value: string | null
+          notes: string | null
+          old_value: string | null
+        }
+        Insert: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          entity: string
+          entity_id?: string | null
+          field?: string | null
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          entity?: string
+          entity_id?: string | null
+          field?: string | null
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+        }
+        Relationships: []
+      }
       churn_events: {
         Row: {
           churned_at: string
@@ -737,6 +776,48 @@ export type Database = {
           },
         ]
       }
+      exchange_rate_overrides: {
+        Row: {
+          base_currency: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          period_month: string
+          prefer_manual: boolean
+          quote_currency: string
+          rate: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          period_month: string
+          prefer_manual?: boolean
+          quote_currency?: string
+          rate: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          period_month?: string
+          prefer_manual?: boolean
+          quote_currency?: string
+          rate?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       exchange_rates: {
         Row: {
           base_currency: string
@@ -1050,6 +1131,42 @@ export type Database = {
           },
         ]
       }
+      mrr_recompute_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          months_processed: number
+          months_total: number
+          per_month_results: Json
+          started_at: string
+          status: string
+          triggered_by: string | null
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          months_processed?: number
+          months_total?: number
+          per_month_results?: Json
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          months_processed?: number
+          months_total?: number
+          per_month_results?: Json
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       mrr_snapshots: {
         Row: {
           active_clients_count: number
@@ -1062,6 +1179,7 @@ export type Database = {
           is_consolidated: boolean
           is_estimated: boolean
           mrr_amount: number
+          needs_recompute: boolean
           net_new_mrr: number | null
           new_mrr: number
           reactivation_mrr: number
@@ -1078,6 +1196,7 @@ export type Database = {
           is_consolidated?: boolean
           is_estimated?: boolean
           mrr_amount?: number
+          needs_recompute?: boolean
           net_new_mrr?: number | null
           new_mrr?: number
           reactivation_mrr?: number
@@ -1094,6 +1213,7 @@ export type Database = {
           is_consolidated?: boolean
           is_estimated?: boolean
           mrr_amount?: number
+          needs_recompute?: boolean
           net_new_mrr?: number | null
           new_mrr?: number
           reactivation_mrr?: number
@@ -1804,6 +1924,17 @@ export type Database = {
       }
       recompute_mrr_for_month: { Args: { _period: string }; Returns: undefined }
       refresh_invoice_statuses: { Args: never; Returns: undefined }
+      start_mrr_recompute: { Args: { _months?: number }; Returns: string }
+      upsert_exchange_rate_override: {
+        Args: {
+          _currency: string
+          _month: string
+          _notes?: string
+          _prefer_manual?: boolean
+          _rate: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "executive"
