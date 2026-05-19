@@ -513,6 +513,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         discount_starts_at: form.discount_starts_at || null,
         discount_ends_at: form.discount_ends_at || null,
         discount_active: !!form.discount_active && !!form.discount_percentage,
+        ...(isAdmin ? { activated_at: form.activated_at || null } : {}),
       };
 
       let clientId = client?.id;
