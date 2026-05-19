@@ -417,6 +417,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         discount_starts_at: null,
         discount_ends_at: null,
         discount_active: false,
+        activated_at: null,
+        paused_at: null,
+        churned_at: null,
       });
       setSelectedPlatforms({});
       setCommissions({});
