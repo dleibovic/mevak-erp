@@ -15,6 +15,7 @@ import { CheckCircle2, Pencil, Plus, SearchCheck, Trash2 } from "lucide-react";
 import { COUNTRY_OPTIONS, flagForCountry } from "@/lib/countries";
 import { toast } from "sonner";
 import { GlobalPriceHistory } from "@/components/GlobalPriceHistory";
+import { SaasMetricsConfig } from "@/components/SaasMetricsConfig";
 
 const REGIONAL_PLATFORM_CATALOG = {
   USA: ["DoorDash", "Grubhub", "Uber Eats", "Postmates", "Caviar", "Seamless", "ChowNow", "Toast TakeOut"],
