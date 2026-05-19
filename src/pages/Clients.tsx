@@ -374,6 +374,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         discount_starts_at: client.discount_starts_at ?? null,
         discount_ends_at: client.discount_ends_at ?? null,
         discount_active: client.discount_active ?? false,
+        activated_at: client.activated_at ?? null,
+        paused_at: client.paused_at ?? null,
+        churned_at: client.churned_at ?? null,
       });
       setSubBrands(client.client_sub_brands ?? []);
       const sp: any = {};
