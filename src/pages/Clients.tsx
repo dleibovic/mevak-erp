@@ -725,6 +725,21 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                 </Select>
               </div>
               <div>
+                <Label>Fecha de alta (activated_at)</Label>
+                <Input
+                  type="date"
+                  value={form.activated_at ?? ""}
+                  max={new Date().toISOString().slice(0, 10)}
+                  disabled={!isAdmin}
+                  onChange={(e) => setForm({ ...form, activated_at: e.target.value || null })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isAdmin ? "Solo Dirección. Usada para MRR histórico. No puede ser futura ni posterior a pausa/baja." : "Solo editable por Dirección."}
+                  {form.paused_at && <> · Pausado: {form.paused_at}</>}
+                  {form.churned_at && <> · Baja: {form.churned_at}</>}
+                </p>
+              </div>
+              <div>
                 <Label>Frecuencia de cobro</Label>
                 <Select value={form.billing_frequency ?? "monthly"} onValueChange={(v) => setForm({ ...form, billing_frequency: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
