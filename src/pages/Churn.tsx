@@ -31,6 +31,9 @@ type ClientLite = {
   assigned_executive_id: string | null;
   food_category_id: string | null;
   fee_currency: string;
+  activated_at: string | null;
+  churned_at: string | null;
+  status: string;
 };
 
 type ChurnEvent = {
