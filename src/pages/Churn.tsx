@@ -286,7 +286,7 @@ export default function Churn() {
     <PageContainer>
       <PageHeader
         title="Churn"
-        subtitle="Pérdida de clientes y revenue — análisis mensual, trimestral y anual"
+        description="Pérdida de clientes y revenue — análisis mensual, trimestral y anual"
       />
 
       {/* Filters */}
