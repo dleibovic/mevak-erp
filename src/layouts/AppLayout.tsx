@@ -14,6 +14,7 @@ const NAV = [
   { to: "/empleados", label: "Empleados", icon: UserCog, adminOnly: true },
   { to: "/gastos", label: "Gastos", icon: Wallet, adminOnly: true },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/metricas-saas", label: "Métricas SaaS", icon: Activity },
   { to: "/alertas", label: "Alertas", icon: AlertTriangle },
   { to: "/admin", label: "Configuración", icon: Settings, adminOnly: true },
 ];
