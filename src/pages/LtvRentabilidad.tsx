@@ -387,47 +387,47 @@ export default function LtvRentabilidad() {
           />
         </div>
 
-        {/* Section 2: Rentabilidad (mixed) */}
+        {/* Section 2: Rentabilidad (REAL formula) */}
         <SectionTitle
           title="Rentabilidad"
           subtitle={
-            usingRealMargin
-              ? `Margen calculado sobre ${withCmv.length} clientes con CMV cargado (${fmtPct(cmvCoverage, 0)} del MRR).`
-              : `Cobertura de CMV insuficiente (${fmtPct(cmvCoverage, 0)} del MRR). Se usa el margen default de admin.`
+            incompleteCount === 0
+              ? `Margen calculado con datos reales sobre los ${active.length} clientes activos.`
+              : `Margen real sobre ${active.length - incompleteCount} clientes (${fmtPct(completeCoverage, 0)}). ${incompleteCount} clientes sin ejecutivo o sin sueldo cargado usan el margen default como fallback.`
           }
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             icon={<Percent className="h-4 w-4" />}
-            label="Margen bruto real"
-            value={fmtPct(realMarginPct)}
-            sub={`(MRR − CMV) / MRR · ${withCmv.length} clientes`}
-            tag="real"
-            tooltip={`Fórmula: (Σ monthly_fee USD − Σ cmv_cost USD) / Σ monthly_fee USD, solo clientes con cmv_cost > 0. Cobertura: ${fmtPct(cmvCoverage, 0)} del MRR total. CMV se convierte con el tipo de cambio más reciente (no hay histórico de CMV).`}
+            label="Margen bruto agregado"
+            value={fmtPct(aggregateMarginPct)}
+            sub={`Σ margen / Σ MRR · ${active.length} clientes`}
+            tag={incompleteCount === 0 ? "real" : "config"}
+            tooltip={`Fórmula por cliente: fee − comisión_ejecutivo − (sueldo_ejecutivo / clientes_activos_del_ejecutivo). Todos los componentes se convierten a USD al rate más reciente antes de sumar. Agregado = Σ margen_USD / Σ fee_USD sobre todos los activos. ${incompleteCount > 0 ? `Para ${incompleteCount} clientes sin ejecutivo asignado o sin sueldo cargado se usa el margen default (${fmtPct(grossMarginDefault, 0)}).` : ""}`}
           />
           <KpiCard
             icon={<Percent className="h-4 w-4" />}
-            label="Margen default"
-            value={fmtPct(grossMarginDefault, 0)}
-            sub="Valor configurable en admin"
-            tag="config"
-            adminAnchor="saas-metrics-config"
-            tooltip="Margen bruto estimado usado como fallback cuando no hay suficiente cobertura de CMV. Editable en /admin → Parámetros de métricas SaaS → gross_margin_default_pct."
+            label="Margen efectivo (LTV)"
+            value={fmtPct(effectiveMarginPct)}
+            sub={incompleteCount === 0 ? "= margen real" : `incluye fallback para ${incompleteCount} clientes`}
+            tag={incompleteCount === 0 ? "real" : "config"}
+            tooltip="Margen efectivo usado para calcular LTV con margen. Coincide con el margen agregado: ya combina cálculo real y fallback por cliente según completitud de datos."
           />
           <KpiCard
-            label={`Margen efectivo (usado en LTV)`}
-            value={fmtPct(effectiveMarginPct)}
-            sub={usingRealMargin ? "= margen real" : "= margen default (cobertura <80%)"}
-            tag={usingRealMargin ? "real" : "config"}
-            adminAnchor={usingRealMargin ? undefined : "saas-metrics-config"}
-            tooltip="Si la cobertura de CMV supera el 80% del MRR, se usa el margen real; sino, el margen default configurable."
+            icon={<Percent className="h-4 w-4" />}
+            label="Margen default (fallback)"
+            value={fmtPct(grossMarginDefault, 0)}
+            sub="Solo para clientes sin ejecutivo / sin sueldo"
+            tag="config"
+            adminAnchor="saas-metrics-config"
+            tooltip="Margen bruto estimado usado como fallback únicamente cuando un cliente no tiene ejecutivo asignado o el ejecutivo no tiene base_salary cargado. Editable en /admin → Parámetros de métricas SaaS → gross_margin_default_pct."
           />
           <KpiCard
             label="LTV con margen"
-            value={fmtUsd(ltvMargin)}
-            sub={`LTV simple · margen efectivo`}
-            tag="estimated"
-            tooltip="LTV simple multiplicado por el margen efectivo. No incluye costo de servicing real por cliente (time tracking aún no implementado). Cuando se sume tracking de horas, este número va a bajar y ser más preciso."
+            value={fmtMoney(ltvMargin)}
+            sub="LTV simple · margen efectivo"
+            tag={incompleteCount === 0 ? "real" : "config"}
+            tooltip="LTV simple multiplicado por el margen efectivo (real con fallback parcial)."
           />
         </div>
 
