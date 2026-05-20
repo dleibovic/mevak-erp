@@ -296,10 +296,18 @@ export default function LtvRentabilidad() {
   return (
     <TooltipProvider delayDuration={200}>
       <PageContainer>
-        <PageHeader
-          title="LTV & Rentabilidad"
-          description="Cada KPI marcado como estimado depende de parámetros configurables o de tracking que aún no está implementado."
-        />
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <PageHeader
+            title="LTV & Rentabilidad"
+            description="Cada KPI marcado como estimado depende de parámetros configurables o de tracking que aún no está implementado."
+          />
+          <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
+            <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">Mostrando en</span>
+            <span className="font-semibold tabular-nums">{displayCurrency}</span>
+            {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
