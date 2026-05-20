@@ -70,9 +70,8 @@ const REASON_COLORS = [
   "hsl(var(--secondary))",
 ];
 
-function fmtUsd(n: number) {
-  return `$${Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
+// fmtMoney bound inside component (uses display currency)
+
 function fmtPct(n: number, digits = 1) {
   if (!isFinite(n)) return "—";
   return `${(n * 100).toFixed(digits)}%`;
