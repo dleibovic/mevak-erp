@@ -356,19 +356,19 @@ export default function LtvRentabilidad() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             icon={<DollarSign className="h-4 w-4" />}
-            label="MRR activo (USD)"
-            value={fmtUsd(totalMrrUsd)}
+            label={`MRR activo (${displayCurrency})`}
+            value={fmtMoney(totalMrrUsd)}
             sub={`${active.length} clientes activos`}
             tag="real"
-            tooltip="Suma de monthly_fee efectivo (con descuento activo) de clientes con status='active', convertido a USD al rate canónico más reciente por moneda."
+            tooltip={`Suma de monthly_fee efectivo (con descuento activo) de clientes con status='active'. Convertido a ${displayCurrency} al rate canónico más reciente.`}
           />
           <KpiCard
             icon={<DollarSign className="h-4 w-4" />}
-            label="ARPA (USD)"
-            value={fmtUsd(arpa)}
+            label={`ARPA (${displayCurrency})`}
+            value={fmtMoney(arpa)}
             sub="MRR / clientes activos"
             tag="real"
-            tooltip="MRR activo USD / cantidad de clientes activos. No incluye clientes pausados ni churned."
+            tooltip="MRR activo / cantidad de clientes activos. No incluye clientes pausados ni churned."
           />
           <KpiCard
             icon={<TrendingUp className="h-4 w-4" />}
@@ -379,12 +379,13 @@ export default function LtvRentabilidad() {
             tooltip="Churn cohort real últimos 12 meses: clientes que pasaron a 'churned' en los últimos 12m / clientes activos al inicio del período. No es lineal × 12."
           />
           <KpiCard
-            label="LTV simple (USD)"
-            value={fmtUsd(ltvSimple)}
+            label={`LTV simple (${displayCurrency})`}
+            value={fmtMoney(ltvSimple)}
             sub="(ARPA · 12) / churn anual"
             tag="real"
             tooltip="Fórmula clásica: ingreso anual promedio dividido la tasa de churn anual. No incluye margen — bruto sobre el revenue, no sobre el beneficio."
           />
+
         </div>
 
         {/* Section 2: Rentabilidad (REAL formula) */}
