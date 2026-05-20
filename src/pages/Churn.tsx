@@ -10,7 +10,8 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { AlertTriangle, Info, TrendingDown, Users, Activity, Sparkles } from "lucide-react";
+import { AlertTriangle, Info, TrendingDown, Users, Activity, Sparkles, Coins } from "lucide-react";
+import { fmtDisplay, getDisplayCurrency, getDisplayCountryName } from "@/lib/displayCurrency";
 
 type CmhRow = {
   client_id: string;
@@ -69,9 +70,8 @@ const REASON_COLORS = [
   "hsl(var(--secondary))",
 ];
 
-function fmtUsd(n: number) {
-  return `$${Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
+// fmtMoney bound inside component (uses display currency)
+
 function fmtPct(n: number, digits = 1) {
   if (!isFinite(n)) return "—";
   return `${(n * 100).toFixed(digits)}%`;
@@ -130,8 +130,8 @@ export default function Churn() {
   });
 
   const { data: countries = [] } = useQuery({
-    queryKey: ["countries-list"],
-    queryFn: async () => (await supabase.from("countries").select("id, name")).data ?? [],
+    queryKey: ["countries-cc"],
+    queryFn: async () => (await supabase.from("countries").select("id, name, currency_code")).data ?? [],
   });
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-list"],
@@ -141,6 +141,20 @@ export default function Churn() {
     queryKey: ["food-categories"],
     queryFn: async () => (await supabase.from("food_categories").select("id, name")).data ?? [],
   });
+  const { data: rates = [] } = useQuery({
+    queryKey: ["latest-rates"],
+    queryFn: async () => (await supabase.from("exchange_rates").select("base_currency, rate, rate_date").order("rate_date", { ascending: false })).data ?? [],
+  });
+
+  const latestRate = useMemo(() => {
+    const m = new Map<string, number>();
+    (rates as any[]).forEach((r) => { if (!m.has(r.base_currency)) m.set(r.base_currency, Number(r.rate)); });
+    return m;
+  }, [rates]);
+
+  const displayCurrency = getDisplayCurrency(country, countries as any);
+  const displayCountryName = getDisplayCountryName(country, countries as any);
+  const fmtMoney = (usd: number) => fmtDisplay(usd, displayCurrency, latestRate);
 
   const clientById = useMemo(() => {
     const m = new Map<string, ClientLite>();
@@ -335,10 +349,18 @@ export default function Churn() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Churn"
-        description="Pérdida de clientes y revenue — análisis mensual, trimestral y anual"
-      />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <PageHeader
+          title="Churn"
+          description="Pérdida de clientes y revenue — análisis mensual, trimestral y anual"
+        />
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
+          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">Mostrando en</span>
+          <span className="font-semibold tabular-nums">{displayCurrency}</span>
+          {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
@@ -410,14 +432,14 @@ export default function Churn() {
           icon={<TrendingDown className="h-4 w-4" />}
           label="Revenue Churn (mensual)"
           value={fmtPct(revChurnMonth)}
-          sub={`${fmtUsd(mrrLostLastMonth)} perdidos`}
+          sub={`${fmtMoney(mrrLostLastMonth)} perdidos`}
           tone="destructive"
         />
         <KpiCard
           icon={<TrendingDown className="h-4 w-4" />}
           label="Revenue Churn (trim. rolling)"
           value={fmtPct(revChurnQ)}
-          sub={`${fmtUsd(last3.reduce((s, m) => s + m.churnMrr, 0))} últimos 3m`}
+          sub={`${fmtMoney(last3.reduce((s, m) => s + m.churnMrr, 0))} últimos 3m`}
         />
         <KpiCard
           label="Churn anualizado (logo)"
@@ -431,7 +453,7 @@ export default function Churn() {
         />
         <KpiCard
           label="MRR perdido (mes)"
-          value={fmtUsd(mrrLostLastMonth)}
+          value={fmtMoney(mrrLostLastMonth)}
           sub="USD, baseline mes anterior"
         />
         <KpiCard
@@ -480,7 +502,7 @@ export default function Churn() {
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                  formatter={(v: any) => fmtUsd(Number(v))}
+                  formatter={(v: any) => fmtMoney(Number(v))}
                 />
                 <Bar dataKey="mrrLost" name="MRR perdido" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -527,7 +549,7 @@ export default function Churn() {
                       <span>{REASON_LABEL[r.reason] || r.reason}</span>
                     </div>
                     <div className="text-muted-foreground tabular-nums">
-                      {r.count} · {fmtUsd(r.mrrUsd)}
+                      {r.count} · {fmtMoney(r.mrrUsd)}
                     </div>
                   </div>
                 ))}
@@ -575,7 +597,7 @@ export default function Churn() {
                     <TableCell className="text-right tabular-nums">
                       {Number(e.mrr_lost || 0).toLocaleString()} {e.currency}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtUsd(Number(e.mrr_lost_usd || 0))}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtMoney(Number(e.mrr_lost_usd || 0))}</TableCell>
                   </TableRow>
                 );
               })}

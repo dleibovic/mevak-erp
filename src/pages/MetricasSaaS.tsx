@@ -10,7 +10,8 @@ import {
   Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Info } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Info, Coins } from "lucide-react";
+import { fmtDisplay, getDisplayCurrency, getDisplayCountryName } from "@/lib/displayCurrency";
 
 type CmhRow = {
   client_id: string;
@@ -33,9 +34,6 @@ type ClientLite = {
   fee_currency: string;
 };
 
-function fmtUsd(n: number) {
-  return `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
 function fmtPct(n: number, digits = 1) {
   if (!isFinite(n)) return "—";
   return `${(n * 100).toFixed(digits)}%`;
@@ -81,8 +79,8 @@ export default function MetricasSaaS() {
   });
 
   const { data: countries = [] } = useQuery({
-    queryKey: ["countries-list"],
-    queryFn: async () => (await supabase.from("countries").select("id, name")).data ?? [],
+    queryKey: ["countries-cc"],
+    queryFn: async () => (await supabase.from("countries").select("id, name, currency_code")).data ?? [],
   });
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-list"],
@@ -92,6 +90,20 @@ export default function MetricasSaaS() {
     queryKey: ["food-categories"],
     queryFn: async () => (await supabase.from("food_categories").select("id, name")).data ?? [],
   });
+  const { data: rates = [] } = useQuery({
+    queryKey: ["latest-rates"],
+    queryFn: async () => (await supabase.from("exchange_rates").select("base_currency, rate, rate_date").order("rate_date", { ascending: false })).data ?? [],
+  });
+
+  const latestRate = useMemo(() => {
+    const m = new Map<string, number>();
+    (rates as any[]).forEach((r) => { if (!m.has(r.base_currency)) m.set(r.base_currency, Number(r.rate)); });
+    return m;
+  }, [rates]);
+
+  const displayCurrency = getDisplayCurrency(country, countries as any);
+  const displayCountryName = getDisplayCountryName(country, countries as any);
+  const fmtMoney = (usd: number) => fmtDisplay(usd, displayCurrency, latestRate);
 
   const clientById = useMemo(() => {
     const m = new Map<string, ClientLite>();
@@ -279,10 +291,19 @@ export default function MetricasSaaS() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Métricas SaaS"
-        description="MRR, churn, NRR y LTV — últimos 24 meses. Snapshots calculados desde activated_at por cliente."
-      />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <PageHeader
+          title="Métricas SaaS"
+          description="MRR, churn, NRR y LTV — últimos 24 meses. Snapshots calculados desde activated_at por cliente."
+        />
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
+          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">Mostrando en</span>
+          <span className="font-semibold tabular-nums">{displayCurrency}</span>
+          {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
+        </div>
+      </div>
+
 
       {/* Filters */}
       <Card className="p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3 bg-gradient-card border-border/60">
@@ -298,16 +319,16 @@ export default function MetricasSaaS() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-        <Kpi label="MRR actual" value={fmtUsd(cur?.mrr ?? 0)}
+        <Kpi label="MRR actual" value={fmtMoney(cur?.mrr ?? 0)}
           delta={mrrDelta} sub={`vs mes anterior`} />
-        <Kpi label="ARR" value={fmtUsd(arr)} sub="MRR × 12" />
+        <Kpi label="ARR" value={fmtMoney(arr)} sub="MRR × 12" />
         <Kpi label="Clientes activos" value={String(cur?.activeClients ?? 0)}
           delta={null} sub={`${activeDelta >= 0 ? "+" : ""}${activeDelta} vs mes anterior`}
           subAccent={activeDelta >= 0 ? "pos" : "neg"} />
         <Kpi label="Logo Churn mensual" value={fmtPct(logoChurnMonth)} sub={`${cur?.logoChurnCount ?? 0} bajas sobre base ${cur?.logoBaseCount ?? 0}`} />
         <Kpi label="Logo Churn trimestral" value={fmtPct(logoChurnQ)} sub="rolling 3 meses" />
         <Kpi label="NRR (12m)" value={fmtPct(nrr)} sub="net revenue retention" />
-        <Kpi label="LTV simple" value={fmtUsd(ltvSimple)} sub="ARPA / churn anual" />
+        <Kpi label="LTV simple" value={fmtMoney(ltvSimple)} sub="ARPA / churn anual" />
         <Kpi label="LTV con margen" value="—" sub="requiere time tracking" muted />
       </div>
 
@@ -331,8 +352,8 @@ export default function MetricasSaaS() {
             <ComposedChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtUsd(v)} width={70} />
-              <Tooltip formatter={(v: any) => fmtUsd(Number(v))} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtMoney(v)} width={70} />
+              <Tooltip formatter={(v: any) => fmtMoney(Number(v))} contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))" }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="New" stackId="up" fill="hsl(142 70% 45%)" />
               <Bar dataKey="Expansion" stackId="up" fill="hsl(160 70% 40%)" />
@@ -388,7 +409,7 @@ export default function MetricasSaaS() {
                 <TableRow key={i}>
                   <TableCell className="font-medium">{r.client}</TableCell>
                   <TableCell><MovementBadge type={r.movement} /></TableCell>
-                  <TableCell className="text-right tabular-nums">{fmtUsd(r.mrr_usd)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{fmtMoney(r.mrr_usd)}</TableCell>
                   <TableCell className="text-right tabular-nums">{r.delta.toLocaleString("es-AR")}</TableCell>
                   <TableCell className="text-xs">{r.currency}</TableCell>
                 </TableRow>

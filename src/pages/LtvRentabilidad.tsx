@@ -12,7 +12,8 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer,
   Tooltip, XAxis, YAxis, ScatterChart, Scatter, ZAxis,
 } from "recharts";
-import { Info, DollarSign, Percent, Clock, TrendingUp, Settings, AlertTriangle } from "lucide-react";
+import { Info, DollarSign, Percent, Clock, TrendingUp, Settings, AlertTriangle, Coins } from "lucide-react";
+import { fmtDisplay, getDisplayCurrency, getDisplayCountryName } from "@/lib/displayCurrency";
 
 type ClientRow = {
   id: string; company_name: string; country_id: string | null;
@@ -92,16 +93,20 @@ export default function LtvRentabilidad() {
   });
 
   const { data: countries = [] } = useQuery({
-    queryKey: ["countries-list"],
-    queryFn: async () => (await supabase.from("countries").select("id, name")).data ?? [],
+    queryKey: ["countries-cc"],
+    queryFn: async () => (await supabase.from("countries").select("id, name, currency_code")).data ?? [],
   });
   const { data: employees = [] } = useQuery({
-    queryKey: ["employees-list"],
-    queryFn: async () => (await supabase.from("employees").select("id, full_name").eq("is_active", true)).data ?? [],
+    queryKey: ["employees-with-salary"],
+    queryFn: async () => (await supabase.from("employees").select("id, full_name, base_salary, salary_currency, is_active")).data ?? [],
   });
   const { data: foodCategories = [] } = useQuery({
     queryKey: ["food-categories"],
     queryFn: async () => (await supabase.from("food_categories").select("id, name")).data ?? [],
+  });
+  const { data: commissionRows = [] } = useQuery({
+    queryKey: ["client-exec-commissions"],
+    queryFn: async () => (await (supabase as any).from("client_executive_commission").select("client_id, employee_id, commission_value, currency")).data ?? [],
   });
 
   const latestRate = useMemo(() => {
@@ -117,6 +122,10 @@ export default function LtvRentabilidad() {
     if (!r || r === 0) return 0;
     return amount / r;
   };
+
+  const displayCurrency = getDisplayCurrency(country, countries as any);
+  const displayCountryName = getDisplayCountryName(country, countries as any);
+  const fmtMoney = (usd: number) => fmtDisplay(usd, displayCurrency, latestRate);
 
   const currenciesAvailable = useMemo(() => {
     const s = new Set<string>(); clients.forEach((c) => s.add(c.fee_currency));
@@ -137,6 +146,33 @@ export default function LtvRentabilidad() {
     return m;
   }, [cmh]);
 
+  // ---- Real gross margin per client: fee - commission - (exec_salary / active_clients_for_exec) ----
+  const employeeById = useMemo(() => {
+    const m = new Map<string, any>();
+    (employees as any[]).forEach((e) => m.set(e.id, e));
+    return m;
+  }, [employees]);
+
+  // Active client count by assigned executive (uses ALL clients, unaffected by filters)
+  const activeCountByExec = useMemo(() => {
+    const m = new Map<string, number>();
+    clients.forEach((c) => {
+      if (c.status !== "active" || !c.assigned_executive_id) return;
+      m.set(c.assigned_executive_id, (m.get(c.assigned_executive_id) ?? 0) + 1);
+    });
+    return m;
+  }, [clients]);
+
+  // Sum of commissions per client (across all assigned execs) in USD
+  const commissionUsdByClient = useMemo(() => {
+    const m = new Map<string, number>();
+    (commissionRows as any[]).forEach((r) => {
+      const usd = toUsd(Number(r.commission_value || 0), r.currency || "USD");
+      m.set(r.client_id, (m.get(r.client_id) ?? 0) + usd);
+    });
+    return m;
+  }, [commissionRows, latestRate]);
+
   const today = new Date();
   const perClient = useMemo(() => {
     return filteredClients.map((c) => {
@@ -146,8 +182,34 @@ export default function LtvRentabilidad() {
       const feeUsd = toUsd(Number(effectiveFee || 0), c.fee_currency);
       const cmvUsd = toUsd(Number(c.cmv_cost || 0), c.cmv_currency);
       const hasCmv = Number(c.cmv_cost || 0) > 0;
-      const marginUsd = feeUsd - cmvUsd;
-      const marginPct = feeUsd > 0 ? marginUsd / feeUsd : 0;
+
+      // New margin formula
+      const commissionUsd = commissionUsdByClient.get(c.id) ?? 0;
+      const exec = c.assigned_executive_id ? employeeById.get(c.assigned_executive_id) : null;
+      const execSalaryUsd = exec && Number(exec.base_salary || 0) > 0
+        ? toUsd(Number(exec.base_salary), exec.salary_currency || "USD")
+        : 0;
+      const execActiveCount = c.assigned_executive_id
+        ? (activeCountByExec.get(c.assigned_executive_id) ?? 0)
+        : 0;
+      const allocatedSalaryUsd = exec && execSalaryUsd > 0 && execActiveCount > 0
+        ? execSalaryUsd / execActiveCount
+        : 0;
+
+      const missingExec = !exec;
+      const missingSalary = !!exec && !(Number(exec.base_salary || 0) > 0);
+      const incomplete = missingExec || missingSalary;
+
+      let marginUsd: number;
+      let marginPct: number;
+      if (incomplete) {
+        // Fallback: usar margen default sobre el fee
+        marginUsd = feeUsd * grossMarginDefault;
+        marginPct = grossMarginDefault;
+      } else {
+        marginUsd = feeUsd - commissionUsd - allocatedSalaryUsd;
+        marginPct = feeUsd > 0 ? marginUsd / feeUsd : 0;
+      }
 
       const start = c.activated_at ? new Date(c.activated_at) : null;
       const end = c.churned_at ? new Date(c.churned_at) : today;
@@ -158,23 +220,30 @@ export default function LtvRentabilidad() {
       const rows = cmhByClient.get(c.id) ?? [];
       const historicalLtvUsd = rows.reduce((s, r) => r.movement_type === "churn" ? s : s + Number(r.mrr_amount_usd || 0), 0);
 
-      return { id: c.id, name: c.company_name, status: c.status, activeMonths, feeUsd, cmvUsd, hasCmv, marginPct, marginUsd, historicalLtvUsd };
+      return {
+        id: c.id, name: c.company_name, status: c.status, activeMonths,
+        feeUsd, cmvUsd, hasCmv,
+        commissionUsd, allocatedSalaryUsd, execName: exec?.full_name ?? null,
+        incomplete, missingExec, missingSalary,
+        marginPct, marginUsd, historicalLtvUsd,
+      };
     });
-  }, [filteredClients, cmhByClient, latestRate]);
+  }, [filteredClients, cmhByClient, latestRate, commissionUsdByClient, employeeById, activeCountByExec, grossMarginDefault]);
 
   const active = perClient.filter((p) => p.status === "active");
   const totalMrrUsd = active.reduce((s, p) => s + p.feeUsd, 0);
 
-  // Real margin: only over clients with cmv_cost > 0
-  const withCmv = active.filter((p) => p.hasCmv);
-  const mrrWithCmv = withCmv.reduce((s, p) => s + p.feeUsd, 0);
-  const cmvWithCmv = withCmv.reduce((s, p) => s + p.cmvUsd, 0);
-  const realMarginPct = mrrWithCmv > 0 ? (mrrWithCmv - cmvWithCmv) / mrrWithCmv : 0;
-  const cmvCoverage = totalMrrUsd > 0 ? mrrWithCmv / totalMrrUsd : 0;
+  // Aggregate real margin (using formula for complete clients, fallback for incomplete)
+  const totalMarginUsd = active.reduce((s, p) => s + p.marginUsd, 0);
+  const aggregateMarginPct = totalMrrUsd > 0 ? totalMarginUsd / totalMrrUsd : 0;
+  const incompleteCount = active.filter((p) => p.incomplete).length;
+  const completeCoverage = active.length > 0 ? (active.length - incompleteCount) / active.length : 0;
 
-  // Effective margin used in LTV: real if coverage >= 80%, otherwise default from settings
-  const usingRealMargin = cmvCoverage >= 0.8;
-  const effectiveMarginPct = usingRealMargin ? realMarginPct : grossMarginDefault;
+  // CMV-based info kept for clients with cmv_cost data — no longer the primary margin source.
+
+
+  // Effective margin for LTV = aggregate real margin (already mixes fallback per cliente)
+  const effectiveMarginPct = aggregateMarginPct;
 
   const arpa = active.length > 0 ? totalMrrUsd / active.length : 0;
 
@@ -203,7 +272,6 @@ export default function LtvRentabilidad() {
 
   const marginBuckets = useMemo(() => {
     const buckets = [
-      { range: "Sin CMV", min: NaN, max: NaN, count: 0 },
       { range: "<0%", min: -Infinity, max: 0, count: 0 },
       { range: "0-25%", min: 0, max: 0.25, count: 0 },
       { range: "25-50%", min: 0.25, max: 0.5, count: 0 },
@@ -211,27 +279,34 @@ export default function LtvRentabilidad() {
       { range: "75-100%", min: 0.75, max: 1.01, count: 0 },
     ];
     active.forEach((p) => {
-      if (!p.hasCmv) { buckets[0].count += 1; return; }
-      const b = buckets.find((x) => !isNaN(x.min) && p.marginPct >= x.min && p.marginPct < x.max);
+      const b = buckets.find((x) => p.marginPct >= x.min && p.marginPct < x.max);
       if (b) b.count += 1;
     });
     return buckets;
   }, [active]);
 
-  const scatterData = active.filter((p) => p.hasCmv).map((p) => ({
+  const scatterData = active.map((p) => ({
     x: p.marginPct * 100, y: p.historicalLtvUsd, z: p.feeUsd, name: p.name,
   }));
 
-  const topMargin = [...active].filter((p) => p.hasCmv).sort((a, b) => b.marginUsd - a.marginUsd).slice(0, 10);
-  const bottomMargin = [...active].filter((p) => p.hasCmv && p.feeUsd > 0).sort((a, b) => a.marginPct - b.marginPct).slice(0, 10);
+  const topMargin = [...active].sort((a, b) => b.marginUsd - a.marginUsd).slice(0, 10);
+  const bottomMargin = [...active].filter((p) => p.feeUsd > 0).sort((a, b) => a.marginPct - b.marginPct).slice(0, 10);
 
   return (
     <TooltipProvider delayDuration={200}>
       <PageContainer>
-        <PageHeader
-          title="LTV & Rentabilidad"
-          description="Cada KPI marcado como estimado depende de parámetros configurables o de tracking que aún no está implementado."
-        />
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <PageHeader
+            title="LTV & Rentabilidad"
+            description="Cada KPI marcado como estimado depende de parámetros configurables o de tracking que aún no está implementado."
+          />
+          <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
+            <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">Mostrando en</span>
+            <span className="font-semibold tabular-nums">{displayCurrency}</span>
+            {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
@@ -280,19 +355,19 @@ export default function LtvRentabilidad() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             icon={<DollarSign className="h-4 w-4" />}
-            label="MRR activo (USD)"
-            value={fmtUsd(totalMrrUsd)}
+            label={`MRR activo (${displayCurrency})`}
+            value={fmtMoney(totalMrrUsd)}
             sub={`${active.length} clientes activos`}
             tag="real"
-            tooltip="Suma de monthly_fee efectivo (con descuento activo) de clientes con status='active', convertido a USD al rate canónico más reciente por moneda."
+            tooltip={`Suma de monthly_fee efectivo (con descuento activo) de clientes con status='active'. Convertido a ${displayCurrency} al rate canónico más reciente.`}
           />
           <KpiCard
             icon={<DollarSign className="h-4 w-4" />}
-            label="ARPA (USD)"
-            value={fmtUsd(arpa)}
+            label={`ARPA (${displayCurrency})`}
+            value={fmtMoney(arpa)}
             sub="MRR / clientes activos"
             tag="real"
-            tooltip="MRR activo USD / cantidad de clientes activos. No incluye clientes pausados ni churned."
+            tooltip="MRR activo / cantidad de clientes activos. No incluye clientes pausados ni churned."
           />
           <KpiCard
             icon={<TrendingUp className="h-4 w-4" />}
@@ -303,55 +378,56 @@ export default function LtvRentabilidad() {
             tooltip="Churn cohort real últimos 12 meses: clientes que pasaron a 'churned' en los últimos 12m / clientes activos al inicio del período. No es lineal × 12."
           />
           <KpiCard
-            label="LTV simple (USD)"
-            value={fmtUsd(ltvSimple)}
+            label={`LTV simple (${displayCurrency})`}
+            value={fmtMoney(ltvSimple)}
             sub="(ARPA · 12) / churn anual"
             tag="real"
             tooltip="Fórmula clásica: ingreso anual promedio dividido la tasa de churn anual. No incluye margen — bruto sobre el revenue, no sobre el beneficio."
           />
+
         </div>
 
-        {/* Section 2: Rentabilidad (mixed) */}
+        {/* Section 2: Rentabilidad (REAL formula) */}
         <SectionTitle
           title="Rentabilidad"
           subtitle={
-            usingRealMargin
-              ? `Margen calculado sobre ${withCmv.length} clientes con CMV cargado (${fmtPct(cmvCoverage, 0)} del MRR).`
-              : `Cobertura de CMV insuficiente (${fmtPct(cmvCoverage, 0)} del MRR). Se usa el margen default de admin.`
+            incompleteCount === 0
+              ? `Margen calculado con datos reales sobre los ${active.length} clientes activos.`
+              : `Margen real sobre ${active.length - incompleteCount} clientes (${fmtPct(completeCoverage, 0)}). ${incompleteCount} clientes sin ejecutivo o sin sueldo cargado usan el margen default como fallback.`
           }
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             icon={<Percent className="h-4 w-4" />}
-            label="Margen bruto real"
-            value={fmtPct(realMarginPct)}
-            sub={`(MRR − CMV) / MRR · ${withCmv.length} clientes`}
-            tag="real"
-            tooltip={`Fórmula: (Σ monthly_fee USD − Σ cmv_cost USD) / Σ monthly_fee USD, solo clientes con cmv_cost > 0. Cobertura: ${fmtPct(cmvCoverage, 0)} del MRR total. CMV se convierte con el tipo de cambio más reciente (no hay histórico de CMV).`}
+            label="Margen bruto agregado"
+            value={fmtPct(aggregateMarginPct)}
+            sub={`Σ margen / Σ MRR · ${active.length} clientes`}
+            tag={incompleteCount === 0 ? "real" : "config"}
+            tooltip={`Fórmula por cliente: fee − comisión_ejecutivo − (sueldo_ejecutivo / clientes_activos_del_ejecutivo). Todos los componentes se convierten a USD al rate más reciente antes de sumar. Agregado = Σ margen_USD / Σ fee_USD sobre todos los activos. ${incompleteCount > 0 ? `Para ${incompleteCount} clientes sin ejecutivo asignado o sin sueldo cargado se usa el margen default (${fmtPct(grossMarginDefault, 0)}).` : ""}`}
           />
           <KpiCard
             icon={<Percent className="h-4 w-4" />}
-            label="Margen default"
-            value={fmtPct(grossMarginDefault, 0)}
-            sub="Valor configurable en admin"
-            tag="config"
-            adminAnchor="saas-metrics-config"
-            tooltip="Margen bruto estimado usado como fallback cuando no hay suficiente cobertura de CMV. Editable en /admin → Parámetros de métricas SaaS → gross_margin_default_pct."
+            label="Margen efectivo (LTV)"
+            value={fmtPct(effectiveMarginPct)}
+            sub={incompleteCount === 0 ? "= margen real" : `incluye fallback para ${incompleteCount} clientes`}
+            tag={incompleteCount === 0 ? "real" : "config"}
+            tooltip="Margen efectivo usado para calcular LTV con margen. Coincide con el margen agregado: ya combina cálculo real y fallback por cliente según completitud de datos."
           />
           <KpiCard
-            label={`Margen efectivo (usado en LTV)`}
-            value={fmtPct(effectiveMarginPct)}
-            sub={usingRealMargin ? "= margen real" : "= margen default (cobertura <80%)"}
-            tag={usingRealMargin ? "real" : "config"}
-            adminAnchor={usingRealMargin ? undefined : "saas-metrics-config"}
-            tooltip="Si la cobertura de CMV supera el 80% del MRR, se usa el margen real; sino, el margen default configurable."
+            icon={<Percent className="h-4 w-4" />}
+            label="Margen default (fallback)"
+            value={fmtPct(grossMarginDefault, 0)}
+            sub="Solo para clientes sin ejecutivo / sin sueldo"
+            tag="config"
+            adminAnchor="saas-metrics-config"
+            tooltip="Margen bruto estimado usado como fallback únicamente cuando un cliente no tiene ejecutivo asignado o el ejecutivo no tiene base_salary cargado. Editable en /admin → Parámetros de métricas SaaS → gross_margin_default_pct."
           />
           <KpiCard
             label="LTV con margen"
-            value={fmtUsd(ltvMargin)}
-            sub={`LTV simple · margen efectivo`}
-            tag="estimated"
-            tooltip="LTV simple multiplicado por el margen efectivo. No incluye costo de servicing real por cliente (time tracking aún no implementado). Cuando se sume tracking de horas, este número va a bajar y ser más preciso."
+            value={fmtMoney(ltvMargin)}
+            sub="LTV simple · margen efectivo"
+            tag={incompleteCount === 0 ? "real" : "config"}
+            tooltip="LTV simple multiplicado por el margen efectivo (real con fallback parcial)."
           />
         </div>
 
@@ -373,7 +449,7 @@ export default function LtvRentabilidad() {
             sub="Valor manual en admin"
             tag="config"
             adminAnchor="saas-metrics-config"
-            tooltip="Costo de adquisición promedio por cliente, cargado manualmente en admin. No se calcula automáticamente — para precisión real se necesita imputar gastos de marketing/ventas a cada alta."
+            tooltip="Costo de adquisición promedio por cliente, cargado manualmente en admin. Se mantiene en USD aunque haya filtro de país (es un parámetro cross-currency). No se calcula automáticamente — para precisión real se necesita imputar gastos de marketing/ventas a cada alta."
           />
           <KpiCard
             label="LTV/CAC ratio"
@@ -448,7 +524,7 @@ export default function LtvRentabilidad() {
                   <Tooltip
                     cursor={{ strokeDasharray: "3 3" }}
                     contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                    formatter={(v: any, n: any) => n === "Margen %" ? `${Number(v).toFixed(1)}%` : fmtUsd(Number(v))}
+                    formatter={(v: any, n: any) => n === "Margen %" ? `${Number(v).toFixed(1)}%` : fmtMoney(Number(v))}
                     labelFormatter={(_, p: any) => p?.[0]?.payload?.name ?? ""}
                   />
                   <Scatter data={scatterData} fill="hsl(var(--primary))" fillOpacity={0.6} />
@@ -459,23 +535,30 @@ export default function LtvRentabilidad() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <ClientRankTable title="Top 10 — Margen USD (real)" rows={topMargin} />
-          <ClientRankTable title="Bottom 10 — Margen % (real)" rows={bottomMargin} />
+          <ClientRankTable title={`Top 10 — Margen ${displayCurrency}`} rows={topMargin} fmt={fmtMoney} />
+          <ClientRankTable title="Bottom 10 — Margen %" rows={bottomMargin} fmt={fmtMoney} />
         </div>
 
         {/* Full table */}
         <Card className="p-4">
           <div className="font-semibold mb-3">Detalle por cliente</div>
+          <div className="text-xs text-muted-foreground mb-2">
+            <span className="inline-flex items-center gap-1 mr-3">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" /> fallback (sin ejecutivo o sin sueldo cargado) — usa margen default
+            </span>
+          </div>
           <div className="overflow-x-auto max-h-[600px]">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Ejecutivo</TableHead>
                   <TableHead className="text-right">Meses</TableHead>
-                  <TableHead className="text-right">MRR USD</TableHead>
-                  <TableHead className="text-right">CMV USD</TableHead>
-                  <TableHead className="text-right">Margen USD</TableHead>
+                  <TableHead className="text-right">MRR ({displayCurrency})</TableHead>
+                  <TableHead className="text-right">Comisión</TableHead>
+                  <TableHead className="text-right">Sueldo alocado</TableHead>
+                  <TableHead className="text-right">Margen</TableHead>
                   <TableHead className="text-right">Margen %</TableHead>
                   <TableHead className="text-right">LTV hist.</TableHead>
                 </TableRow>
@@ -483,20 +566,27 @@ export default function LtvRentabilidad() {
               <TableBody>
                 {perClient.sort((a, b) => b.feeUsd - a.feeUsd).map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell>{p.name}</TableCell>
+                    <TableCell className="flex items-center gap-1.5">
+                      {p.incomplete && <span title={p.missingExec ? "Sin ejecutivo asignado — usa margen default" : "Ejecutivo sin sueldo cargado — usa margen default"} className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                      <span>{p.name}</span>
+                    </TableCell>
                     <TableCell><Badge variant={p.status === "active" ? "default" : "outline"}>{p.status}</Badge></TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{p.execName ?? <span className="italic">sin asignar</span>}</TableCell>
                     <TableCell className="text-right tabular-nums">{p.activeMonths}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtUsd(p.feeUsd)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtMoney(p.feeUsd)}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {p.hasCmv ? fmtUsd(p.cmvUsd) : <span className="text-muted-foreground italic">sin cargar</span>}
+                      {p.commissionUsd > 0 ? fmtMoney(p.commissionUsd) : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {p.hasCmv ? fmtUsd(p.marginUsd) : <span className="text-muted-foreground">—</span>}
+                      {p.allocatedSalaryUsd > 0 ? fmtMoney(p.allocatedSalaryUsd) : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className={`text-right tabular-nums ${p.hasCmv && p.marginPct < 0 ? "text-destructive" : ""}`}>
-                      {p.hasCmv ? fmtPct(p.marginPct) : <span className="text-muted-foreground">—</span>}
+                    <TableCell className={`text-right tabular-nums ${p.marginUsd < 0 ? "text-destructive" : ""}`}>
+                      {fmtMoney(p.marginUsd)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtUsd(p.historicalLtvUsd)}</TableCell>
+                    <TableCell className={`text-right tabular-nums ${p.marginPct < 0 ? "text-destructive" : ""}`}>
+                      {fmtPct(p.marginPct)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtMoney(p.historicalLtvUsd)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -562,7 +652,7 @@ function KpiCard({
   );
 }
 
-function ClientRankTable({ title, rows }: { title: string; rows: any[] }) {
+function ClientRankTable({ title, rows, fmt }: { title: string; rows: any[]; fmt: (n: number) => string }) {
   return (
     <Card className="p-4">
       <div className="font-semibold mb-3 flex items-center gap-2">{title} <DataTag tag="real" /></div>
@@ -577,13 +667,16 @@ function ClientRankTable({ title, rows }: { title: string; rows: any[] }) {
         </TableHeader>
         <TableBody>
           {rows.length === 0 && (
-            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6 text-sm">Sin clientes con CMV cargado</TableCell></TableRow>
+            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6 text-sm">Sin clientes activos</TableCell></TableRow>
           )}
           {rows.map((p) => (
             <TableRow key={p.id}>
-              <TableCell className="max-w-[180px] truncate">{p.name}</TableCell>
-              <TableCell className="text-right tabular-nums">{fmtUsd(p.feeUsd)}</TableCell>
-              <TableCell className="text-right tabular-nums">{fmtUsd(p.marginUsd)}</TableCell>
+              <TableCell className="max-w-[180px] truncate">
+                {p.incomplete && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5" title="Fallback" />}
+                {p.name}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(p.feeUsd)}</TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(p.marginUsd)}</TableCell>
               <TableCell className={`text-right tabular-nums ${p.marginPct < 0 ? "text-destructive" : ""}`}>{fmtPct(p.marginPct)}</TableCell>
             </TableRow>
           ))}
