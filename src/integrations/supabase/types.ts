@@ -1085,6 +1085,1100 @@ export type Database = {
         }
         Relationships: []
       }
+      mevak_ai_config_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_value: Json
+          previous_value: Json | null
+          setting_key: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_value: Json
+          previous_value?: Json | null
+          setting_key: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_value?: Json
+          previous_value?: Json | null
+          setting_key?: string
+        }
+        Relationships: []
+      }
+      mevak_ai_conversations: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          titulo: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          titulo?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          titulo?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_ai_conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_ai_conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_ai_message_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          feedback: Database["public"]["Enums"]["mevak_ai_feedback"]
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          feedback: Database["public"]["Enums"]["mevak_ai_feedback"]
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          feedback?: Database["public"]["Enums"]["mevak_ai_feedback"]
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_ai_message_feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_ai_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_ai_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          model: string | null
+          role: Database["public"]["Enums"]["mevak_ai_message_role"]
+          tokens_in: number | null
+          tokens_out: number | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          model?: string | null
+          role: Database["public"]["Enums"]["mevak_ai_message_role"]
+          tokens_in?: number | null
+          tokens_out?: number | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          model?: string | null
+          role?: Database["public"]["Enums"]["mevak_ai_message_role"]
+          tokens_in?: number | null
+          tokens_out?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_ai_tool_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          expires_at: string
+          id: string
+          payload: Json
+          tool_name: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          payload: Json
+          tool_name: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payload?: Json
+          tool_name?: string
+        }
+        Relationships: []
+      }
+      mevak_ai_tool_calls: {
+        Row: {
+          arguments: Json
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          message_id: string
+          result: Json | null
+          tool_name: string
+        }
+        Insert: {
+          arguments?: Json
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          message_id: string
+          result?: Json | null
+          tool_name: string
+        }
+        Update: {
+          arguments?: Json
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          message_id?: string
+          result?: Json | null
+          tool_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_ai_tool_calls_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_ai_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_alertas: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          client_id: string
+          created_at: string
+          detalle: string | null
+          id: string
+          payload: Json
+          resolved_at: string | null
+          severity: Database["public"]["Enums"]["mevak_alerta_severity"]
+          status: Database["public"]["Enums"]["mevak_alerta_status"]
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          client_id: string
+          created_at?: string
+          detalle?: string | null
+          id?: string
+          payload?: Json
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["mevak_alerta_severity"]
+          status?: Database["public"]["Enums"]["mevak_alerta_status"]
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          client_id?: string
+          created_at?: string
+          detalle?: string | null
+          id?: string
+          payload?: Json
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["mevak_alerta_severity"]
+          status?: Database["public"]["Enums"]["mevak_alerta_status"]
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_alertas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_alertas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_app_settings: {
+        Row: {
+          description: string | null
+          key: string
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      mevak_cliente_usuarios: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["mevak_cliente_user_role"]
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["mevak_cliente_user_role"]
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["mevak_cliente_user_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_cliente_usuarios_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_cliente_usuarios_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_documentos: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          mime_type: string | null
+          nombre: string
+          size_bytes: number | null
+          storage_path: string
+          tipo: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nombre: string
+          size_bytes?: number | null
+          storage_path: string
+          tipo?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nombre?: string
+          size_bytes?: number | null
+          storage_path?: string
+          tipo?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_documentos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_documentos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_interacciones_whatsapp: {
+        Row: {
+          client_id: string
+          created_at: string
+          direction: Database["public"]["Enums"]["mevak_wa_direction"]
+          from_number: string | null
+          id: string
+          media_url: string | null
+          message: string | null
+          metadata: Json
+          occurred_at: string
+          to_number: string | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          direction: Database["public"]["Enums"]["mevak_wa_direction"]
+          from_number?: string | null
+          id?: string
+          media_url?: string | null
+          message?: string | null
+          metadata?: Json
+          occurred_at?: string
+          to_number?: string | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          direction?: Database["public"]["Enums"]["mevak_wa_direction"]
+          from_number?: string | null
+          id?: string
+          media_url?: string | null
+          message?: string | null
+          metadata?: Json
+          occurred_at?: string
+          to_number?: string | null
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_interacciones_whatsapp_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_interacciones_whatsapp_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_kpis_mensuales: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          metrics: Json
+          month_start: string
+          platform_id: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          metrics?: Json
+          month_start: string
+          platform_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          metrics?: Json
+          month_start?: string
+          platform_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_kpis_mensuales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_kpis_mensuales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_kpis_mensuales_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_kpis_semanales: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          metrics: Json
+          platform_id: string | null
+          week_start: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          metrics?: Json
+          platform_id?: string | null
+          week_start: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          metrics?: Json
+          platform_id?: string | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_kpis_semanales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_kpis_semanales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_kpis_semanales_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_onboarding_items: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          id: string
+          order_index: number
+          required: boolean
+          template_id: string
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          order_index?: number
+          required?: boolean
+          template_id: string
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          order_index?: number
+          required?: boolean
+          template_id?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_onboarding_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_onboarding_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_onboarding_status: {
+        Row: {
+          client_id: string
+          completed_at: string | null
+          completed_by: string | null
+          id: string
+          item_id: string
+          notas: string | null
+          status: Database["public"]["Enums"]["mevak_onboarding_item_status"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          item_id: string
+          notas?: string | null
+          status?: Database["public"]["Enums"]["mevak_onboarding_item_status"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          item_id?: string
+          notas?: string | null
+          status?: Database["public"]["Enums"]["mevak_onboarding_item_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_onboarding_status_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_onboarding_status_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_onboarding_status_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_onboarding_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_onboarding_templates: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          id: string
+          is_default: boolean
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          is_default?: boolean
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          is_default?: boolean
+          nombre?: string
+        }
+        Relationships: []
+      }
+      mevak_promociones: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          ends_at: string | null
+          id: string
+          metadata: Json
+          nombre: string
+          platform_id: string | null
+          starts_at: string | null
+          status: Database["public"]["Enums"]["mevak_promocion_status"]
+          sub_brand_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          ends_at?: string | null
+          id?: string
+          metadata?: Json
+          nombre: string
+          platform_id?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["mevak_promocion_status"]
+          sub_brand_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          ends_at?: string | null
+          id?: string
+          metadata?: Json
+          nombre?: string
+          platform_id?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["mevak_promocion_status"]
+          sub_brand_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_promociones_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_promociones_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_promociones_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_promociones_sub_brand_id_fkey"
+            columns: ["sub_brand_id"]
+            isOneToOne: false
+            referencedRelation: "client_sub_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_reportes_mensuales: {
+        Row: {
+          client_id: string
+          content: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          month_start: string
+          pdf_url: string | null
+          seen_at: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["mevak_reporte_status"]
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month_start: string
+          pdf_url?: string | null
+          seen_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["mevak_reporte_status"]
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month_start?: string
+          pdf_url?: string | null
+          seen_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["mevak_reporte_status"]
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_reportes_mensuales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_reportes_mensuales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_reportes_semanales: {
+        Row: {
+          client_id: string
+          content: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          pdf_url: string | null
+          seen_at: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["mevak_reporte_status"]
+          summary: string | null
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          client_id: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          seen_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["mevak_reporte_status"]
+          summary?: string | null
+          updated_at?: string
+          week_start: string
+        }
+        Update: {
+          client_id?: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          seen_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["mevak_reporte_status"]
+          summary?: string | null
+          updated_at?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_reportes_semanales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_reportes_semanales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_reuniones: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          duration_min: number | null
+          id: string
+          meeting_url: string | null
+          notas: string | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["mevak_reunion_status"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          duration_min?: number | null
+          id?: string
+          meeting_url?: string | null
+          notas?: string | null
+          scheduled_at: string
+          status?: Database["public"]["Enums"]["mevak_reunion_status"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          duration_min?: number | null
+          id?: string
+          meeting_url?: string | null
+          notas?: string | null
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["mevak_reunion_status"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_reuniones_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_reuniones_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_roadmap_items: {
+        Row: {
+          client_id: string
+          created_at: string
+          descripcion: string | null
+          due_date: string | null
+          id: string
+          order_index: number
+          roadmap_id: string
+          status: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          descripcion?: string | null
+          due_date?: string | null
+          id?: string
+          order_index?: number
+          roadmap_id: string
+          status?: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          descripcion?: string | null
+          due_date?: string | null
+          id?: string
+          order_index?: number
+          roadmap_id?: string
+          status?: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_roadmap_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_roadmap_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_roadmap_items_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_roadmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_roadmaps: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          id: string
+          quarter: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          quarter?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          quarter?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_roadmaps_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_roadmaps_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_tareas: {
+        Row: {
+          assigned_to: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          due_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["mevak_tarea_priority"]
+          status: Database["public"]["Enums"]["mevak_tarea_status"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["mevak_tarea_priority"]
+          status?: Database["public"]["Enums"]["mevak_tarea_status"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["mevak_tarea_priority"]
+          status?: Database["public"]["Enums"]["mevak_tarea_status"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_tareas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_tareas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       mevak_user_roles: {
         Row: {
           created_at: string
@@ -1972,6 +3066,15 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      mevak_can_access_client: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      mevak_can_write_client: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      mevak_my_client_ids: { Args: { _user_id: string }; Returns: string[] }
       prorated_mrr: {
         Args: {
           _activated_at: string
@@ -2018,7 +3121,42 @@ export type Database = {
       expense_assignee: "dario" | "maria" | "company"
       invoice_status: "pending" | "overdue" | "paid"
       invoice_type: "formal" | "cash"
+      mevak_ai_feedback: "up" | "down"
+      mevak_ai_message_role: "system" | "user" | "assistant" | "tool"
+      mevak_alerta_severity: "info" | "warning" | "critical"
+      mevak_alerta_status: "abierta" | "reconocida" | "resuelta" | "descartada"
+      mevak_cliente_user_role: "cliente_user" | "ejecutivo_asignado"
+      mevak_kpi_period: "semanal" | "mensual"
+      mevak_onboarding_item_status:
+        | "pendiente"
+        | "en_progreso"
+        | "completado"
+        | "no_aplica"
+      mevak_promocion_status:
+        | "planificada"
+        | "activa"
+        | "finalizada"
+        | "cancelada"
+      mevak_reporte_status: "borrador" | "enviado" | "visto" | "archivado"
+      mevak_reunion_status:
+        | "agendada"
+        | "realizada"
+        | "cancelada"
+        | "reprogramada"
+      mevak_roadmap_item_status:
+        | "backlog"
+        | "en_progreso"
+        | "bloqueado"
+        | "completado"
+        | "descartado"
       mevak_role: "direccion" | "ejecutivo" | "cliente"
+      mevak_tarea_priority: "baja" | "media" | "alta" | "urgente"
+      mevak_tarea_status:
+        | "pendiente"
+        | "en_progreso"
+        | "completada"
+        | "cancelada"
+      mevak_wa_direction: "inbound" | "outbound"
       monthly_invoice_status: "pending" | "invoiced" | "paid" | "overdue"
       mrr_movement_type:
         | "new"
@@ -2190,7 +3328,47 @@ export const Constants = {
       expense_assignee: ["dario", "maria", "company"],
       invoice_status: ["pending", "overdue", "paid"],
       invoice_type: ["formal", "cash"],
+      mevak_ai_feedback: ["up", "down"],
+      mevak_ai_message_role: ["system", "user", "assistant", "tool"],
+      mevak_alerta_severity: ["info", "warning", "critical"],
+      mevak_alerta_status: ["abierta", "reconocida", "resuelta", "descartada"],
+      mevak_cliente_user_role: ["cliente_user", "ejecutivo_asignado"],
+      mevak_kpi_period: ["semanal", "mensual"],
+      mevak_onboarding_item_status: [
+        "pendiente",
+        "en_progreso",
+        "completado",
+        "no_aplica",
+      ],
+      mevak_promocion_status: [
+        "planificada",
+        "activa",
+        "finalizada",
+        "cancelada",
+      ],
+      mevak_reporte_status: ["borrador", "enviado", "visto", "archivado"],
+      mevak_reunion_status: [
+        "agendada",
+        "realizada",
+        "cancelada",
+        "reprogramada",
+      ],
+      mevak_roadmap_item_status: [
+        "backlog",
+        "en_progreso",
+        "bloqueado",
+        "completado",
+        "descartado",
+      ],
       mevak_role: ["direccion", "ejecutivo", "cliente"],
+      mevak_tarea_priority: ["baja", "media", "alta", "urgente"],
+      mevak_tarea_status: [
+        "pendiente",
+        "en_progreso",
+        "completada",
+        "cancelada",
+      ],
+      mevak_wa_direction: ["inbound", "outbound"],
       monthly_invoice_status: ["pending", "invoiced", "paid", "overdue"],
       mrr_movement_type: [
         "new",
