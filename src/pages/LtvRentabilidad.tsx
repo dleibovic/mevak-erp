@@ -525,7 +525,7 @@ export default function LtvRentabilidad() {
                   <Tooltip
                     cursor={{ strokeDasharray: "3 3" }}
                     contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                    formatter={(v: any, n: any) => n === "Margen %" ? `${Number(v).toFixed(1)}%` : fmtUsd(Number(v))}
+                    formatter={(v: any, n: any) => n === "Margen %" ? `${Number(v).toFixed(1)}%` : fmtMoney(Number(v))}
                     labelFormatter={(_, p: any) => p?.[0]?.payload?.name ?? ""}
                   />
                   <Scatter data={scatterData} fill="hsl(var(--primary))" fillOpacity={0.6} />
@@ -536,23 +536,30 @@ export default function LtvRentabilidad() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <ClientRankTable title="Top 10 — Margen USD (real)" rows={topMargin} />
-          <ClientRankTable title="Bottom 10 — Margen % (real)" rows={bottomMargin} />
+          <ClientRankTable title={`Top 10 — Margen ${displayCurrency}`} rows={topMargin} fmt={fmtMoney} />
+          <ClientRankTable title="Bottom 10 — Margen %" rows={bottomMargin} fmt={fmtMoney} />
         </div>
 
         {/* Full table */}
         <Card className="p-4">
           <div className="font-semibold mb-3">Detalle por cliente</div>
+          <div className="text-xs text-muted-foreground mb-2">
+            <span className="inline-flex items-center gap-1 mr-3">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" /> fallback (sin ejecutivo o sin sueldo cargado) — usa margen default
+            </span>
+          </div>
           <div className="overflow-x-auto max-h-[600px]">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Ejecutivo</TableHead>
                   <TableHead className="text-right">Meses</TableHead>
-                  <TableHead className="text-right">MRR USD</TableHead>
-                  <TableHead className="text-right">CMV USD</TableHead>
-                  <TableHead className="text-right">Margen USD</TableHead>
+                  <TableHead className="text-right">MRR ({displayCurrency})</TableHead>
+                  <TableHead className="text-right">Comisión</TableHead>
+                  <TableHead className="text-right">Sueldo alocado</TableHead>
+                  <TableHead className="text-right">Margen</TableHead>
                   <TableHead className="text-right">Margen %</TableHead>
                   <TableHead className="text-right">LTV hist.</TableHead>
                 </TableRow>
@@ -560,20 +567,27 @@ export default function LtvRentabilidad() {
               <TableBody>
                 {perClient.sort((a, b) => b.feeUsd - a.feeUsd).map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell>{p.name}</TableCell>
+                    <TableCell className="flex items-center gap-1.5">
+                      {p.incomplete && <span title={p.missingExec ? "Sin ejecutivo asignado — usa margen default" : "Ejecutivo sin sueldo cargado — usa margen default"} className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                      <span>{p.name}</span>
+                    </TableCell>
                     <TableCell><Badge variant={p.status === "active" ? "default" : "outline"}>{p.status}</Badge></TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{p.execName ?? <span className="italic">sin asignar</span>}</TableCell>
                     <TableCell className="text-right tabular-nums">{p.activeMonths}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtUsd(p.feeUsd)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtMoney(p.feeUsd)}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {p.hasCmv ? fmtUsd(p.cmvUsd) : <span className="text-muted-foreground italic">sin cargar</span>}
+                      {p.commissionUsd > 0 ? fmtMoney(p.commissionUsd) : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {p.hasCmv ? fmtUsd(p.marginUsd) : <span className="text-muted-foreground">—</span>}
+                      {p.allocatedSalaryUsd > 0 ? fmtMoney(p.allocatedSalaryUsd) : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className={`text-right tabular-nums ${p.hasCmv && p.marginPct < 0 ? "text-destructive" : ""}`}>
-                      {p.hasCmv ? fmtPct(p.marginPct) : <span className="text-muted-foreground">—</span>}
+                    <TableCell className={`text-right tabular-nums ${p.marginUsd < 0 ? "text-destructive" : ""}`}>
+                      {fmtMoney(p.marginUsd)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtUsd(p.historicalLtvUsd)}</TableCell>
+                    <TableCell className={`text-right tabular-nums ${p.marginPct < 0 ? "text-destructive" : ""}`}>
+                      {fmtPct(p.marginPct)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtMoney(p.historicalLtvUsd)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
