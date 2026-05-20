@@ -450,7 +450,7 @@ export default function LtvRentabilidad() {
             sub="Valor manual en admin"
             tag="config"
             adminAnchor="saas-metrics-config"
-            tooltip="Costo de adquisición promedio por cliente, cargado manualmente en admin. No se calcula automáticamente — para precisión real se necesita imputar gastos de marketing/ventas a cada alta."
+            tooltip="Costo de adquisición promedio por cliente, cargado manualmente en admin. Se mantiene en USD aunque haya filtro de país (es un parámetro cross-currency). No se calcula automáticamente — para precisión real se necesita imputar gastos de marketing/ventas a cada alta."
           />
           <KpiCard
             label="LTV/CAC ratio"
