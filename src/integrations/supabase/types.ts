@@ -1436,6 +1436,109 @@ export type Database = {
           },
         ]
       }
+      mevak_comentarios_internos: {
+        Row: {
+          autor_id: string | null
+          client_id: string
+          contenido_md: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          autor_id?: string | null
+          client_id: string
+          contenido_md: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          autor_id?: string | null
+          client_id?: string
+          contenido_md?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_comentarios_internos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_comentarios_internos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_contactos: {
+        Row: {
+          client_id: string
+          created_at: string
+          email: string | null
+          id: string
+          nombre: string
+          notas: string | null
+          platform_id: string | null
+          rol: string | null
+          telefono: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          nombre: string
+          notas?: string | null
+          platform_id?: string | null
+          rol?: string | null
+          telefono?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          nombre?: string
+          notas?: string | null
+          platform_id?: string | null
+          rol?: string | null
+          telefono?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_contactos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_contactos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_contactos_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mevak_documentos: {
         Row: {
           client_id: string
@@ -1639,6 +1742,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "platforms"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_objetivos: {
+        Row: {
+          client_id: string
+          descripcion_md: string | null
+          kpi_1: Json | null
+          kpi_2: Json | null
+          kpi_3: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          descripcion_md?: string | null
+          kpi_1?: Json | null
+          kpi_2?: Json | null
+          kpi_3?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          descripcion_md?: string | null
+          kpi_1?: Json | null
+          kpi_2?: Json | null
+          kpi_3?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_objetivos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_objetivos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -2014,43 +2162,119 @@ export type Database = {
           },
         ]
       }
-      mevak_reuniones: {
+      mevak_reunion_tareas: {
         Row: {
           client_id: string
+          completed_at: string | null
           created_at: string
-          created_by: string | null
-          duration_min: number | null
+          descripcion: string
+          due_date: string | null
           id: string
-          meeting_url: string | null
-          notas: string | null
-          scheduled_at: string
-          status: Database["public"]["Enums"]["mevak_reunion_status"]
-          titulo: string
+          responsable: string | null
+          reunion_id: string
+          status: Database["public"]["Enums"]["mevak_tarea_status"]
           updated_at: string
         }
         Insert: {
           client_id: string
+          completed_at?: string | null
           created_at?: string
-          created_by?: string | null
-          duration_min?: number | null
+          descripcion: string
+          due_date?: string | null
           id?: string
-          meeting_url?: string | null
-          notas?: string | null
-          scheduled_at: string
-          status?: Database["public"]["Enums"]["mevak_reunion_status"]
-          titulo: string
+          responsable?: string | null
+          reunion_id: string
+          status?: Database["public"]["Enums"]["mevak_tarea_status"]
           updated_at?: string
         }
         Update: {
           client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          descripcion?: string
+          due_date?: string | null
+          id?: string
+          responsable?: string | null
+          reunion_id?: string
+          status?: Database["public"]["Enums"]["mevak_tarea_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_reunion_tareas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_reunion_tareas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_reunion_tareas_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_reuniones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_reuniones: {
+        Row: {
+          asistentes: Json
+          client_id: string
+          created_at: string
+          created_by: string | null
+          decisiones: Json
+          duration_min: number | null
+          id: string
+          meeting_url: string | null
+          minuta_md: string | null
+          notas: string | null
+          proxima_fecha: string | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["mevak_reunion_status"]
+          tipo: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          asistentes?: Json
+          client_id: string
           created_at?: string
           created_by?: string | null
+          decisiones?: Json
           duration_min?: number | null
           id?: string
           meeting_url?: string | null
+          minuta_md?: string | null
           notas?: string | null
+          proxima_fecha?: string | null
+          scheduled_at: string
+          status?: Database["public"]["Enums"]["mevak_reunion_status"]
+          tipo?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          asistentes?: Json
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          decisiones?: Json
+          duration_min?: number | null
+          id?: string
+          meeting_url?: string | null
+          minuta_md?: string | null
+          notas?: string | null
+          proxima_fecha?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["mevak_reunion_status"]
+          tipo?: string | null
           titulo?: string
           updated_at?: string
         }
@@ -2180,6 +2404,141 @@ export type Database = {
           },
         ]
       }
+      mevak_sucursal_plataforma: {
+        Row: {
+          branch_id_external: string | null
+          client_id: string
+          comision_pct: number | null
+          created_at: string
+          horarios: Json
+          id: string
+          notas: string | null
+          platform_id: string
+          sucursal_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id_external?: string | null
+          client_id: string
+          comision_pct?: number | null
+          created_at?: string
+          horarios?: Json
+          id?: string
+          notas?: string | null
+          platform_id: string
+          sucursal_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id_external?: string | null
+          client_id?: string
+          comision_pct?: number | null
+          created_at?: string
+          horarios?: Json
+          id?: string
+          notas?: string | null
+          platform_id?: string
+          sucursal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_sucursal_plataforma_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_sucursal_plataforma_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_sucursal_plataforma_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_sucursal_plataforma_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_sucursales: {
+        Row: {
+          activa: boolean
+          ciudad: string | null
+          client_id: string
+          client_sub_brand_id: string | null
+          country_code: string | null
+          created_at: string
+          direccion: string | null
+          id: string
+          metadata: Json
+          nombre: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          ciudad?: string | null
+          client_id: string
+          client_sub_brand_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          direccion?: string | null
+          id?: string
+          metadata?: Json
+          nombre: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          ciudad?: string | null
+          client_id?: string
+          client_sub_brand_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          direccion?: string | null
+          id?: string
+          metadata?: Json
+          nombre?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_sucursales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_sucursales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_sucursales_client_sub_brand_id_fkey"
+            columns: ["client_sub_brand_id"]
+            isOneToOne: false
+            referencedRelation: "client_sub_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mevak_tareas: {
         Row: {
           assigned_to: string | null
@@ -2233,6 +2592,60 @@ export type Database = {
           },
           {
             foreignKeyName: "mevak_tareas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      mevak_timeline_eventos: {
+        Row: {
+          actor_id: string | null
+          client_id: string
+          created_at: string
+          detalle: string | null
+          id: string
+          payload: Json
+          source_id: string | null
+          source_table: string | null
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          actor_id?: string | null
+          client_id: string
+          created_at?: string
+          detalle?: string | null
+          id?: string
+          payload?: Json
+          source_id?: string | null
+          source_table?: string | null
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          actor_id?: string | null
+          client_id?: string
+          created_at?: string
+          detalle?: string | null
+          id?: string
+          payload?: Json
+          source_id?: string | null
+          source_table?: string | null
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_timeline_eventos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_timeline_eventos_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "v_client_metrics"
@@ -3139,6 +3552,43 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      mevak_get_client_360: {
+        Args: { _client_id: string }
+        Returns: {
+          activated_at: string
+          comentarios_count: number
+          contactos_count: number
+          country_code: string
+          created_at: string
+          ejecutivo_email: string
+          id: string
+          meeting_frequency: string
+          name: string
+          promos_count: number
+          reuniones_count: number
+          status: string
+          sucursales_count: number
+          timeline_count: number
+        }[]
+      }
+      mevak_get_objetivos: {
+        Args: { _client_id: string }
+        Returns: {
+          client_id: string
+          descripcion_md: string | null
+          kpi_1: Json | null
+          kpi_2: Json | null
+          kpi_3: Json | null
+          updated_at: string
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mevak_objetivos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       mevak_get_onboarding_for_client: {
         Args: { _client_id: string }
         Returns: {
@@ -3161,6 +3611,13 @@ export type Database = {
         Args: { _client_id: string }
         Returns: number
       }
+      mevak_list_client_sub_brands: {
+        Args: { _client_id: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       mevak_list_clients_for_mevak: {
         Args: never
         Returns: {
@@ -3176,6 +3633,29 @@ export type Database = {
           status: Database["public"]["Enums"]["client_status"]
         }[]
       }
+      mevak_list_comentarios: {
+        Args: { _client_id: string }
+        Returns: {
+          autor_email: string
+          contenido_md: string
+          created_at: string
+          id: string
+        }[]
+      }
+      mevak_list_contactos: {
+        Args: { _client_id: string }
+        Returns: {
+          email: string
+          id: string
+          nombre: string
+          notas: string
+          platform_id: string
+          platform_name: string
+          rol: string
+          telefono: string
+          tipo: string
+        }[]
+      }
       mevak_list_onboarding_pipeline: {
         Args: never
         Returns: {
@@ -3189,6 +3669,128 @@ export type Database = {
           pct: number
           total: number
         }[]
+      }
+      mevak_list_reunion_tareas: {
+        Args: { _client_id: string }
+        Returns: {
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          descripcion: string
+          due_date: string | null
+          id: string
+          responsable: string | null
+          reunion_id: string
+          status: Database["public"]["Enums"]["mevak_tarea_status"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mevak_reunion_tareas"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      mevak_list_reuniones: {
+        Args: { _client_id: string }
+        Returns: {
+          asistentes: Json
+          client_id: string
+          created_at: string
+          created_by: string | null
+          decisiones: Json
+          duration_min: number | null
+          id: string
+          meeting_url: string | null
+          minuta_md: string | null
+          notas: string | null
+          proxima_fecha: string | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["mevak_reunion_status"]
+          tipo: string | null
+          titulo: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mevak_reuniones"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      mevak_list_roadmap_items: {
+        Args: { _client_id: string }
+        Returns: {
+          client_id: string
+          created_at: string
+          descripcion: string | null
+          due_date: string | null
+          id: string
+          order_index: number
+          roadmap_id: string
+          status: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          titulo: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mevak_roadmap_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      mevak_list_sucursal_plataforma: {
+        Args: { _client_id: string }
+        Returns: {
+          branch_id_external: string
+          comision_pct: number
+          horarios: Json
+          id: string
+          notas: string
+          platform_id: string
+          platform_name: string
+          sucursal_id: string
+          sucursal_nombre: string
+        }[]
+      }
+      mevak_list_sucursales: {
+        Args: { _client_id: string }
+        Returns: {
+          activa: boolean
+          ciudad: string
+          client_id: string
+          client_sub_brand_id: string
+          country_code: string
+          created_at: string
+          direccion: string
+          id: string
+          metadata: Json
+          nombre: string
+          sub_brand_name: string
+          tipo: string
+          updated_at: string
+        }[]
+      }
+      mevak_list_timeline: {
+        Args: { _client_id: string; _limit?: number }
+        Returns: {
+          actor_id: string | null
+          client_id: string
+          created_at: string
+          detalle: string | null
+          id: string
+          payload: Json
+          source_id: string | null
+          source_table: string | null
+          tipo: string
+          titulo: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mevak_timeline_eventos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       mevak_my_client_ids: { Args: { _user_id: string }; Returns: string[] }
       mevak_onboarding_is_complete: {
