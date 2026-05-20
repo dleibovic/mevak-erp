@@ -284,6 +284,54 @@ export default function Churn() {
   }));
 
   const hasEstimated = monthly.some((m) => m.estimated);
+  const hasAnyData = filteredCmh.length > 0 || filteredEvents.length > 0;
+
+  // Cohort retention: rows = cohort month (alta), cols = months elapsed
+  const cohort = useMemo(() => {
+    const COHORT_MONTHS = 12;
+    const ELAPSED = 12;
+    const cohortKeys = lastNMonths(COHORT_MONTHS); // oldest -> newest
+
+    const now = new Date();
+    const curMonthIdx = now.getFullYear() * 12 + now.getMonth();
+    const monthIdxFromKey = (k: string) => {
+      const [y, m] = k.split("-").map(Number);
+      return y * 12 + (m - 1);
+    };
+
+    // Group passing clients by cohort (activated_at month)
+    const buckets = new Map<string, ClientLite[]>();
+    cohortKeys.forEach((k) => buckets.set(k, []));
+    clients.forEach((c) => {
+      if (!c.activated_at) return;
+      if (!passFilter(c.id)) return;
+      const d = new Date(c.activated_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+      if (buckets.has(key)) buckets.get(key)!.push(c);
+    });
+
+    const rows = cohortKeys.map((ck) => {
+      const cohortIdx = monthIdxFromKey(ck);
+      const members = buckets.get(ck)!;
+      const size = members.length;
+      const cells = Array.from({ length: ELAPSED + 1 }, (_, n) => {
+        const refIdx = cohortIdx + n;
+        if (refIdx > curMonthIdx) return { n, retained: null as number | null, pct: null as number | null };
+        if (size === 0) return { n, retained: 0, pct: null };
+        // retained if not churned before end of ref month
+        const refY = Math.floor(refIdx / 12);
+        const refM = refIdx % 12;
+        const endOfRef = new Date(refY, refM + 1, 0); // last day of month
+        let r = 0;
+        members.forEach((c) => {
+          if (!c.churned_at || new Date(c.churned_at) > endOfRef) r += 1;
+        });
+        return { n, retained: r, pct: r / size };
+      });
+      return { cohort: ck, size, cells };
+    });
+    return rows;
+  }, [clients, country, executive, foodCat, currency]);
 
   return (
     <PageContainer>
