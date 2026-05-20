@@ -19,6 +19,7 @@ const Analytics = lazy(() => import("./pages/Analytics"));
 const Alerts = lazy(() => import("./pages/Alerts"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Prospecting = lazy(() => import("./pages/Prospecting"));
+const MetricasSaaS = lazy(() => import("./pages/MetricasSaaS"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const AppLoading = forwardRef<HTMLDivElement>((_, ref) => {
