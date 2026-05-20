@@ -583,7 +583,111 @@ export default function Churn() {
           </Table>
         </div>
       </Card>
+
+      {/* Cohort retention heatmap */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <div className="font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4" /> Retención por cohorte
+            </div>
+            <div className="text-xs text-muted-foreground">
+              % de clientes que siguen activos N meses después de su alta. Celdas en gris = mes futuro.
+            </div>
+          </div>
+        </div>
+        <CohortHeatmap rows={cohort} />
+      </Card>
+
+      {/* Clientes en riesgo — placeholder */}
+      <Card className="p-4 border-dashed">
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1">
+            <div className="font-semibold flex items-center gap-2">
+              Clientes en riesgo
+              <Badge variant="outline" className="text-[10px]">Próximamente</Badge>
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Requiere integración con el sistema de <strong>Gestión &amp; Marketing</strong> para
+              consumir el Health Score por cliente (uso del producto, tickets, NPS, retraso de pagos).
+              Cuando esté disponible se listarán acá los clientes con mayor probabilidad de churn en los
+              próximos 30/60/90 días.
+            </div>
+          </div>
+        </div>
+      </Card>
     </PageContainer>
+  );
+}
+
+function CohortHeatmap({
+  rows,
+}: {
+  rows: { cohort: string; size: number; cells: { n: number; retained: number | null; pct: number | null }[] }[];
+}) {
+  const hasData = rows.some((r) => r.size > 0);
+  if (!hasData) {
+    return (
+      <div className="text-sm text-muted-foreground py-10 text-center border border-dashed rounded-md">
+        Aún no hay altas suficientes en los últimos 12 meses para construir cohortes.
+      </div>
+    );
+  }
+  const cellColor = (pct: number | null) => {
+    if (pct === null) return "bg-muted/30 text-muted-foreground";
+    if (pct >= 0.9) return "bg-emerald-500/80 text-white";
+    if (pct >= 0.75) return "bg-emerald-500/55 text-white";
+    if (pct >= 0.6) return "bg-amber-500/55 text-white";
+    if (pct >= 0.4) return "bg-orange-500/60 text-white";
+    return "bg-destructive/70 text-white";
+  };
+  const elapsed = rows[0]?.cells.length ?? 0;
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-xs border-separate border-spacing-1">
+        <thead>
+          <tr>
+            <th className="text-left text-muted-foreground font-normal px-2">Cohorte (alta)</th>
+            <th className="text-right text-muted-foreground font-normal px-2">N</th>
+            {Array.from({ length: elapsed }, (_, i) => (
+              <th key={i} className="text-center text-muted-foreground font-normal w-12">M{i}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.cohort}>
+              <td className="px-2 tabular-nums">{r.cohort.slice(0, 7)}</td>
+              <td className="px-2 text-right tabular-nums text-muted-foreground">{r.size}</td>
+              {r.cells.map((c) => (
+                <td
+                  key={c.n}
+                  className={`w-12 h-8 text-center rounded ${cellColor(c.pct)}`}
+                  title={
+                    c.pct === null
+                      ? "Mes futuro"
+                      : `${c.retained}/${r.size} activos (${(c.pct * 100).toFixed(0)}%)`
+                  }
+                >
+                  {c.pct === null ? "—" : r.size === 0 ? "·" : `${Math.round(c.pct * 100)}%`}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center gap-3 mt-3 text-[11px] text-muted-foreground">
+        <span>Escala:</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-destructive/70" /> &lt;40%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-orange-500/60" /> 40-60%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-amber-500/55" /> 60-75%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500/55" /> 75-90%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500/80" /> ≥90%</span>
+      </div>
+    </div>
   );
 }
 
