@@ -818,6 +818,27 @@ export type Database = {
         }
         Relationships: []
       }
+      exchange_rate_validation_ranges: {
+        Row: {
+          currency: string
+          max_rate: number
+          min_rate: number
+          updated_at: string
+        }
+        Insert: {
+          currency: string
+          max_rate: number
+          min_rate: number
+          updated_at?: string
+        }
+        Update: {
+          currency?: string
+          max_rate?: number
+          min_rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       exchange_rates: {
         Row: {
           base_currency: string
@@ -1925,6 +1946,10 @@ export type Database = {
       recompute_mrr_for_month: { Args: { _period: string }; Returns: undefined }
       refresh_invoice_statuses: { Args: never; Returns: undefined }
       start_mrr_recompute: { Args: { _months?: number }; Returns: string }
+      to_usd: {
+        Args: { _amount: number; _currency: string; _period_month: string }
+        Returns: number
+      }
       upsert_exchange_rate_override: {
         Args: {
           _currency: string
