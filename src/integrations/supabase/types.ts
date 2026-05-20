@@ -1752,27 +1752,69 @@ export type Database = {
       }
       mevak_kpis_semanales: {
         Row: {
+          cancelaciones: number | null
           client_id: string
           created_at: string
+          created_by: string | null
+          demoras_min_prom: number | null
+          facturacion: number | null
+          food_is_ready_min: number | null
           id: string
           metrics: Json
+          notas: string | null
+          open_time_pct: number | null
+          ordenes: number | null
           platform_id: string | null
+          rechazos: number | null
+          reviews_cantidad: number | null
+          reviews_puntaje: number | null
+          source: string | null
+          sucursal_id: string | null
+          ticket_promedio: number | null
           week_start: string
         }
         Insert: {
+          cancelaciones?: number | null
           client_id: string
           created_at?: string
+          created_by?: string | null
+          demoras_min_prom?: number | null
+          facturacion?: number | null
+          food_is_ready_min?: number | null
           id?: string
           metrics?: Json
+          notas?: string | null
+          open_time_pct?: number | null
+          ordenes?: number | null
           platform_id?: string | null
+          rechazos?: number | null
+          reviews_cantidad?: number | null
+          reviews_puntaje?: number | null
+          source?: string | null
+          sucursal_id?: string | null
+          ticket_promedio?: number | null
           week_start: string
         }
         Update: {
+          cancelaciones?: number | null
           client_id?: string
           created_at?: string
+          created_by?: string | null
+          demoras_min_prom?: number | null
+          facturacion?: number | null
+          food_is_ready_min?: number | null
           id?: string
           metrics?: Json
+          notas?: string | null
+          open_time_pct?: number | null
+          ordenes?: number | null
           platform_id?: string | null
+          rechazos?: number | null
+          reviews_cantidad?: number | null
+          reviews_puntaje?: number | null
+          source?: string | null
+          sucursal_id?: string | null
+          ticket_promedio?: number | null
           week_start?: string
         }
         Relationships: [
@@ -1795,6 +1837,13 @@ export type Database = {
             columns: ["platform_id"]
             isOneToOne: false
             referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_kpis_semanales_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_sucursales"
             referencedColumns: ["id"]
           },
         ]
@@ -3769,6 +3818,15 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      mevak_create_reporte_semanal: {
+        Args: {
+          _client_id: string
+          _content: Json
+          _summary: string
+          _week_start: string
+        }
+        Returns: string
+      }
       mevak_get_client_360: {
         Args: { _client_id: string }
         Returns: {
@@ -3837,9 +3895,30 @@ export type Database = {
           updated_at: string
         }[]
       }
+      mevak_get_reporte_semanal_data: {
+        Args: { _client_id: string; _week_start: string }
+        Returns: Json
+      }
+      mevak_get_reportes_settings: { Args: never; Returns: Json }
       mevak_instantiate_onboarding: {
         Args: { _client_id: string }
         Returns: number
+      }
+      mevak_kpis_semana_agg: {
+        Args: { _client_id: string; _week_start: string }
+        Returns: {
+          cancelaciones: number
+          demoras_min_prom: number
+          facturacion: number
+          food_is_ready_min: number
+          open_time_pct: number
+          ordenes: number
+          por_plataforma: Json
+          rechazos: number
+          reviews_cantidad: number
+          reviews_puntaje: number
+          ticket_promedio: number
+        }[]
       }
       mevak_list_client_sub_brands: {
         Args: { _client_id: string }
@@ -3964,6 +4043,20 @@ export type Database = {
           sub_brand_name: string
           sucursal_id: string
           sucursal_nombre: string
+        }[]
+      }
+      mevak_list_reportes_semanales: {
+        Args: { _client_id: string }
+        Returns: {
+          created_at: string
+          created_by_email: string
+          id: string
+          pdf_url: string
+          seen_at: string
+          sent_at: string
+          status: Database["public"]["Enums"]["mevak_reporte_status"]
+          summary: string
+          week_start: string
         }[]
       }
       mevak_list_reunion_tareas: {
@@ -4116,6 +4209,34 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      mevak_set_reporte_semanal_status: {
+        Args: {
+          _id: string
+          _pdf_url: string
+          _status: Database["public"]["Enums"]["mevak_reporte_status"]
+        }
+        Returns: undefined
+      }
+      mevak_upsert_kpi_semanal: {
+        Args: {
+          _cancelaciones: number
+          _client_id: string
+          _demoras_min_prom: number
+          _facturacion: number
+          _food_is_ready_min: number
+          _notas: string
+          _open_time_pct: number
+          _ordenes: number
+          _platform_id: string
+          _rechazos: number
+          _reviews_cantidad: number
+          _reviews_puntaje: number
+          _source: string
+          _sucursal_id: string
+          _week_start: string
+        }
+        Returns: string
       }
       prorated_mrr: {
         Args: {
