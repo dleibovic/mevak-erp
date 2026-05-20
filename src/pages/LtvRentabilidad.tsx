@@ -239,9 +239,8 @@ export default function LtvRentabilidad() {
   const incompleteCount = active.filter((p) => p.incomplete).length;
   const completeCoverage = active.length > 0 ? (active.length - incompleteCount) / active.length : 0;
 
-  // CMV-based margin (informational only, kept for reference)
-  const withCmv = active.filter((p) => p.hasCmv);
-  const cmvCoverage = totalMrrUsd > 0 ? withCmv.reduce((s, p) => s + p.feeUsd, 0) / totalMrrUsd : 0;
+  // CMV-based info kept for clients with cmv_cost data — no longer the primary margin source.
+
 
   // Effective margin for LTV = aggregate real margin (already mixes fallback per cliente)
   const effectiveMarginPct = aggregateMarginPct;
