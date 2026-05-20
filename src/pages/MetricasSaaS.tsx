@@ -10,7 +10,8 @@ import {
   Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Info } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Info, Coins } from "lucide-react";
+import { fmtDisplay, getDisplayCurrency, getDisplayCountryName } from "@/lib/displayCurrency";
 
 type CmhRow = {
   client_id: string;
