@@ -21,6 +21,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Prospecting = lazy(() => import("./pages/Prospecting"));
 const MetricasSaaS = lazy(() => import("./pages/MetricasSaaS"));
 const Churn = lazy(() => import("./pages/Churn"));
+const LtvRentabilidad = lazy(() => import("./pages/LtvRentabilidad"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const AppLoading = forwardRef<HTMLDivElement>((_, ref) => {
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/admin" element={<Admin />} />
               <Route path="/metricas-saas" element={<MetricasSaaS />} />
               <Route path="/churn" element={<Churn />} />
+              <Route path="/ltv-rentabilidad" element={<LtvRentabilidad />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
