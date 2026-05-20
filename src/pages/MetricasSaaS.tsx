@@ -79,8 +79,8 @@ export default function MetricasSaaS() {
   });
 
   const { data: countries = [] } = useQuery({
-    queryKey: ["countries-list"],
-    queryFn: async () => (await supabase.from("countries").select("id, name")).data ?? [],
+    queryKey: ["countries-cc"],
+    queryFn: async () => (await supabase.from("countries").select("id, name, currency_code")).data ?? [],
   });
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-list"],
@@ -90,6 +90,20 @@ export default function MetricasSaaS() {
     queryKey: ["food-categories"],
     queryFn: async () => (await supabase.from("food_categories").select("id, name")).data ?? [],
   });
+  const { data: rates = [] } = useQuery({
+    queryKey: ["latest-rates"],
+    queryFn: async () => (await supabase.from("exchange_rates").select("base_currency, rate, rate_date").order("rate_date", { ascending: false })).data ?? [],
+  });
+
+  const latestRate = useMemo(() => {
+    const m = new Map<string, number>();
+    (rates as any[]).forEach((r) => { if (!m.has(r.base_currency)) m.set(r.base_currency, Number(r.rate)); });
+    return m;
+  }, [rates]);
+
+  const displayCurrency = getDisplayCurrency(country, countries as any);
+  const displayCountryName = getDisplayCountryName(country, countries as any);
+  const fmtMoney = (usd: number) => fmtDisplay(usd, displayCurrency, latestRate);
 
   const clientById = useMemo(() => {
     const m = new Map<string, ClientLite>();
