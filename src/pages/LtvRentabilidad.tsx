@@ -123,6 +123,10 @@ export default function LtvRentabilidad() {
     return amount / r;
   };
 
+  const displayCurrency = getDisplayCurrency(country, countries as any);
+  const displayCountryName = getDisplayCountryName(country, countries as any);
+  const fmtMoney = (usd: number) => fmtDisplay(usd, displayCurrency, latestRate);
+
   const currenciesAvailable = useMemo(() => {
     const s = new Set<string>(); clients.forEach((c) => s.add(c.fee_currency));
     return Array.from(s).sort();
@@ -142,6 +146,33 @@ export default function LtvRentabilidad() {
     return m;
   }, [cmh]);
 
+  // ---- Real gross margin per client: fee - commission - (exec_salary / active_clients_for_exec) ----
+  const employeeById = useMemo(() => {
+    const m = new Map<string, any>();
+    (employees as any[]).forEach((e) => m.set(e.id, e));
+    return m;
+  }, [employees]);
+
+  // Active client count by assigned executive (uses ALL clients, unaffected by filters)
+  const activeCountByExec = useMemo(() => {
+    const m = new Map<string, number>();
+    clients.forEach((c) => {
+      if (c.status !== "active" || !c.assigned_executive_id) return;
+      m.set(c.assigned_executive_id, (m.get(c.assigned_executive_id) ?? 0) + 1);
+    });
+    return m;
+  }, [clients]);
+
+  // Sum of commissions per client (across all assigned execs) in USD
+  const commissionUsdByClient = useMemo(() => {
+    const m = new Map<string, number>();
+    (commissionRows as any[]).forEach((r) => {
+      const usd = toUsd(Number(r.commission_value || 0), r.currency || "USD");
+      m.set(r.client_id, (m.get(r.client_id) ?? 0) + usd);
+    });
+    return m;
+  }, [commissionRows, latestRate]);
+
   const today = new Date();
   const perClient = useMemo(() => {
     return filteredClients.map((c) => {
@@ -151,8 +182,34 @@ export default function LtvRentabilidad() {
       const feeUsd = toUsd(Number(effectiveFee || 0), c.fee_currency);
       const cmvUsd = toUsd(Number(c.cmv_cost || 0), c.cmv_currency);
       const hasCmv = Number(c.cmv_cost || 0) > 0;
-      const marginUsd = feeUsd - cmvUsd;
-      const marginPct = feeUsd > 0 ? marginUsd / feeUsd : 0;
+
+      // New margin formula
+      const commissionUsd = commissionUsdByClient.get(c.id) ?? 0;
+      const exec = c.assigned_executive_id ? employeeById.get(c.assigned_executive_id) : null;
+      const execSalaryUsd = exec && Number(exec.base_salary || 0) > 0
+        ? toUsd(Number(exec.base_salary), exec.salary_currency || "USD")
+        : 0;
+      const execActiveCount = c.assigned_executive_id
+        ? (activeCountByExec.get(c.assigned_executive_id) ?? 0)
+        : 0;
+      const allocatedSalaryUsd = exec && execSalaryUsd > 0 && execActiveCount > 0
+        ? execSalaryUsd / execActiveCount
+        : 0;
+
+      const missingExec = !exec;
+      const missingSalary = !!exec && !(Number(exec.base_salary || 0) > 0);
+      const incomplete = missingExec || missingSalary;
+
+      let marginUsd: number;
+      let marginPct: number;
+      if (incomplete) {
+        // Fallback: usar margen default sobre el fee
+        marginUsd = feeUsd * grossMarginDefault;
+        marginPct = grossMarginDefault;
+      } else {
+        marginUsd = feeUsd - commissionUsd - allocatedSalaryUsd;
+        marginPct = feeUsd > 0 ? marginUsd / feeUsd : 0;
+      }
 
       const start = c.activated_at ? new Date(c.activated_at) : null;
       const end = c.churned_at ? new Date(c.churned_at) : today;
@@ -163,23 +220,31 @@ export default function LtvRentabilidad() {
       const rows = cmhByClient.get(c.id) ?? [];
       const historicalLtvUsd = rows.reduce((s, r) => r.movement_type === "churn" ? s : s + Number(r.mrr_amount_usd || 0), 0);
 
-      return { id: c.id, name: c.company_name, status: c.status, activeMonths, feeUsd, cmvUsd, hasCmv, marginPct, marginUsd, historicalLtvUsd };
+      return {
+        id: c.id, name: c.company_name, status: c.status, activeMonths,
+        feeUsd, cmvUsd, hasCmv,
+        commissionUsd, allocatedSalaryUsd, execName: exec?.full_name ?? null,
+        incomplete, missingExec, missingSalary,
+        marginPct, marginUsd, historicalLtvUsd,
+      };
     });
-  }, [filteredClients, cmhByClient, latestRate]);
+  }, [filteredClients, cmhByClient, latestRate, commissionUsdByClient, employeeById, activeCountByExec, grossMarginDefault]);
 
   const active = perClient.filter((p) => p.status === "active");
   const totalMrrUsd = active.reduce((s, p) => s + p.feeUsd, 0);
 
-  // Real margin: only over clients with cmv_cost > 0
-  const withCmv = active.filter((p) => p.hasCmv);
-  const mrrWithCmv = withCmv.reduce((s, p) => s + p.feeUsd, 0);
-  const cmvWithCmv = withCmv.reduce((s, p) => s + p.cmvUsd, 0);
-  const realMarginPct = mrrWithCmv > 0 ? (mrrWithCmv - cmvWithCmv) / mrrWithCmv : 0;
-  const cmvCoverage = totalMrrUsd > 0 ? mrrWithCmv / totalMrrUsd : 0;
+  // Aggregate real margin (using formula for complete clients, fallback for incomplete)
+  const totalMarginUsd = active.reduce((s, p) => s + p.marginUsd, 0);
+  const aggregateMarginPct = totalMrrUsd > 0 ? totalMarginUsd / totalMrrUsd : 0;
+  const incompleteCount = active.filter((p) => p.incomplete).length;
+  const completeCoverage = active.length > 0 ? (active.length - incompleteCount) / active.length : 0;
 
-  // Effective margin used in LTV: real if coverage >= 80%, otherwise default from settings
-  const usingRealMargin = cmvCoverage >= 0.8;
-  const effectiveMarginPct = usingRealMargin ? realMarginPct : grossMarginDefault;
+  // CMV-based margin (informational only, kept for reference)
+  const withCmv = active.filter((p) => p.hasCmv);
+  const cmvCoverage = totalMrrUsd > 0 ? withCmv.reduce((s, p) => s + p.feeUsd, 0) / totalMrrUsd : 0;
+
+  // Effective margin for LTV = aggregate real margin (already mixes fallback per cliente)
+  const effectiveMarginPct = aggregateMarginPct;
 
   const arpa = active.length > 0 ? totalMrrUsd / active.length : 0;
 
@@ -208,7 +273,6 @@ export default function LtvRentabilidad() {
 
   const marginBuckets = useMemo(() => {
     const buckets = [
-      { range: "Sin CMV", min: NaN, max: NaN, count: 0 },
       { range: "<0%", min: -Infinity, max: 0, count: 0 },
       { range: "0-25%", min: 0, max: 0.25, count: 0 },
       { range: "25-50%", min: 0.25, max: 0.5, count: 0 },
@@ -216,19 +280,18 @@ export default function LtvRentabilidad() {
       { range: "75-100%", min: 0.75, max: 1.01, count: 0 },
     ];
     active.forEach((p) => {
-      if (!p.hasCmv) { buckets[0].count += 1; return; }
-      const b = buckets.find((x) => !isNaN(x.min) && p.marginPct >= x.min && p.marginPct < x.max);
+      const b = buckets.find((x) => p.marginPct >= x.min && p.marginPct < x.max);
       if (b) b.count += 1;
     });
     return buckets;
   }, [active]);
 
-  const scatterData = active.filter((p) => p.hasCmv).map((p) => ({
+  const scatterData = active.map((p) => ({
     x: p.marginPct * 100, y: p.historicalLtvUsd, z: p.feeUsd, name: p.name,
   }));
 
-  const topMargin = [...active].filter((p) => p.hasCmv).sort((a, b) => b.marginUsd - a.marginUsd).slice(0, 10);
-  const bottomMargin = [...active].filter((p) => p.hasCmv && p.feeUsd > 0).sort((a, b) => a.marginPct - b.marginPct).slice(0, 10);
+  const topMargin = [...active].sort((a, b) => b.marginUsd - a.marginUsd).slice(0, 10);
+  const bottomMargin = [...active].filter((p) => p.feeUsd > 0).sort((a, b) => a.marginPct - b.marginPct).slice(0, 10);
 
   return (
     <TooltipProvider delayDuration={200}>
