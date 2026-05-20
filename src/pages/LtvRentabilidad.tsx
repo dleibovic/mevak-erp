@@ -653,7 +653,7 @@ function KpiCard({
   );
 }
 
-function ClientRankTable({ title, rows }: { title: string; rows: any[] }) {
+function ClientRankTable({ title, rows, fmt }: { title: string; rows: any[]; fmt: (n: number) => string }) {
   return (
     <Card className="p-4">
       <div className="font-semibold mb-3 flex items-center gap-2">{title} <DataTag tag="real" /></div>
@@ -668,13 +668,16 @@ function ClientRankTable({ title, rows }: { title: string; rows: any[] }) {
         </TableHeader>
         <TableBody>
           {rows.length === 0 && (
-            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6 text-sm">Sin clientes con CMV cargado</TableCell></TableRow>
+            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6 text-sm">Sin clientes activos</TableCell></TableRow>
           )}
           {rows.map((p) => (
             <TableRow key={p.id}>
-              <TableCell className="max-w-[180px] truncate">{p.name}</TableCell>
-              <TableCell className="text-right tabular-nums">{fmtUsd(p.feeUsd)}</TableCell>
-              <TableCell className="text-right tabular-nums">{fmtUsd(p.marginUsd)}</TableCell>
+              <TableCell className="max-w-[180px] truncate">
+                {p.incomplete && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5" title="Fallback" />}
+                {p.name}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(p.feeUsd)}</TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(p.marginUsd)}</TableCell>
               <TableCell className={`text-right tabular-nums ${p.marginPct < 0 ? "text-destructive" : ""}`}>{fmtPct(p.marginPct)}</TableCell>
             </TableRow>
           ))}
