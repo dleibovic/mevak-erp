@@ -43,21 +43,27 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          cac_default_usd: number
           created_at: string
+          gross_margin_default_pct: number
           id: number
           mrr_base_currency: string
           paused_to_churned_days: number
           updated_at: string
         }
         Insert: {
+          cac_default_usd?: number
           created_at?: string
+          gross_margin_default_pct?: number
           id?: number
           mrr_base_currency?: string
           paused_to_churned_days?: number
           updated_at?: string
         }
         Update: {
+          cac_default_usd?: number
           created_at?: string
+          gross_margin_default_pct?: number
           id?: number
           mrr_base_currency?: string
           paused_to_churned_days?: number
