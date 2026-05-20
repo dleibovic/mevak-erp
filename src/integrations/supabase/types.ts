@@ -1590,6 +1590,60 @@ export type Database = {
           },
         ]
       }
+      mevak_fotos: {
+        Row: {
+          client_id: string
+          created_at: string
+          drive_url: string | null
+          filename: string | null
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          tags: string[]
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          drive_url?: string | null
+          filename?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          tags?: string[]
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          drive_url?: string | null
+          filename?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          tags?: string[]
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_fotos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_fotos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       mevak_interacciones_whatsapp: {
         Row: {
           client_id: string
@@ -1741,6 +1795,153 @@ export type Database = {
             columns: ["platform_id"]
             isOneToOne: false
             referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_menu_items: {
+        Row: {
+          client_id: string
+          client_sub_brand_id: string | null
+          combos: Json
+          costo: number | null
+          created_at: string
+          descripcion: string | null
+          foto_url: string | null
+          id: string
+          metadata: Json
+          nombre: string
+          opcionales: Json
+          precio: number | null
+          promo_vinculada: string | null
+          seccion: string | null
+          stock_estado: string | null
+          updated_at: string
+          upload_id: string | null
+        }
+        Insert: {
+          client_id: string
+          client_sub_brand_id?: string | null
+          combos?: Json
+          costo?: number | null
+          created_at?: string
+          descripcion?: string | null
+          foto_url?: string | null
+          id?: string
+          metadata?: Json
+          nombre: string
+          opcionales?: Json
+          precio?: number | null
+          promo_vinculada?: string | null
+          seccion?: string | null
+          stock_estado?: string | null
+          updated_at?: string
+          upload_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          client_sub_brand_id?: string | null
+          combos?: Json
+          costo?: number | null
+          created_at?: string
+          descripcion?: string | null
+          foto_url?: string | null
+          id?: string
+          metadata?: Json
+          nombre?: string
+          opcionales?: Json
+          precio?: number | null
+          promo_vinculada?: string | null
+          seccion?: string | null
+          stock_estado?: string | null
+          updated_at?: string
+          upload_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_menu_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_menu_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_menu_items_client_sub_brand_id_fkey"
+            columns: ["client_sub_brand_id"]
+            isOneToOne: false
+            referencedRelation: "client_sub_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_menu_items_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_menu_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_menu_uploads: {
+        Row: {
+          client_id: string
+          client_sub_brand_id: string | null
+          created_at: string
+          filename: string | null
+          id: string
+          notas: string | null
+          row_count: number
+          storage_path: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          client_sub_brand_id?: string | null
+          created_at?: string
+          filename?: string | null
+          id?: string
+          notas?: string | null
+          row_count?: number
+          storage_path?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          client_sub_brand_id?: string | null
+          created_at?: string
+          filename?: string | null
+          id?: string
+          notas?: string | null
+          row_count?: number
+          storage_path?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_menu_uploads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_menu_uploads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_menu_uploads_client_sub_brand_id_fkey"
+            columns: ["client_sub_brand_id"]
+            isOneToOne: false
+            referencedRelation: "client_sub_brands"
             referencedColumns: ["id"]
           },
         ]
@@ -1967,6 +2168,8 @@ export type Database = {
       }
       mevak_promociones: {
         Row: {
+          aprobada_at: string | null
+          aprobada_by: string | null
           client_id: string
           created_at: string
           created_by: string | null
@@ -1979,9 +2182,12 @@ export type Database = {
           starts_at: string | null
           status: Database["public"]["Enums"]["mevak_promocion_status"]
           sub_brand_id: string | null
+          sucursal_id: string | null
           updated_at: string
         }
         Insert: {
+          aprobada_at?: string | null
+          aprobada_by?: string | null
           client_id: string
           created_at?: string
           created_by?: string | null
@@ -1994,9 +2200,12 @@ export type Database = {
           starts_at?: string | null
           status?: Database["public"]["Enums"]["mevak_promocion_status"]
           sub_brand_id?: string | null
+          sucursal_id?: string | null
           updated_at?: string
         }
         Update: {
+          aprobada_at?: string | null
+          aprobada_by?: string | null
           client_id?: string
           created_at?: string
           created_by?: string | null
@@ -2009,6 +2218,7 @@ export type Database = {
           starts_at?: string | null
           status?: Database["public"]["Enums"]["mevak_promocion_status"]
           sub_brand_id?: string | null
+          sucursal_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2038,6 +2248,13 @@ export type Database = {
             columns: ["sub_brand_id"]
             isOneToOne: false
             referencedRelation: "client_sub_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_promociones_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_sucursales"
             referencedColumns: ["id"]
           },
         ]
@@ -3571,6 +3788,19 @@ export type Database = {
           timeline_count: number
         }[]
       }
+      mevak_get_menu_score: {
+        Args: { _client_id: string }
+        Returns: {
+          last_upload_at: string
+          last_upload_by: string
+          pct_costo: number
+          pct_descripcion: number
+          pct_foto: number
+          pct_precio: number
+          score: number
+          total_items: number
+        }[]
+      }
       mevak_get_objetivos: {
         Args: { _client_id: string }
         Returns: {
@@ -3656,6 +3886,53 @@ export type Database = {
           tipo: string
         }[]
       }
+      mevak_list_fotos: {
+        Args: { _client_id: string }
+        Returns: {
+          created_at: string
+          drive_url: string
+          filename: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          tags: string[]
+          uploaded_by_email: string
+        }[]
+      }
+      mevak_list_menu_items: {
+        Args: { _client_id: string }
+        Returns: {
+          client_sub_brand_id: string
+          combos: Json
+          costo: number
+          created_at: string
+          descripcion: string
+          foto_url: string
+          id: string
+          nombre: string
+          opcionales: Json
+          precio: number
+          promo_vinculada: string
+          seccion: string
+          stock_estado: string
+          sub_brand_name: string
+          upload_id: string
+        }[]
+      }
+      mevak_list_menu_uploads: {
+        Args: { _client_id: string }
+        Returns: {
+          created_at: string
+          filename: string
+          id: string
+          notas: string
+          row_count: number
+          storage_path: string
+          sub_brand_name: string
+          uploaded_by_email: string
+        }[]
+      }
       mevak_list_onboarding_pipeline: {
         Args: never
         Returns: {
@@ -3668,6 +3945,25 @@ export type Database = {
           name: string
           pct: number
           total: number
+        }[]
+      }
+      mevak_list_promociones: {
+        Args: { _client_id: string }
+        Returns: {
+          aprobada_at: string
+          created_at: string
+          descripcion: string
+          ends_at: string
+          id: string
+          nombre: string
+          platform_id: string
+          platform_name: string
+          starts_at: string
+          status: Database["public"]["Enums"]["mevak_promocion_status"]
+          sub_brand_id: string
+          sub_brand_name: string
+          sucursal_id: string
+          sucursal_nombre: string
         }[]
       }
       mevak_list_reunion_tareas: {
@@ -3879,7 +4175,10 @@ export type Database = {
         | "completado"
         | "no_aplica"
       mevak_promocion_status:
+        | "propuesta"
         | "planificada"
+        | "aprobada_offline"
+        | "cargada_en_plataformas"
         | "activa"
         | "finalizada"
         | "cancelada"
@@ -4087,7 +4386,10 @@ export const Constants = {
         "no_aplica",
       ],
       mevak_promocion_status: [
+        "propuesta",
         "planificada",
+        "aprobada_offline",
+        "cargada_en_plataformas",
         "activa",
         "finalizada",
         "cancelada",
