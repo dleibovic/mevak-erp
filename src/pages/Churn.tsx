@@ -98,7 +98,7 @@ export default function Churn() {
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
-        .select("id, company_name, country_id, assigned_executive_id, food_category_id, fee_currency");
+        .select("id, company_name, country_id, assigned_executive_id, food_category_id, fee_currency, activated_at, churned_at, status");
       return (data ?? []) as ClientLite[];
     },
   });
