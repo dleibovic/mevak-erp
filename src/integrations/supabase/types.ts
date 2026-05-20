@@ -1085,6 +1085,27 @@ export type Database = {
         }
         Relationships: []
       }
+      mevak_user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["mevak_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["mevak_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["mevak_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       monthly_invoices: {
         Row: {
           amount: number
@@ -1932,6 +1953,17 @@ export type Database = {
         Args: { _currency: string; _period_month: string }
         Returns: number
       }
+      get_mevak_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["mevak_role"]
+      }
+      has_mevak_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["mevak_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1986,6 +2018,7 @@ export type Database = {
       expense_assignee: "dario" | "maria" | "company"
       invoice_status: "pending" | "overdue" | "paid"
       invoice_type: "formal" | "cash"
+      mevak_role: "direccion" | "ejecutivo" | "cliente"
       monthly_invoice_status: "pending" | "invoiced" | "paid" | "overdue"
       mrr_movement_type:
         | "new"
@@ -2157,6 +2190,7 @@ export const Constants = {
       expense_assignee: ["dario", "maria", "company"],
       invoice_status: ["pending", "overdue", "paid"],
       invoice_type: ["formal", "cash"],
+      mevak_role: ["direccion", "ejecutivo", "cliente"],
       monthly_invoice_status: ["pending", "invoiced", "paid", "overdue"],
       mrr_movement_type: [
         "new",
