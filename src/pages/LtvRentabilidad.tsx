@@ -93,16 +93,20 @@ export default function LtvRentabilidad() {
   });
 
   const { data: countries = [] } = useQuery({
-    queryKey: ["countries-list"],
-    queryFn: async () => (await supabase.from("countries").select("id, name")).data ?? [],
+    queryKey: ["countries-cc"],
+    queryFn: async () => (await supabase.from("countries").select("id, name, currency_code")).data ?? [],
   });
   const { data: employees = [] } = useQuery({
-    queryKey: ["employees-list"],
-    queryFn: async () => (await supabase.from("employees").select("id, full_name").eq("is_active", true)).data ?? [],
+    queryKey: ["employees-with-salary"],
+    queryFn: async () => (await supabase.from("employees").select("id, full_name, base_salary, salary_currency, is_active")).data ?? [],
   });
   const { data: foodCategories = [] } = useQuery({
     queryKey: ["food-categories"],
     queryFn: async () => (await supabase.from("food_categories").select("id, name")).data ?? [],
+  });
+  const { data: commissionRows = [] } = useQuery({
+    queryKey: ["client-exec-commissions"],
+    queryFn: async () => (await (supabase as any).from("client_executive_commission").select("client_id, employee_id, commission_value, currency")).data ?? [],
   });
 
   const latestRate = useMemo(() => {
