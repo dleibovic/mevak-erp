@@ -424,14 +424,14 @@ export default function Churn() {
           icon={<TrendingDown className="h-4 w-4" />}
           label="Revenue Churn (mensual)"
           value={fmtPct(revChurnMonth)}
-          sub={`${fmtUsd(mrrLostLastMonth)} perdidos`}
+          sub={`${fmtMoney(mrrLostLastMonth)} perdidos`}
           tone="destructive"
         />
         <KpiCard
           icon={<TrendingDown className="h-4 w-4" />}
           label="Revenue Churn (trim. rolling)"
           value={fmtPct(revChurnQ)}
-          sub={`${fmtUsd(last3.reduce((s, m) => s + m.churnMrr, 0))} últimos 3m`}
+          sub={`${fmtMoney(last3.reduce((s, m) => s + m.churnMrr, 0))} últimos 3m`}
         />
         <KpiCard
           label="Churn anualizado (logo)"
@@ -445,7 +445,7 @@ export default function Churn() {
         />
         <KpiCard
           label="MRR perdido (mes)"
-          value={fmtUsd(mrrLostLastMonth)}
+          value={fmtMoney(mrrLostLastMonth)}
           sub="USD, baseline mes anterior"
         />
         <KpiCard
@@ -494,7 +494,7 @@ export default function Churn() {
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                  formatter={(v: any) => fmtUsd(Number(v))}
+                  formatter={(v: any) => fmtMoney(Number(v))}
                 />
                 <Bar dataKey="mrrLost" name="MRR perdido" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -541,7 +541,7 @@ export default function Churn() {
                       <span>{REASON_LABEL[r.reason] || r.reason}</span>
                     </div>
                     <div className="text-muted-foreground tabular-nums">
-                      {r.count} · {fmtUsd(r.mrrUsd)}
+                      {r.count} · {fmtMoney(r.mrrUsd)}
                     </div>
                   </div>
                 ))}
@@ -589,7 +589,7 @@ export default function Churn() {
                     <TableCell className="text-right tabular-nums">
                       {Number(e.mrr_lost || 0).toLocaleString()} {e.currency}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtUsd(Number(e.mrr_lost_usd || 0))}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtMoney(Number(e.mrr_lost_usd || 0))}</TableCell>
                   </TableRow>
                 );
               })}
