@@ -12,7 +12,8 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer,
   Tooltip, XAxis, YAxis, ScatterChart, Scatter, ZAxis,
 } from "recharts";
-import { Info, DollarSign, Percent, Clock, TrendingUp, Settings, AlertTriangle } from "lucide-react";
+import { Info, DollarSign, Percent, Clock, TrendingUp, Settings, AlertTriangle, Coins } from "lucide-react";
+import { fmtDisplay, getDisplayCurrency, getDisplayCountryName } from "@/lib/displayCurrency";
 
 type ClientRow = {
   id: string; company_name: string; country_id: string | null;
