@@ -10,7 +10,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { AlertTriangle, Info, TrendingDown, Users } from "lucide-react";
+import { AlertTriangle, Info, TrendingDown, Users, Activity, Sparkles } from "lucide-react";
 
 type CmhRow = {
   client_id: string;
@@ -31,6 +31,9 @@ type ClientLite = {
   assigned_executive_id: string | null;
   food_category_id: string | null;
   fee_currency: string;
+  activated_at: string | null;
+  churned_at: string | null;
+  status: string;
 };
 
 type ChurnEvent = {
@@ -95,7 +98,7 @@ export default function Churn() {
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
-        .select("id, company_name, country_id, assigned_executive_id, food_category_id, fee_currency");
+        .select("id, company_name, country_id, assigned_executive_id, food_category_id, fee_currency, activated_at, churned_at, status");
       return (data ?? []) as ClientLite[];
     },
   });
@@ -281,6 +284,54 @@ export default function Churn() {
   }));
 
   const hasEstimated = monthly.some((m) => m.estimated);
+  const hasAnyData = filteredCmh.length > 0 || filteredEvents.length > 0;
+
+  // Cohort retention: rows = cohort month (alta), cols = months elapsed
+  const cohort = useMemo(() => {
+    const COHORT_MONTHS = 12;
+    const ELAPSED = 12;
+    const cohortKeys = lastNMonths(COHORT_MONTHS); // oldest -> newest
+
+    const now = new Date();
+    const curMonthIdx = now.getFullYear() * 12 + now.getMonth();
+    const monthIdxFromKey = (k: string) => {
+      const [y, m] = k.split("-").map(Number);
+      return y * 12 + (m - 1);
+    };
+
+    // Group passing clients by cohort (activated_at month)
+    const buckets = new Map<string, ClientLite[]>();
+    cohortKeys.forEach((k) => buckets.set(k, []));
+    clients.forEach((c) => {
+      if (!c.activated_at) return;
+      if (!passFilter(c.id)) return;
+      const d = new Date(c.activated_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+      if (buckets.has(key)) buckets.get(key)!.push(c);
+    });
+
+    const rows = cohortKeys.map((ck) => {
+      const cohortIdx = monthIdxFromKey(ck);
+      const members = buckets.get(ck)!;
+      const size = members.length;
+      const cells = Array.from({ length: ELAPSED + 1 }, (_, n) => {
+        const refIdx = cohortIdx + n;
+        if (refIdx > curMonthIdx) return { n, retained: null as number | null, pct: null as number | null };
+        if (size === 0) return { n, retained: 0, pct: null };
+        // retained if not churned before end of ref month
+        const refY = Math.floor(refIdx / 12);
+        const refM = refIdx % 12;
+        const endOfRef = new Date(refY, refM + 1, 0); // last day of month
+        let r = 0;
+        members.forEach((c) => {
+          if (!c.churned_at || new Date(c.churned_at) > endOfRef) r += 1;
+        });
+        return { n, retained: r, pct: r / size };
+      });
+      return { cohort: ck, size, cells };
+    });
+    return rows;
+  }, [clients, country, executive, foodCat, currency]);
 
   return (
     <PageContainer>
@@ -532,7 +583,111 @@ export default function Churn() {
           </Table>
         </div>
       </Card>
+
+      {/* Cohort retention heatmap */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <div className="font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4" /> Retención por cohorte
+            </div>
+            <div className="text-xs text-muted-foreground">
+              % de clientes que siguen activos N meses después de su alta. Celdas en gris = mes futuro.
+            </div>
+          </div>
+        </div>
+        <CohortHeatmap rows={cohort} />
+      </Card>
+
+      {/* Clientes en riesgo — placeholder */}
+      <Card className="p-4 border-dashed">
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1">
+            <div className="font-semibold flex items-center gap-2">
+              Clientes en riesgo
+              <Badge variant="outline" className="text-[10px]">Próximamente</Badge>
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Requiere integración con el sistema de <strong>Gestión &amp; Marketing</strong> para
+              consumir el Health Score por cliente (uso del producto, tickets, NPS, retraso de pagos).
+              Cuando esté disponible se listarán acá los clientes con mayor probabilidad de churn en los
+              próximos 30/60/90 días.
+            </div>
+          </div>
+        </div>
+      </Card>
     </PageContainer>
+  );
+}
+
+function CohortHeatmap({
+  rows,
+}: {
+  rows: { cohort: string; size: number; cells: { n: number; retained: number | null; pct: number | null }[] }[];
+}) {
+  const hasData = rows.some((r) => r.size > 0);
+  if (!hasData) {
+    return (
+      <div className="text-sm text-muted-foreground py-10 text-center border border-dashed rounded-md">
+        Aún no hay altas suficientes en los últimos 12 meses para construir cohortes.
+      </div>
+    );
+  }
+  const cellColor = (pct: number | null) => {
+    if (pct === null) return "bg-muted/30 text-muted-foreground";
+    if (pct >= 0.9) return "bg-emerald-500/80 text-white";
+    if (pct >= 0.75) return "bg-emerald-500/55 text-white";
+    if (pct >= 0.6) return "bg-amber-500/55 text-white";
+    if (pct >= 0.4) return "bg-orange-500/60 text-white";
+    return "bg-destructive/70 text-white";
+  };
+  const elapsed = rows[0]?.cells.length ?? 0;
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-xs border-separate border-spacing-1">
+        <thead>
+          <tr>
+            <th className="text-left text-muted-foreground font-normal px-2">Cohorte (alta)</th>
+            <th className="text-right text-muted-foreground font-normal px-2">N</th>
+            {Array.from({ length: elapsed }, (_, i) => (
+              <th key={i} className="text-center text-muted-foreground font-normal w-12">M{i}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.cohort}>
+              <td className="px-2 tabular-nums">{r.cohort.slice(0, 7)}</td>
+              <td className="px-2 text-right tabular-nums text-muted-foreground">{r.size}</td>
+              {r.cells.map((c) => (
+                <td
+                  key={c.n}
+                  className={`w-12 h-8 text-center rounded ${cellColor(c.pct)}`}
+                  title={
+                    c.pct === null
+                      ? "Mes futuro"
+                      : `${c.retained}/${r.size} activos (${(c.pct * 100).toFixed(0)}%)`
+                  }
+                >
+                  {c.pct === null ? "—" : r.size === 0 ? "·" : `${Math.round(c.pct * 100)}%`}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center gap-3 mt-3 text-[11px] text-muted-foreground">
+        <span>Escala:</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-destructive/70" /> &lt;40%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-orange-500/60" /> 40-60%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-amber-500/55" /> 60-75%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500/55" /> 75-90%</span>
+        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500/80" /> ≥90%</span>
+      </div>
+    </div>
   );
 }
 
