@@ -349,10 +349,18 @@ export default function Churn() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Churn"
-        description="Pérdida de clientes y revenue — análisis mensual, trimestral y anual"
-      />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <PageHeader
+          title="Churn"
+          description="Pérdida de clientes y revenue — análisis mensual, trimestral y anual"
+        />
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
+          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">Mostrando en</span>
+          <span className="font-semibold tabular-nums">{displayCurrency}</span>
+          {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
