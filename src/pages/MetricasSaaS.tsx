@@ -34,9 +34,6 @@ type ClientLite = {
   fee_currency: string;
 };
 
-function fmtUsd(n: number) {
-  return `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
 function fmtPct(n: number, digits = 1) {
   if (!isFinite(n)) return "—";
   return `${(n * 100).toFixed(digits)}%`;
