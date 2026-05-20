@@ -49,7 +49,8 @@ Deno.serve(async (req) => {
         results.push({ currency: cur, ok: false, error: `no rate for ${cur}` });
         continue;
       }
-      const rate = 1 / usdToCur; // cur -> USD
+      // Canonical format: units of local currency per 1 USD (natural human format).
+      const rate = usdToCur;
       const { error } = await supabase
         .from("exchange_rates")
         .upsert(
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
             rate_date: rateDate,
             rate,
             source: "api",
-            notes: "open.er-api.com (USD base, inverted)",
+            notes: "open.er-api.com (canonical: local per USD)",
           },
           { onConflict: "base_currency,quote_currency,rate_date" },
         );
