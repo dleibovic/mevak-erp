@@ -696,6 +696,7 @@ export type Database = {
           currency_code: string
           currency_symbol: string
           id: string
+          iso2: string | null
           name: string
         }
         Insert: {
@@ -703,6 +704,7 @@ export type Database = {
           currency_code: string
           currency_symbol: string
           id?: string
+          iso2?: string | null
           name: string
         }
         Update: {
@@ -710,6 +712,7 @@ export type Database = {
           currency_code?: string
           currency_symbol?: string
           id?: string
+          iso2?: string | null
           name?: string
         }
         Relationships: []
@@ -1639,6 +1642,61 @@ export type Database = {
           },
         ]
       }
+      mevak_onboarding_audit: {
+        Row: {
+          actor: string | null
+          client_id: string
+          created_at: string
+          detalle: string | null
+          evento: string
+          id: string
+          item_id: string | null
+          payload: Json
+        }
+        Insert: {
+          actor?: string | null
+          client_id: string
+          created_at?: string
+          detalle?: string | null
+          evento: string
+          id?: string
+          item_id?: string | null
+          payload?: Json
+        }
+        Update: {
+          actor?: string | null
+          client_id?: string
+          created_at?: string
+          detalle?: string | null
+          evento?: string
+          id?: string
+          item_id?: string | null
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_onboarding_audit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_onboarding_audit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_onboarding_audit_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_onboarding_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mevak_onboarding_items: {
         Row: {
           created_at: string
@@ -1646,6 +1704,7 @@ export type Database = {
           id: string
           order_index: number
           required: boolean
+          responsable: string | null
           template_id: string
           titulo: string
         }
@@ -1655,6 +1714,7 @@ export type Database = {
           id?: string
           order_index?: number
           required?: boolean
+          responsable?: string | null
           template_id: string
           titulo: string
         }
@@ -1664,6 +1724,7 @@ export type Database = {
           id?: string
           order_index?: number
           required?: boolean
+          responsable?: string | null
           template_id?: string
           titulo?: string
         }
@@ -3066,6 +3127,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      mevak_activate_client_manual: {
+        Args: { _client_id: string }
+        Returns: Database["public"]["Enums"]["client_status"]
+      }
       mevak_can_access_client: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
@@ -3074,7 +3139,86 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      mevak_get_onboarding_for_client: {
+        Args: { _client_id: string }
+        Returns: {
+          completed_at: string
+          completed_by: string
+          days_since_update: number
+          descripcion: string
+          item_id: string
+          notas: string
+          order_index: number
+          required: boolean
+          responsable: string
+          status: Database["public"]["Enums"]["mevak_onboarding_item_status"]
+          status_id: string
+          titulo: string
+          updated_at: string
+        }[]
+      }
+      mevak_instantiate_onboarding: {
+        Args: { _client_id: string }
+        Returns: number
+      }
+      mevak_list_clients_for_mevak: {
+        Args: never
+        Returns: {
+          country_code: string
+          created_at: string
+          ejecutivo_email: string
+          ejecutivo_id: string
+          id: string
+          name: string
+          onboarding_completed: number
+          onboarding_pct: number
+          onboarding_total: number
+          status: Database["public"]["Enums"]["client_status"]
+        }[]
+      }
+      mevak_list_onboarding_pipeline: {
+        Args: never
+        Returns: {
+          country_code: string
+          created_at: string
+          days_open: number
+          done: number
+          ejecutivo_email: string
+          id: string
+          name: string
+          pct: number
+          total: number
+        }[]
+      }
       mevak_my_client_ids: { Args: { _user_id: string }; Returns: string[] }
+      mevak_onboarding_is_complete: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
+      mevak_set_item_status: {
+        Args: {
+          _client_id: string
+          _item_id: string
+          _notas?: string
+          _status: Database["public"]["Enums"]["mevak_onboarding_item_status"]
+        }
+        Returns: {
+          client_id: string
+          completed_at: string | null
+          completed_by: string | null
+          id: string
+          item_id: string
+          notas: string | null
+          status: Database["public"]["Enums"]["mevak_onboarding_item_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "mevak_onboarding_status"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       prorated_mrr: {
         Args: {
           _activated_at: string
