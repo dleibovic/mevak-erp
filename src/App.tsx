@@ -1,4 +1,4 @@
-import { forwardRef, lazy, Suspense } from "react";
+import { forwardRef, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,23 +6,24 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "./layouts/AppLayout";
 import { CountryFilterProvider } from "./hooks/useCountryFilter";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 const queryClient = new QueryClient();
 
-const Auth = lazy(() => import("./pages/Auth"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Clients = lazy(() => import("./pages/Clients"));
-const Billing = lazy(() => import("./pages/Billing"));
-const Employees = lazy(() => import("./pages/Employees"));
-const Expenses = lazy(() => import("./pages/Expenses"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const Alerts = lazy(() => import("./pages/Alerts"));
-const Admin = lazy(() => import("./pages/Admin"));
-const Prospecting = lazy(() => import("./pages/Prospecting"));
-const MetricasSaaS = lazy(() => import("./pages/MetricasSaaS"));
-const Churn = lazy(() => import("./pages/Churn"));
-const LtvRentabilidad = lazy(() => import("./pages/LtvRentabilidad"));
-const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+const Clients = lazyWithRetry(() => import("./pages/Clients"));
+const Billing = lazyWithRetry(() => import("./pages/Billing"));
+const Employees = lazyWithRetry(() => import("./pages/Employees"));
+const Expenses = lazyWithRetry(() => import("./pages/Expenses"));
+const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
+const Alerts = lazyWithRetry(() => import("./pages/Alerts"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
+const Prospecting = lazyWithRetry(() => import("./pages/Prospecting"));
+const MetricasSaaS = lazyWithRetry(() => import("./pages/MetricasSaaS"));
+const Churn = lazyWithRetry(() => import("./pages/Churn"));
+const LtvRentabilidad = lazyWithRetry(() => import("./pages/LtvRentabilidad"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
 
 const AppLoading = forwardRef<HTMLDivElement>((_, ref) => {
   return (
