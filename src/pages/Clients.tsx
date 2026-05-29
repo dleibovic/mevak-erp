@@ -41,6 +41,7 @@ export default function Clients() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [open, setOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filterChannel, setFilterChannel] = useState<string>("all");
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -98,17 +99,45 @@ export default function Clients() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const filtered = clients.filter((c: any) => {
-    const name = (c?.company_name ?? "").toString();
-    if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
-    if (filterBillingUser !== "all") {
-      if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
-    }
-    return true;
-  });
+  const openClientDialog = (client: Client | null) => {
+    setEditing(client);
+    setOpen(true);
+  };
 
-  const incompleteCount = clients.filter((c: any) => !c.payment_channel || !c.billing_user_id).length;
+  const toggleSelected = (id: string, checked: boolean | "indeterminate") => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked === true) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return clients.filter((c: any) => {
+      const name = (c?.company_name ?? "").toString().toLowerCase();
+      if (normalizedSearch && !name.includes(normalizedSearch)) return false;
+      if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
+      if (filterBillingUser !== "all") {
+        if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
+      }
+      return true;
+    });
+  }, [clients, search, filterChannel, filterBillingUser]);
+
+  const incompleteCount = useMemo(
+    () => clients.filter((c: any) => !c.payment_channel || !c.billing_user_id).length,
+    [clients],
+  );
+
+  const confirmDelete = () => {
+    if (!clientToDelete) return;
+    const id = clientToDelete.id;
+    setClientToDelete(null);
+    del.mutate(id);
+  };
+
   const today = new Date().toISOString().slice(0, 10);
 
   return (
