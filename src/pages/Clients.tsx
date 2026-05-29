@@ -99,7 +99,8 @@ export default function Clients() {
   });
 
   const filtered = clients.filter((c: any) => {
-    if (search && !c.company_name.toLowerCase().includes(search.toLowerCase())) return false;
+    const name = (c?.company_name ?? "").toString();
+    if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
     if (filterBillingUser !== "all") {
       if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
