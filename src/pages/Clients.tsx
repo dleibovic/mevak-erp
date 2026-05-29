@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, X, AlertCircle } from "lucide-react";
 import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories, usePaymentMethods } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
@@ -41,6 +41,7 @@ export default function Clients() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [open, setOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filterChannel, setFilterChannel] = useState<string>("all");
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -98,17 +99,45 @@ export default function Clients() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const filtered = clients.filter((c: any) => {
-    const name = (c?.company_name ?? "").toString();
-    if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
-    if (filterBillingUser !== "all") {
-      if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
-    }
-    return true;
-  });
+  const openClientDialog = (client: Client | null) => {
+    setEditing(client);
+    setOpen(true);
+  };
 
-  const incompleteCount = clients.filter((c: any) => !c.payment_channel || !c.billing_user_id).length;
+  const toggleSelected = (id: string, checked: boolean | "indeterminate") => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked === true) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return clients.filter((c: any) => {
+      const name = (c?.company_name ?? "").toString().toLowerCase();
+      if (normalizedSearch && !name.includes(normalizedSearch)) return false;
+      if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
+      if (filterBillingUser !== "all") {
+        if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
+      }
+      return true;
+    });
+  }, [clients, search, filterChannel, filterBillingUser]);
+
+  const incompleteCount = useMemo(
+    () => clients.filter((c: any) => !c.payment_channel || !c.billing_user_id).length,
+    [clients],
+  );
+
+  const confirmDelete = () => {
+    if (!clientToDelete) return;
+    const id = clientToDelete.id;
+    setClientToDelete(null);
+    del.mutate(id);
+  };
+
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -117,7 +146,7 @@ export default function Clients() {
         title="Clientes"
         description="Gestión de cuentas, plataformas y comisiones"
         actions={isAdmin && (
-          <Button onClick={() => { setEditing(null); setOpen(true); }}>
+          <Button onClick={() => openClientDialog(null)}>
             <Plus className="h-4 w-4 mr-2" /> Nuevo cliente
           </Button>
         )}
@@ -172,7 +201,7 @@ export default function Clients() {
         {isLoading ? (
           <div className="p-10 text-center text-muted-foreground">Cargando...</div>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Sin clientes" description="Comenzá creando tu primer cliente" action={isAdmin && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nuevo cliente</Button>} />
+          <EmptyState title="Sin clientes" description="Comenzá creando tu primer cliente" action={isAdmin && <Button onClick={() => openClientDialog(null)}><Plus className="h-4 w-4 mr-2" />Nuevo cliente</Button>} />
         ) : (
           <Table>
             <TableHeader>
@@ -201,11 +230,7 @@ export default function Clients() {
                 <TableRow key={c.id}>
                   {isAdmin && (
                     <TableCell>
-                      <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => {
-                        const n = new Set(selected);
-                        if (v) n.add(c.id); else n.delete(c.id);
-                        setSelected(n);
-                      }} />
+                      <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => toggleSelected(c.id, v)} />
                     </TableCell>
                   )}
                   <TableCell className="font-medium">{c.company_name}</TableCell>
@@ -242,22 +267,8 @@ export default function Clients() {
                   </TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-                            <AlertDialogDescription>Esta acción eliminará al cliente y todas sus facturas asociadas.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => del.mutate(c.id)}>Eliminar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button variant="ghost" size="icon" onClick={() => openClientDialog(c)}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setClientToDelete(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </TableCell>
                   )}
                 </TableRow>
@@ -269,6 +280,22 @@ export default function Clients() {
       </Card>
 
       <ClientDialog open={open} onOpenChange={setOpen} client={editing} profiles={profiles} />
+      <AlertDialog open={!!clientToDelete} onOpenChange={(next) => !next && setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {clientToDelete?.company_name
+                ? `Esta acción eliminará a ${clientToDelete.company_name} y todas sus facturas asociadas.`
+                : "Esta acción eliminará al cliente y todas sus facturas asociadas."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 }
