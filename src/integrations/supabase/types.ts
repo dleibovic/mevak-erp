@@ -1644,6 +1644,63 @@ export type Database = {
           },
         ]
       }
+      mevak_health_scores: {
+        Row: {
+          client_id: string
+          computed_at: string
+          details: Json
+          dim_activity: number
+          dim_facturacion: number
+          dim_meetings: number
+          dim_reports: number
+          dim_roadmap: number
+          dim_tasks: number
+          id: string
+          score: number
+        }
+        Insert: {
+          client_id: string
+          computed_at?: string
+          details?: Json
+          dim_activity: number
+          dim_facturacion: number
+          dim_meetings: number
+          dim_reports: number
+          dim_roadmap: number
+          dim_tasks: number
+          id?: string
+          score: number
+        }
+        Update: {
+          client_id?: string
+          computed_at?: string
+          details?: Json
+          dim_activity?: number
+          dim_facturacion?: number
+          dim_meetings?: number
+          dim_reports?: number
+          dim_roadmap?: number
+          dim_tasks?: number
+          id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_health_scores_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_health_scores_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       mevak_interacciones_whatsapp: {
         Row: {
           client_id: string
@@ -1701,6 +1758,102 @@ export type Database = {
           },
         ]
       }
+      mevak_kpi_definiciones: {
+        Row: {
+          activo: boolean
+          created_at: string
+          formula: string | null
+          id: string
+          label: string
+          orden: number
+          ponderador_col: string | null
+          scope: string
+          tipo_agregacion: Database["public"]["Enums"]["mevak_tipo_agregacion"]
+          unit: string | null
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          formula?: string | null
+          id: string
+          label: string
+          orden?: number
+          ponderador_col?: string | null
+          scope?: string
+          tipo_agregacion?: Database["public"]["Enums"]["mevak_tipo_agregacion"]
+          unit?: string | null
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          formula?: string | null
+          id?: string
+          label?: string
+          orden?: number
+          ponderador_col?: string | null
+          scope?: string
+          tipo_agregacion?: Database["public"]["Enums"]["mevak_tipo_agregacion"]
+          unit?: string | null
+        }
+        Relationships: []
+      }
+      mevak_kpi_override_audit: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          client_id: string
+          id: string
+          kpi_id: string
+          month_start: string
+          reason: string | null
+          valor_anterior: number | null
+          valor_autocalc: number | null
+          valor_manual: number | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          client_id: string
+          id?: string
+          kpi_id: string
+          month_start: string
+          reason?: string | null
+          valor_anterior?: number | null
+          valor_autocalc?: number | null
+          valor_manual?: number | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          client_id?: string
+          id?: string
+          kpi_id?: string
+          month_start?: string
+          reason?: string | null
+          valor_anterior?: number | null
+          valor_autocalc?: number | null
+          valor_manual?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_kpi_override_audit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mevak_kpi_override_audit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       mevak_kpis_mensuales: {
         Row: {
           ads_revenue: number | null
@@ -1720,6 +1873,7 @@ export type Database = {
           notas: string | null
           open_time_pct: number | null
           ordenes: number | null
+          overrides: Json
           platform_id: string | null
           rechazos: number | null
           reviews_cantidad: number | null
@@ -1749,6 +1903,7 @@ export type Database = {
           notas?: string | null
           open_time_pct?: number | null
           ordenes?: number | null
+          overrides?: Json
           platform_id?: string | null
           rechazos?: number | null
           reviews_cantidad?: number | null
@@ -1778,6 +1933,7 @@ export type Database = {
           notas?: string | null
           open_time_pct?: number | null
           ordenes?: number | null
+          overrides?: Json
           platform_id?: string | null
           rechazos?: number | null
           reviews_cantidad?: number | null
@@ -2498,79 +2654,23 @@ export type Database = {
           },
         ]
       }
-      mevak_reunion_tareas: {
-        Row: {
-          client_id: string
-          completed_at: string | null
-          created_at: string
-          descripcion: string
-          due_date: string | null
-          id: string
-          responsable: string | null
-          reunion_id: string
-          status: Database["public"]["Enums"]["mevak_tarea_status"]
-          updated_at: string
-        }
-        Insert: {
-          client_id: string
-          completed_at?: string | null
-          created_at?: string
-          descripcion: string
-          due_date?: string | null
-          id?: string
-          responsable?: string | null
-          reunion_id: string
-          status?: Database["public"]["Enums"]["mevak_tarea_status"]
-          updated_at?: string
-        }
-        Update: {
-          client_id?: string
-          completed_at?: string | null
-          created_at?: string
-          descripcion?: string
-          due_date?: string | null
-          id?: string
-          responsable?: string | null
-          reunion_id?: string
-          status?: Database["public"]["Enums"]["mevak_tarea_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mevak_reunion_tareas_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mevak_reunion_tareas_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "v_client_metrics"
-            referencedColumns: ["client_id"]
-          },
-          {
-            foreignKeyName: "mevak_reunion_tareas_reunion_id_fkey"
-            columns: ["reunion_id"]
-            isOneToOne: false
-            referencedRelation: "mevak_reuniones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       mevak_reuniones: {
         Row: {
           asistentes: Json
+          cancelled_at: string | null
+          cancelled_reason: string | null
           client_id: string
+          completed_at: string | null
           created_at: string
           created_by: string | null
           decisiones: Json
+          descripcion: string | null
           duration_min: number | null
           id: string
           meeting_url: string | null
           minuta_md: string | null
           notas: string | null
+          participants_user_ids: string[]
           proxima_fecha: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["mevak_reunion_status"]
@@ -2580,15 +2680,20 @@ export type Database = {
         }
         Insert: {
           asistentes?: Json
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
           client_id: string
+          completed_at?: string | null
           created_at?: string
           created_by?: string | null
           decisiones?: Json
+          descripcion?: string | null
           duration_min?: number | null
           id?: string
           meeting_url?: string | null
           minuta_md?: string | null
           notas?: string | null
+          participants_user_ids?: string[]
           proxima_fecha?: string | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["mevak_reunion_status"]
@@ -2598,15 +2703,20 @@ export type Database = {
         }
         Update: {
           asistentes?: Json
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
           client_id?: string
+          completed_at?: string | null
           created_at?: string
           created_by?: string | null
           decisiones?: Json
+          descripcion?: string | null
           duration_min?: number | null
           id?: string
           meeting_url?: string | null
           minuta_md?: string | null
           notas?: string | null
+          participants_user_ids?: string[]
           proxima_fecha?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["mevak_reunion_status"]
@@ -2631,40 +2741,87 @@ export type Database = {
           },
         ]
       }
-      mevak_roadmap_items: {
+      mevak_roadmap_item_comments: {
         Row: {
+          body: string
           client_id: string
           created_at: string
+          id: string
+          item_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          client_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mevak_roadmap_item_comments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_roadmap_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mevak_roadmap_items: {
+        Row: {
+          assignee_user_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
           descripcion: string | null
           due_date: string | null
           id: string
           order_index: number
           roadmap_id: string
           status: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          tags: string[]
           titulo: string
           updated_at: string
         }
         Insert: {
+          assignee_user_id?: string | null
           client_id: string
           created_at?: string
+          created_by?: string | null
           descripcion?: string | null
           due_date?: string | null
           id?: string
           order_index?: number
           roadmap_id: string
           status?: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          tags?: string[]
           titulo: string
           updated_at?: string
         }
         Update: {
+          assignee_user_id?: string | null
           client_id?: string
           created_at?: string
+          created_by?: string | null
           descripcion?: string | null
           due_date?: string | null
           id?: string
           order_index?: number
           roadmap_id?: string
           status?: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          tags?: string[]
           titulo?: string
           updated_at?: string
         }
@@ -2880,12 +3037,14 @@ export type Database = {
           assigned_to: string | null
           client_id: string
           completed_at: string | null
+          completed_by: string | null
           created_at: string
           created_by: string | null
           descripcion: string | null
           due_date: string | null
           id: string
           priority: Database["public"]["Enums"]["mevak_tarea_priority"]
+          reunion_id: string | null
           status: Database["public"]["Enums"]["mevak_tarea_status"]
           titulo: string
           updated_at: string
@@ -2894,12 +3053,14 @@ export type Database = {
           assigned_to?: string | null
           client_id: string
           completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           descripcion?: string | null
           due_date?: string | null
           id?: string
           priority?: Database["public"]["Enums"]["mevak_tarea_priority"]
+          reunion_id?: string | null
           status?: Database["public"]["Enums"]["mevak_tarea_status"]
           titulo: string
           updated_at?: string
@@ -2908,12 +3069,14 @@ export type Database = {
           assigned_to?: string | null
           client_id?: string
           completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           descripcion?: string | null
           due_date?: string | null
           id?: string
           priority?: Database["public"]["Enums"]["mevak_tarea_priority"]
+          reunion_id?: string | null
           status?: Database["public"]["Enums"]["mevak_tarea_status"]
           titulo?: string
           updated_at?: string
@@ -2932,6 +3095,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_client_metrics"
             referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "mevak_tareas_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "mevak_reuniones"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3888,6 +4058,54 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      mevak_cancel_reunion: {
+        Args: { _reason: string; _reunion_id: string }
+        Returns: undefined
+      }
+      mevak_cancel_tarea: { Args: { _tarea_id: string }; Returns: undefined }
+      mevak_clear_kpi_mensual_override: {
+        Args: { _client_id: string; _kpi_id: string; _month_start: string }
+        Returns: undefined
+      }
+      mevak_complete_reunion: {
+        Args: { _reunion_id: string }
+        Returns: undefined
+      }
+      mevak_complete_tarea: { Args: { _tarea_id: string }; Returns: undefined }
+      mevak_compute_client_health: {
+        Args: { _client_id: string }
+        Returns: {
+          client_id: string
+          computed_at: string
+          details: Json
+          dim_activity: number
+          dim_facturacion: number
+          dim_meetings: number
+          dim_reports: number
+          dim_roadmap: number
+          dim_tasks: number
+          id: string
+          score: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "mevak_health_scores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mevak_compute_health_batch: {
+        Args: never
+        Returns: {
+          client_id: string
+          error_msg: string
+          ok: boolean
+        }[]
+      }
+      mevak_create_item_comment: {
+        Args: { _body: string; _item_id: string }
+        Returns: string
+      }
       mevak_create_reporte_mensual: {
         Args: {
           _client_id: string
@@ -3905,6 +4123,49 @@ export type Database = {
           _week_start: string
         }
         Returns: string
+      }
+      mevak_create_reunion: {
+        Args: {
+          _client_id: string
+          _descripcion: string
+          _duration_minutes: number
+          _participants_user_ids: string[]
+          _scheduled_at: string
+          _titulo: string
+        }
+        Returns: string
+      }
+      mevak_create_roadmap_item: {
+        Args: {
+          _assignee_user_id?: string
+          _client_id: string
+          _descripcion?: string
+          _due_date?: string
+          _status?: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          _tags?: string[]
+          _titulo: string
+        }
+        Returns: string
+      }
+      mevak_create_tarea: {
+        Args: {
+          _assigned_to: string
+          _client_id: string
+          _descripcion: string
+          _due_date: string
+          _priority?: Database["public"]["Enums"]["mevak_tarea_priority"]
+          _reunion_id?: string
+          _titulo: string
+        }
+        Returns: string
+      }
+      mevak_delete_item_comment: {
+        Args: { _comment_id: string }
+        Returns: undefined
+      }
+      mevak_delete_roadmap_item: {
+        Args: { _item_id: string }
+        Returns: undefined
       }
       mevak_get_client_360: {
         Args: { _client_id: string }
@@ -3924,6 +4185,45 @@ export type Database = {
           sucursales_count: number
           timeline_count: number
         }[]
+      }
+      mevak_get_client_health: {
+        Args: { _client_id: string }
+        Returns: {
+          client_id: string
+          computed_at: string
+          details: Json
+          dim_activity: number
+          dim_facturacion: number
+          dim_meetings: number
+          dim_reports: number
+          dim_roadmap: number
+          dim_tasks: number
+          id: string
+          score: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "mevak_health_scores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mevak_get_client_health_history: {
+        Args: { _client_id: string; _days?: number }
+        Returns: {
+          computed_at: string
+          dim_activity: number
+          dim_facturacion: number
+          dim_meetings: number
+          dim_reports: number
+          dim_roadmap: number
+          dim_tasks: number
+          score: number
+        }[]
+      }
+      mevak_get_mensual_autocalc: {
+        Args: { _client_id: string; _month_start: string }
+        Returns: Json
       }
       mevak_get_menu_score: {
         Args: { _client_id: string }
@@ -3983,6 +4283,45 @@ export type Database = {
         Returns: Json
       }
       mevak_get_reportes_settings: { Args: never; Returns: Json }
+      mevak_get_reunion_detail: {
+        Args: { _reunion_id: string }
+        Returns: {
+          cancelled_at: string
+          cancelled_reason: string
+          client_id: string
+          completed_at: string
+          created_at: string
+          created_by: string
+          descripcion: string
+          duration_min: number
+          id: string
+          minuta_md: string
+          participants: Json
+          participants_user_ids: string[]
+          scheduled_at: string
+          status: Database["public"]["Enums"]["mevak_reunion_status"]
+          titulo: string
+          updated_at: string
+        }[]
+      }
+      mevak_get_roadmap_item_detail: {
+        Args: { _item_id: string }
+        Returns: {
+          assignee_email: string
+          assignee_user_id: string
+          client_id: string
+          created_at: string
+          descripcion: string
+          due_date: string
+          id: string
+          order_index: number
+          roadmap_id: string
+          status: string
+          tags: string[]
+          titulo: string
+          updated_at: string
+        }[]
+      }
       mevak_instantiate_onboarding: {
         Args: { _client_id: string }
         Returns: number
@@ -4007,6 +4346,23 @@ export type Database = {
           ticket_promedio: number
         }[]
       }
+      mevak_list_assignable_users_for_client:
+        | {
+            Args: { _client_id: string }
+            Returns: {
+              email: string
+              role: string
+              user_id: string
+            }[]
+          }
+        | {
+            Args: { _client_id: string; _include_clientes?: boolean }
+            Returns: {
+              email: string
+              role: string
+              user_id: string
+            }[]
+          }
       mevak_list_client_sub_brands: {
         Args: { _client_id: string }
         Returns: {
@@ -4027,6 +4383,22 @@ export type Database = {
           onboarding_pct: number
           onboarding_total: number
           status: Database["public"]["Enums"]["client_status"]
+        }[]
+      }
+      mevak_list_clients_with_health: {
+        Args: never
+        Returns: {
+          client_id: string
+          company_name: string
+          computed_at: string
+          dim_activity: number
+          dim_facturacion: number
+          dim_meetings: number
+          dim_reports: number
+          dim_roadmap: number
+          dim_tasks: number
+          score: number
+          status: string
         }[]
       }
       mevak_list_comentarios: {
@@ -4064,6 +4436,19 @@ export type Database = {
           storage_path: string
           tags: string[]
           uploaded_by_email: string
+        }[]
+      }
+      mevak_list_item_comments: {
+        Args: { _item_id: string }
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          is_own: boolean
+          item_id: string
+          updated_at: string
+          user_email: string
+          user_id: string
         }[]
       }
       mevak_list_menu_items: {
@@ -4160,40 +4545,24 @@ export type Database = {
           week_start: string
         }[]
       }
-      mevak_list_reunion_tareas: {
-        Args: { _client_id: string }
-        Returns: {
-          client_id: string
-          completed_at: string | null
-          created_at: string
-          descripcion: string
-          due_date: string | null
-          id: string
-          responsable: string | null
-          reunion_id: string
-          status: Database["public"]["Enums"]["mevak_tarea_status"]
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "mevak_reunion_tareas"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       mevak_list_reuniones: {
         Args: { _client_id: string }
         Returns: {
           asistentes: Json
+          cancelled_at: string | null
+          cancelled_reason: string | null
           client_id: string
+          completed_at: string | null
           created_at: string
           created_by: string | null
           decisiones: Json
+          descripcion: string | null
           duration_min: number | null
           id: string
           meeting_url: string | null
           minuta_md: string | null
           notas: string | null
+          participants_user_ids: string[]
           proxima_fecha: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["mevak_reunion_status"]
@@ -4208,17 +4577,36 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      mevak_list_reuniones_for_client: {
+        Args: { _client_id: string; _include_cancelled?: boolean }
+        Returns: {
+          cancelled_at: string
+          cancelled_reason: string
+          completed_at: string
+          created_at: string
+          descripcion: string
+          duration_min: number
+          id: string
+          participants_user_ids: string[]
+          scheduled_at: string
+          status: Database["public"]["Enums"]["mevak_reunion_status"]
+          titulo: string
+        }[]
+      }
       mevak_list_roadmap_items: {
         Args: { _client_id: string }
         Returns: {
+          assignee_user_id: string | null
           client_id: string
           created_at: string
+          created_by: string | null
           descripcion: string | null
           due_date: string | null
           id: string
           order_index: number
           roadmap_id: string
           status: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          tags: string[]
           titulo: string
           updated_at: string
         }[]
@@ -4228,6 +4616,24 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      mevak_list_roadmap_items_for_client: {
+        Args: { _client_id: string; _include_descartado?: boolean }
+        Returns: {
+          assignee_email: string
+          assignee_user_id: string
+          client_id: string
+          created_at: string
+          descripcion: string
+          due_date: string
+          id: string
+          order_index: number
+          roadmap_id: string
+          status: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+          tags: string[]
+          titulo: string
+          updated_at: string
+        }[]
       }
       mevak_list_sucursal_plataforma: {
         Args: { _client_id: string }
@@ -4261,6 +4667,53 @@ export type Database = {
           updated_at: string
         }[]
       }
+      mevak_list_tareas_for_client: {
+        Args: {
+          _client_id: string
+          _include_completadas?: boolean
+          _priority?: string[]
+          _status?: string[]
+        }
+        Returns: {
+          assigned_to: string
+          assignee_email: string
+          client_id: string
+          completed_at: string
+          completed_by: string
+          created_at: string
+          created_by: string
+          descripcion: string
+          due_date: string
+          id: string
+          priority: Database["public"]["Enums"]["mevak_tarea_priority"]
+          reunion_id: string
+          reunion_titulo: string
+          status: Database["public"]["Enums"]["mevak_tarea_status"]
+          titulo: string
+          updated_at: string
+        }[]
+      }
+      mevak_list_tareas_for_reunion: {
+        Args: { _reunion_id: string }
+        Returns: {
+          assigned_to: string
+          assignee_email: string
+          client_id: string
+          completed_at: string
+          completed_by: string
+          created_at: string
+          created_by: string
+          descripcion: string
+          due_date: string
+          id: string
+          priority: Database["public"]["Enums"]["mevak_tarea_priority"]
+          reunion_id: string
+          reunion_titulo: string
+          status: Database["public"]["Enums"]["mevak_tarea_status"]
+          titulo: string
+          updated_at: string
+        }[]
+      }
       mevak_list_timeline: {
         Args: { _client_id: string; _limit?: number }
         Returns: {
@@ -4282,11 +4735,43 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      mevak_list_timeline_actors: {
+        Args: { _client_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
+      mevak_list_timeline_for_client: {
+        Args: {
+          _actors?: string[]
+          _client_id: string
+          _from_date?: string
+          _limit?: number
+          _offset?: number
+          _tipos?: string[]
+          _to_date?: string
+        }
+        Returns: {
+          actor_email: string
+          actor_id: string
+          client_id: string
+          created_at: string
+          detalle: string
+          id: string
+          payload: Json
+          source_id: string
+          source_table: string
+          tipo: string
+          titulo: string
+        }[]
+      }
       mevak_my_client_ids: { Args: { _user_id: string }; Returns: string[] }
       mevak_onboarding_is_complete: {
         Args: { _client_id: string }
         Returns: boolean
       }
+      mevak_reopen_tarea: { Args: { _tarea_id: string }; Returns: undefined }
       mevak_set_item_status: {
         Args: {
           _client_id: string
@@ -4311,6 +4796,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      mevak_set_kpi_mensual_override: {
+        Args: {
+          _client_id: string
+          _kpi_id: string
+          _month_start: string
+          _reason: string
+          _value: number
+        }
+        Returns: undefined
+      }
       mevak_set_reporte_mensual_status: {
         Args: {
           _id: string
@@ -4324,6 +4819,62 @@ export type Database = {
           _id: string
           _pdf_url: string
           _status: Database["public"]["Enums"]["mevak_reporte_status"]
+        }
+        Returns: undefined
+      }
+      mevak_set_tarea_status: {
+        Args: {
+          _status: Database["public"]["Enums"]["mevak_tarea_status"]
+          _tarea_id: string
+        }
+        Returns: undefined
+      }
+      mevak_update_item_comment: {
+        Args: { _body: string; _comment_id: string }
+        Returns: undefined
+      }
+      mevak_update_minuta: {
+        Args: { _minuta: string; _reunion_id: string }
+        Returns: undefined
+      }
+      mevak_update_reunion: {
+        Args: {
+          _descripcion: string
+          _duration_minutes: number
+          _participants_user_ids: string[]
+          _reunion_id: string
+          _scheduled_at: string
+          _titulo: string
+        }
+        Returns: undefined
+      }
+      mevak_update_roadmap_item: {
+        Args: {
+          _assignee_user_id: string
+          _descripcion: string
+          _due_date: string
+          _item_id: string
+          _tags: string[]
+          _titulo: string
+        }
+        Returns: undefined
+      }
+      mevak_update_roadmap_item_status: {
+        Args: {
+          _item_id: string
+          _new_position: number
+          _new_status: Database["public"]["Enums"]["mevak_roadmap_item_status"]
+        }
+        Returns: undefined
+      }
+      mevak_update_tarea: {
+        Args: {
+          _assigned_to: string
+          _descripcion: string
+          _due_date: string
+          _priority?: Database["public"]["Enums"]["mevak_tarea_priority"]
+          _tarea_id: string
+          _titulo: string
         }
         Returns: undefined
       }
@@ -4348,6 +4899,22 @@ export type Database = {
           _reviews_puntaje: number
           _sesiones: number
           _source: string
+          _sucursal_id: string
+          _top_productos: Json
+        }
+        Returns: string
+      }
+      mevak_upsert_kpi_mensual_solo_mensual: {
+        Args: {
+          _ads_revenue: number
+          _ads_spend: number
+          _client_id: string
+          _conversion_pct: number
+          _ctr_pct: number
+          _month_start: string
+          _notas: string
+          _platform_id: string
+          _sesiones: number
           _sucursal_id: string
           _top_productos: Json
         }
@@ -4457,6 +5024,12 @@ export type Database = {
         | "en_progreso"
         | "completada"
         | "cancelada"
+      mevak_tipo_agregacion:
+        | "suma"
+        | "promedio"
+        | "promedio_ponderado"
+        | "solo_mensual"
+        | "calculado"
       mevak_wa_direction: "inbound" | "outbound"
       monthly_invoice_status: "pending" | "invoiced" | "paid" | "overdue"
       mrr_movement_type:
@@ -4671,6 +5244,13 @@ export const Constants = {
         "en_progreso",
         "completada",
         "cancelada",
+      ],
+      mevak_tipo_agregacion: [
+        "suma",
+        "promedio",
+        "promedio_ponderado",
+        "solo_mensual",
+        "calculado",
       ],
       mevak_wa_direction: ["inbound", "outbound"],
       monthly_invoice_status: ["pending", "invoiced", "paid", "overdue"],
