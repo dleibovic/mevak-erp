@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -88,7 +89,9 @@ export default function AppLayout() {
           <NotificationsBell />
         </header>
         <div className="relative">
-          <Outlet />
+          <RouteErrorBoundary key={location.pathname}>
+            <Outlet />
+          </RouteErrorBoundary>
         </div>
       </main>
       <nav className="no-scrollbar fixed inset-x-0 bottom-0 z-40 flex max-w-[100vw] gap-1 overflow-x-auto border-t border-sidebar-border bg-sidebar/95 px-2 py-2 backdrop-blur [-webkit-overflow-scrolling:touch] md:hidden">
