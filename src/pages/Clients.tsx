@@ -271,22 +271,8 @@ export default function Clients() {
                   </TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-                            <AlertDialogDescription>Esta acción eliminará al cliente y todas sus facturas asociadas.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => del.mutate(c.id)}>Eliminar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button variant="ghost" size="icon" onClick={() => openClientDialog(c)}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setClientToDelete(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </TableCell>
                   )}
                 </TableRow>
@@ -298,6 +284,22 @@ export default function Clients() {
       </Card>
 
       <ClientDialog open={open} onOpenChange={setOpen} client={editing} profiles={profiles} />
+      <AlertDialog open={!!clientToDelete} onOpenChange={(next) => !next && setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {clientToDelete?.company_name
+                ? `Esta acción eliminará a ${clientToDelete.company_name} y todas sus facturas asociadas.`
+                : "Esta acción eliminará al cliente y todas sus facturas asociadas."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 }
