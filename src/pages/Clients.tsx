@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, X, AlertCircle } from "lucide-react";
 import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories, usePaymentMethods } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
@@ -146,7 +146,7 @@ export default function Clients() {
         title="Clientes"
         description="Gestión de cuentas, plataformas y comisiones"
         actions={isAdmin && (
-          <Button onClick={() => { setEditing(null); setOpen(true); }}>
+          <Button onClick={() => openClientDialog(null)}>
             <Plus className="h-4 w-4 mr-2" /> Nuevo cliente
           </Button>
         )}
@@ -201,7 +201,7 @@ export default function Clients() {
         {isLoading ? (
           <div className="p-10 text-center text-muted-foreground">Cargando...</div>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Sin clientes" description="Comenzá creando tu primer cliente" action={isAdmin && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nuevo cliente</Button>} />
+          <EmptyState title="Sin clientes" description="Comenzá creando tu primer cliente" action={isAdmin && <Button onClick={() => openClientDialog(null)}><Plus className="h-4 w-4 mr-2" />Nuevo cliente</Button>} />
         ) : (
           <Table>
             <TableHeader>
@@ -230,11 +230,7 @@ export default function Clients() {
                 <TableRow key={c.id}>
                   {isAdmin && (
                     <TableCell>
-                      <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => {
-                        const n = new Set(selected);
-                        if (v) n.add(c.id); else n.delete(c.id);
-                        setSelected(n);
-                      }} />
+                      <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => toggleSelected(c.id, v)} />
                     </TableCell>
                   )}
                   <TableCell className="font-medium">{c.company_name}</TableCell>
