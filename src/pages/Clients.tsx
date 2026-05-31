@@ -339,9 +339,29 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
 
   const currentCountry = countries.find((c: any) => c.id === form.country_id);
   const defaultCurrency = currentCountry?.currency_code ?? newCountry?.currency_code ?? "ARS";
-  const availableCountries = useMemo(() => CSCountry.getAllCountries(), []);
-  const availableStates = useMemo(() => newCountry?.isoCode ? CSState.getStatesOfCountry(newCountry.isoCode) : [], [newCountry?.isoCode]);
-  const availableCities = useMemo(() => newCountry?.isoCode && newCountryProvince ? CSCity.getCitiesOfState(newCountry.isoCode, newCountryProvince) : [], [newCountry?.isoCode, newCountryProvince]);
+  // Lazy-load the heavy `country-state-city` catalogue only when the
+  // "create new country" branch is actually opened.
+  const [csc, setCsc] = useState<CountryStateCityModule | null>(null);
+  useEffect(() => {
+    if (!newCountry || csc) return;
+    let cancelled = false;
+    import("country-state-city").then((mod) => {
+      if (!cancelled) setCsc(mod);
+    });
+    return () => { cancelled = true; };
+  }, [newCountry, csc]);
+
+  const availableCountries = useMemo(() => csc?.Country.getAllCountries() ?? [], [csc]);
+  const availableStates = useMemo(
+    () => (csc && newCountry?.isoCode ? csc.State.getStatesOfCountry(newCountry.isoCode) : []),
+    [csc, newCountry?.isoCode],
+  );
+  const availableCities = useMemo(
+    () => (csc && newCountry?.isoCode && newCountryProvince
+      ? csc.City.getCitiesOfState(newCountry.isoCode, newCountryProvince)
+      : []),
+    [csc, newCountry?.isoCode, newCountryProvince],
+  );
 
   const addSubBrand = () => {
     setSubBrands([
