@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Country as CSCountry, State as CSState, City as CSCity } from "country-state-city";
 import { supabase } from "@/integrations/supabase/client";
+
+// `country-state-city` ships a multi-MB JSON catalogue and only the
+// "create new country" dialog branch actually uses it. Importing it eagerly at
+// the top of this module forced every visit to /clientes to parse the entire
+// dataset, which on lower-end mobile devices blew the JS engine call stack
+// (surfacing as "Maximum call stack size exceeded" on the Clients view).
+// We now lazy-load it on demand inside `ClientDialog` only when the user opts
+// into the "create a new country" flow.
+type CountryStateCityModule = typeof import("country-state-city");
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -331,9 +339,29 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
 
   const currentCountry = countries.find((c: any) => c.id === form.country_id);
   const defaultCurrency = currentCountry?.currency_code ?? newCountry?.currency_code ?? "ARS";
-  const availableCountries = useMemo(() => CSCountry.getAllCountries(), []);
-  const availableStates = useMemo(() => newCountry?.isoCode ? CSState.getStatesOfCountry(newCountry.isoCode) : [], [newCountry?.isoCode]);
-  const availableCities = useMemo(() => newCountry?.isoCode && newCountryProvince ? CSCity.getCitiesOfState(newCountry.isoCode, newCountryProvince) : [], [newCountry?.isoCode, newCountryProvince]);
+  // Lazy-load the heavy `country-state-city` catalogue only when the
+  // "create new country" branch is actually opened.
+  const [csc, setCsc] = useState<CountryStateCityModule | null>(null);
+  useEffect(() => {
+    if (!newCountry || csc) return;
+    let cancelled = false;
+    import("country-state-city").then((mod) => {
+      if (!cancelled) setCsc(mod);
+    });
+    return () => { cancelled = true; };
+  }, [newCountry, csc]);
+
+  const availableCountries = useMemo(() => csc?.Country.getAllCountries() ?? [], [csc]);
+  const availableStates = useMemo(
+    () => (csc && newCountry?.isoCode ? csc.State.getStatesOfCountry(newCountry.isoCode) : []),
+    [csc, newCountry?.isoCode],
+  );
+  const availableCities = useMemo(
+    () => (csc && newCountry?.isoCode && newCountryProvince
+      ? csc.City.getCitiesOfState(newCountry.isoCode, newCountryProvince)
+      : []),
+    [csc, newCountry?.isoCode, newCountryProvince],
+  );
 
   const addSubBrand = () => {
     setSubBrands([
@@ -455,7 +483,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
       setSubBrands([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, client?.id, countries.length, paymentMethods.length]);
+  }, [open, client?.id]);
 
   const save = useMutation({
     mutationFn: async () => {
