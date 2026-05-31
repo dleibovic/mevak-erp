@@ -483,7 +483,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
       setSubBrands([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, client?.id, countries.length, paymentMethods.length]);
+  }, [open, client?.id]);
 
   const save = useMutation({
     mutationFn: async () => {
