@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Country as CSCountry, State as CSState, City as CSCity } from "country-state-city";
 import { supabase } from "@/integrations/supabase/client";
+
+// `country-state-city` ships a multi-MB JSON catalogue and only the
+// "create new country" dialog branch actually uses it. Importing it eagerly at
+// the top of this module forced every visit to /clientes to parse the entire
+// dataset, which on lower-end mobile devices blew the JS engine call stack
+// (surfacing as "Maximum call stack size exceeded" on the Clients view).
+// We now lazy-load it on demand inside `ClientDialog` only when the user opts
+// into the "create a new country" flow.
+type CountryStateCityModule = typeof import("country-state-city");
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
