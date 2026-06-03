@@ -1316,7 +1316,9 @@ export type Database = {
           detalle: string | null
           id: string
           payload: Json
+          resolution_note: string | null
           resolved_at: string | null
+          resolved_by: string | null
           severity: Database["public"]["Enums"]["mevak_alerta_severity"]
           status: Database["public"]["Enums"]["mevak_alerta_status"]
           tipo: string
@@ -1330,7 +1332,9 @@ export type Database = {
           detalle?: string | null
           id?: string
           payload?: Json
+          resolution_note?: string | null
           resolved_at?: string | null
+          resolved_by?: string | null
           severity?: Database["public"]["Enums"]["mevak_alerta_severity"]
           status?: Database["public"]["Enums"]["mevak_alerta_status"]
           tipo: string
@@ -1344,7 +1348,9 @@ export type Database = {
           detalle?: string | null
           id?: string
           payload?: Json
+          resolution_note?: string | null
           resolved_at?: string | null
+          resolved_by?: string | null
           severity?: Database["public"]["Enums"]["mevak_alerta_severity"]
           status?: Database["public"]["Enums"]["mevak_alerta_status"]
           tipo?: string
@@ -3180,6 +3186,30 @@ export type Database = {
         }
         Relationships: []
       }
+      mevak_user_tour_state: {
+        Row: {
+          completed_at: string | null
+          skipped_at: string | null
+          tour_key: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          skipped_at?: string | null
+          tour_key?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          skipped_at?: string | null
+          tour_key?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       monthly_invoices: {
         Row: {
           amount: number
@@ -4008,6 +4038,17 @@ export type Database = {
       }
     }
     Functions: {
+      _mevak_upsert_alerta: {
+        Args: {
+          _client_id: string
+          _detalle: string
+          _payload: Json
+          _sev: Database["public"]["Enums"]["mevak_alerta_severity"]
+          _tipo: string
+          _titulo: string
+        }
+        Returns: string
+      }
       auto_churn_paused_clients: { Args: never; Returns: number }
       backfill_mrr_snapshots: { Args: { _months?: number }; Returns: number }
       effective_monthly_fee: { Args: { _client_id: string }; Returns: number }
@@ -4166,6 +4207,43 @@ export type Database = {
       mevak_delete_roadmap_item: {
         Args: { _item_id: string }
         Returns: undefined
+      }
+      mevak_descartar_alerta: {
+        Args: { _id: string; _note?: string }
+        Returns: undefined
+      }
+      mevak_evaluate_alertas_batch: {
+        Args: never
+        Returns: {
+          alertas_activas: number
+          client_id: string
+          error_msg: string
+          ok: boolean
+        }[]
+      }
+      mevak_evaluate_alertas_for_client: {
+        Args: { _client_id: string }
+        Returns: {
+          action: string
+          alerta_id: string
+          severity: Database["public"]["Enums"]["mevak_alerta_severity"]
+          tipo: string
+        }[]
+      }
+      mevak_get_alertas_for_client: {
+        Args: { _client_id: string }
+        Returns: {
+          created_at: string
+          detalle: string
+          id: string
+          payload: Json
+          resolution_note: string
+          resolved_at: string
+          severity: Database["public"]["Enums"]["mevak_alerta_severity"]
+          status: Database["public"]["Enums"]["mevak_alerta_status"]
+          tipo: string
+          titulo: string
+        }[]
       }
       mevak_get_client_360: {
         Args: { _client_id: string }
@@ -4344,6 +4422,26 @@ export type Database = {
           reviews_cantidad: number
           reviews_puntaje: number
           ticket_promedio: number
+        }[]
+      }
+      mevak_list_alertas: {
+        Args: {
+          _client_id?: string
+          _severity?: Database["public"]["Enums"]["mevak_alerta_severity"]
+          _status?: Database["public"]["Enums"]["mevak_alerta_status"]
+        }
+        Returns: {
+          client_id: string
+          company_name: string
+          created_at: string
+          detalle: string
+          id: string
+          payload: Json
+          resolved_at: string
+          severity: Database["public"]["Enums"]["mevak_alerta_severity"]
+          status: Database["public"]["Enums"]["mevak_alerta_status"]
+          tipo: string
+          titulo: string
         }[]
       }
       mevak_list_assignable_users_for_client:
@@ -4772,6 +4870,10 @@ export type Database = {
         Returns: boolean
       }
       mevak_reopen_tarea: { Args: { _tarea_id: string }; Returns: undefined }
+      mevak_resolve_alerta: {
+        Args: { _id: string; _note?: string }
+        Returns: undefined
+      }
       mevak_set_item_status: {
         Args: {
           _client_id: string
@@ -4988,8 +5090,13 @@ export type Database = {
       invoice_type: "formal" | "cash"
       mevak_ai_feedback: "up" | "down"
       mevak_ai_message_role: "system" | "user" | "assistant" | "tool"
-      mevak_alerta_severity: "info" | "warning" | "critical"
-      mevak_alerta_status: "abierta" | "reconocida" | "resuelta" | "descartada"
+      mevak_alerta_severity: "baja" | "media" | "alta" | "critica"
+      mevak_alerta_status:
+        | "abierta"
+        | "reconocida"
+        | "resuelta"
+        | "descartada"
+        | "activa"
       mevak_cliente_user_role: "cliente_user" | "ejecutivo_asignado"
       mevak_kpi_period: "semanal" | "mensual"
       mevak_onboarding_item_status:
@@ -5204,8 +5311,14 @@ export const Constants = {
       invoice_type: ["formal", "cash"],
       mevak_ai_feedback: ["up", "down"],
       mevak_ai_message_role: ["system", "user", "assistant", "tool"],
-      mevak_alerta_severity: ["info", "warning", "critical"],
-      mevak_alerta_status: ["abierta", "reconocida", "resuelta", "descartada"],
+      mevak_alerta_severity: ["baja", "media", "alta", "critica"],
+      mevak_alerta_status: [
+        "abierta",
+        "reconocida",
+        "resuelta",
+        "descartada",
+        "activa",
+      ],
       mevak_cliente_user_role: ["cliente_user", "ejecutivo_asignado"],
       mevak_kpi_period: ["semanal", "mensual"],
       mevak_onboarding_item_status: [
