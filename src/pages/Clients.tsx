@@ -463,6 +463,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         cmv_cost: 0,
         cmv_currency: defCountry?.currency_code ?? "ARS",
         branches_count: 1,
+        fee_billing_mode: "per_branch",
         contact_name: "",
         contact_phone: "",
         contact_email: "",
