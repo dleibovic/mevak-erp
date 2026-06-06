@@ -29,6 +29,7 @@ export default function Billing() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [localCountry, setLocalCountry] = useState<string | null>(null);
+  const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
 
   useQuery({
     queryKey: ["refresh-statuses"],
@@ -36,12 +37,17 @@ export default function Billing() {
     refetchOnWindowFocus: false,
   });
 
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-billing"],
+    queryFn: async () => (await supabase.from("profiles").select("id, full_name, email").order("full_name")).data ?? [],
+  });
+
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, client:clients(id, company_name, billing_frequency, country_id, country:countries(*))")
+        .select("*, client:clients(id, company_name, billing_frequency, country_id, billing_user_id, country:countries(*))")
         .order("due_date", { ascending: true });
       if (error) throw error;
       return data;
@@ -71,13 +77,24 @@ export default function Billing() {
     () => effectiveCountry ? invoices.filter((i: any) => i.client?.country_id === effectiveCountry) : invoices,
     [invoices, effectiveCountry]
   );
-  const filtered = useMemo(() => filterStatus === "all" ? byCountry : byCountry.filter((i: any) => i.status === filterStatus), [byCountry, filterStatus]);
+  const byBillingUser = useMemo(() => {
+    if (filterBillingUser === "all") return byCountry;
+    if (filterBillingUser === "__none__") return byCountry.filter((i: any) => !i.client?.billing_user_id);
+    return byCountry.filter((i: any) => i.client?.billing_user_id === filterBillingUser);
+  }, [byCountry, filterBillingUser]);
+  const filtered = useMemo(() => filterStatus === "all" ? byBillingUser : byBillingUser.filter((i: any) => i.status === filterStatus), [byBillingUser, filterStatus]);
+
+  const totalsByCurrency = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((i: any) => { map[i.currency] = (map[i.currency] ?? 0) + Number(i.amount || 0); });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered]);
 
   const stats = useMemo(() => {
-    const overdue = byCountry.filter((i: any) => i.status === "overdue");
-    const pending = byCountry.filter((i: any) => i.status === "pending");
+    const overdue = byBillingUser.filter((i: any) => i.status === "overdue");
+    const pending = byBillingUser.filter((i: any) => i.status === "pending");
     return { overdueCount: overdue.length, pendingCount: pending.length };
-  }, [byCountry]);
+  }, [byBillingUser]);
 
   return (
     <PageContainer>
@@ -110,8 +127,30 @@ export default function Billing() {
         ].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap gap-2 items-center">
+          <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
+            <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Responsable" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los responsables</SelectItem>
+              <SelectItem value="__none__">Sin asignar</SelectItem>
+              {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-[180px]" size="sm" />
+        </div>
+      </Card>
+
+      <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">
+          Total filtrado · {filtered.length} factura(s)
+          {filterBillingUser !== "all" && (
+            <span> · Responsable: {filterBillingUser === "__none__" ? "Sin asignar" : (profiles.find((p: any) => p.id === filterBillingUser)?.full_name ?? profiles.find((p: any) => p.id === filterBillingUser)?.email ?? "—")}</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {totalsByCurrency.length ? totalsByCurrency.map(([cur, total]) => (
+            <span key={cur} className="font-mono text-base font-semibold">{formatMoney(total, cur)}</span>
+          )) : <span className="text-sm text-muted-foreground">Sin datos</span>}
         </div>
       </Card>
 
