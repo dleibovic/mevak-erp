@@ -60,7 +60,7 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
     const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
-    const normalizedClientFee = (c: any) => Number(c.monthly_fee || 0) * billingMultiplier(c.billing_frequency);
+    const normalizedClientFee = (c: any) => Number(c.monthly_fee || 0) * Math.max(1, Number(c.branches_count || 1)) * billingMultiplier(c.billing_frequency);
     const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
     const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
     if (activeCurrency) {
