@@ -395,6 +395,7 @@ export type Database = {
           contact_phone: string | null
           country_id: string
           created_at: string
+          fee_billing_mode: string
           fee_currency: string
           food_category_id: string | null
           id: string
@@ -418,6 +419,7 @@ export type Database = {
           contact_phone?: string | null
           country_id: string
           created_at?: string
+          fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
           id?: string
@@ -441,6 +443,7 @@ export type Database = {
           contact_phone?: string | null
           country_id?: string
           created_at?: string
+          fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
           id?: string

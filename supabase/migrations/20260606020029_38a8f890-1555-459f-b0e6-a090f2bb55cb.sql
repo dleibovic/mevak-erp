@@ -1,0 +1,1 @@
+ALTER TABLE public.client_sub_brands ADD COLUMN IF NOT EXISTS fee_billing_mode TEXT NOT NULL DEFAULT 'per_branch' CHECK (fee_billing_mode IN ('flat','per_branch'));
