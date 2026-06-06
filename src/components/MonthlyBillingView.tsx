@@ -82,9 +82,13 @@ export function MonthlyBillingView() {
   const filtered = useMemo(() => {
     let r = rows as any[];
     if (filterStatus !== "all") r = r.filter((x) => x.status === filterStatus);
+    if (filterBillingUser !== "all") {
+      if (filterBillingUser === "__none__") r = r.filter((x) => !(x.billing_user_id ?? x.client?.billing_user_id));
+      else r = r.filter((x) => (x.billing_user_id ?? x.client?.billing_user_id) === filterBillingUser);
+    }
     if (!isAdmin) r = r.filter((x) => x.billing_user_id === user?.id);
     return r;
-  }, [rows, filterStatus, isAdmin, user]);
+  }, [rows, filterStatus, filterBillingUser, isAdmin, user]);
 
   const stats = useMemo(() => {
     const totalsByCcy: Record<string, { total: number; pending: number; paid: number; invoiced: number }> = {};
