@@ -145,6 +145,23 @@ export default function Clients() {
     [clients],
   );
 
+  const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
+  const normalizedClientFee = (c: any) => {
+    const branches = c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1));
+    return Number(c.monthly_fee || 0) * branches * billingMultiplier(c.billing_frequency);
+  };
+  const sumByCurrency = (rows: any[]) => {
+    const map: Record<string, number> = {};
+    rows.forEach((c) => {
+      const cur = c.fee_currency ?? "—";
+      map[cur] = (map[cur] ?? 0) + normalizedClientFee(c);
+    });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  };
+  const totalsFiltered = useMemo(() => sumByCurrency(filtered), [filtered]);
+  const selectedClients = useMemo(() => filtered.filter((c: any) => selected.has(c.id)), [filtered, selected]);
+  const totalsSelected = useMemo(() => sumByCurrency(selectedClients), [selectedClients]);
+
   const confirmDelete = () => {
     if (!clientToDelete) return;
     const id = clientToDelete.id;
