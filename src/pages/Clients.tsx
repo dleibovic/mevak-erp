@@ -1006,7 +1006,17 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                       </div>
                       <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
                       <div>
-                        <Label>Fee por sucursal</Label>
+                        <Label>Modalidad</Label>
+                        <Select value={brand.fee_billing_mode ?? "per_branch"} onValueChange={(v) => updateSubBrand(index, { fee_billing_mode: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="flat">Fee único</SelectItem>
+                            <SelectItem value="per_branch">Fee por sucursal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>{brand.fee_billing_mode === "flat" ? "Fee único" : "Fee por sucursal"}</Label>
                         <div className="flex gap-2">
                           <Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} />
                           <Select value={brand.fee_currency ?? defaultCurrency} onValueChange={(v) => updateSubBrand(index, { fee_currency: v })}>
@@ -1025,9 +1035,14 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                             </SelectContent>
                           </Select>
                         </div>
-                        {Number(brand.branches_count) > 0 && Number(brand.monthly_fee) > 0 && (
+                        {Number(brand.monthly_fee) > 0 && (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Total: <span className="font-mono font-semibold text-foreground">{formatMoney(Number(brand.monthly_fee || 0) * Number(brand.branches_count || 1), brand.fee_currency)}</span>
+                            Total: <span className="font-mono font-semibold text-foreground">{formatMoney(
+                              brand.fee_billing_mode === "flat"
+                                ? Number(brand.monthly_fee || 0)
+                                : Number(brand.monthly_fee || 0) * Number(brand.branches_count || 1),
+                              brand.fee_currency,
+                            )}</span>
                           </p>
                         )}
                       </div>
