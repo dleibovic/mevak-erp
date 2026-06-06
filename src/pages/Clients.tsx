@@ -34,7 +34,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 type Client = any;
 
-const STATUS_LABEL: Record<string, string> = { active: "Activo", inactive: "Inactivo", suspended: "Suspendido" };
+const STATUS_LABEL: Record<string, string> = { onboarding: "Onboarding", active: "Activo", paused: "Suspendido", churned: "Inactivo" };
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "onboarding", label: "Onboarding" },
+  { value: "active", label: "Activo" },
+  { value: "paused", label: "Suspendido" },
+  { value: "churned", label: "Inactivo" },
+];
 const FREQ_LABEL: Record<string, string> = { weekly: "Semanal", biweekly: "Quincenal", monthly: "Mensual" };
 const BILLING_FREQUENCY_OPTIONS = [
   { value: "monthly", label: "Mensual" },
@@ -269,8 +275,8 @@ export default function Clients() {
                   <TableCell>{FREQ_LABEL[c.billing_frequency]}</TableCell>
                   <TableCell className="text-muted-foreground">{c.executive?.full_name ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={c.status === "active" ? "default" : c.status === "suspended" ? "destructive" : "secondary"}>
-                      {STATUS_LABEL[c.status]}
+                    <Badge variant={c.status === "active" ? "default" : c.status === "paused" ? "destructive" : "secondary"}>
+                      {STATUS_LABEL[c.status] ?? c.status}
                     </Badge>
                   </TableCell>
                   {isAdmin && (
@@ -779,9 +785,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                 <Select value={form.status ?? "active"} onValueChange={(v) => setForm({ ...form, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Activo</SelectItem>
-                    <SelectItem value="inactive">Inactivo</SelectItem>
-                    <SelectItem value="suspended">Suspendido</SelectItem>
+                    {STATUS_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1061,7 +1067,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                       <div><Label>Celular</Label><Input value={brand.contact_phone ?? ""} onChange={(e) => updateSubBrand(index, { contact_phone: e.target.value })} /></div>
                       <div><Label>Email de contacto</Label><Input type="email" value={brand.contact_email ?? ""} onChange={(e) => updateSubBrand(index, { contact_email: e.target.value })} /></div>
                       <div><Label>Email informes</Label><Input type="email" value={brand.reports_email ?? ""} onChange={(e) => updateSubBrand(index, { reports_email: e.target.value })} /></div>
-                      <div><Label>Estado</Label><Select value={brand.status ?? "active"} onValueChange={(v) => updateSubBrand(index, { status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Activo</SelectItem><SelectItem value="inactive">Inactivo</SelectItem><SelectItem value="suspended">Suspendido</SelectItem></SelectContent></Select></div>
+                      <div><Label>Estado</Label><Select value={brand.status ?? "active"} onValueChange={(v) => updateSubBrand(index, { status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select></div>
                       <div className="col-span-2"><Label>Notas</Label><Textarea rows={2} value={brand.notes ?? ""} onChange={(e) => updateSubBrand(index, { notes: e.target.value })} /></div>
                     </div>
                   </div>
