@@ -145,6 +145,23 @@ export default function Clients() {
     [clients],
   );
 
+  const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
+  const normalizedClientFee = (c: any) => {
+    const branches = c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1));
+    return Number(c.monthly_fee || 0) * branches * billingMultiplier(c.billing_frequency);
+  };
+  const sumByCurrency = (rows: any[]) => {
+    const map: Record<string, number> = {};
+    rows.forEach((c) => {
+      const cur = c.fee_currency ?? "—";
+      map[cur] = (map[cur] ?? 0) + normalizedClientFee(c);
+    });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  };
+  const totalsFiltered = useMemo(() => sumByCurrency(filtered), [filtered]);
+  const selectedClients = useMemo(() => filtered.filter((c: any) => selected.has(c.id)), [filtered, selected]);
+  const totalsSelected = useMemo(() => sumByCurrency(selectedClients), [selectedClients]);
+
   const confirmDelete = () => {
     if (!clientToDelete) return;
     const id = clientToDelete.id;
@@ -194,6 +211,29 @@ export default function Clients() {
             {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
           </SelectContent>
         </Select>
+      </Card>
+
+      <Card className="p-4 mb-4 bg-gradient-card border-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Facturación total {countryId ? "del país filtrado" : "(todos los países)"} · {filtered.length} cliente(s)</div>
+            <div className="flex flex-wrap gap-3 mt-1">
+              {totalsFiltered.length ? totalsFiltered.map(([cur, total]) => (
+                <span key={cur} className="font-mono text-base font-semibold">{formatMoney(total, cur)}</span>
+              )) : <span className="text-sm text-muted-foreground">Sin datos</span>}
+            </div>
+          </div>
+          {selected.size > 0 && (
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Seleccionados · {selected.size}</div>
+              <div className="flex flex-wrap gap-3 justify-end mt-1">
+                {totalsSelected.map(([cur, total]) => (
+                  <span key={cur} className="font-mono text-base font-semibold text-primary">{formatMoney(total, cur)}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </Card>
 
       {isAdmin && selected.size > 0 && (
