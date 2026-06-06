@@ -379,6 +379,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         cmv_cost: 0,
         cmv_currency: defaultCurrency,
         branches_count: 1,
+        fee_billing_mode: form.fee_billing_mode ?? "per_branch",
         contact_name: "",
         contact_phone: "",
         contact_email: "",
@@ -418,6 +419,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         cmv_cost: client.cmv_cost ?? 0,
         cmv_currency: client.cmv_currency ?? "ARS",
         branches_count: client.branches_count ?? 1,
+        fee_billing_mode: (client as any).fee_billing_mode ?? "per_branch",
         contact_name: client.contact_name ?? "",
         contact_phone: client.contact_phone ?? "",
         contact_email: client.contact_email ?? "",
@@ -461,6 +463,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         cmv_cost: 0,
         cmv_currency: defCountry?.currency_code ?? "ARS",
         branches_count: 1,
+        fee_billing_mode: "per_branch",
         contact_name: "",
         contact_phone: "",
         contact_email: "",
@@ -557,6 +560,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         cmv_cost: Number(form.cmv_cost) || 0,
         cmv_currency: form.cmv_currency,
         branches_count: Number(form.branches_count) || 1,
+        fee_billing_mode: form.fee_billing_mode === "flat" ? "flat" : "per_branch",
         contact_name: form.contact_name || null,
         contact_phone: form.contact_phone || null,
         contact_email: form.contact_email || null,
@@ -612,6 +616,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
           cmv_cost: Number(brand.cmv_cost) || 0,
           cmv_currency: brand.cmv_currency || defaultCurrency,
           branches_count: Number(brand.branches_count) || 1,
+          fee_billing_mode: brand.fee_billing_mode === "flat" ? "flat" : "per_branch",
           contact_name: brand.contact_name || null,
           contact_phone: brand.contact_phone || null,
           contact_email: brand.contact_email || null,
@@ -838,8 +843,18 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Económico</h3>
             <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label>Modalidad de cobro *</Label>
+                <Select value={form.fee_billing_mode ?? "per_branch"} onValueChange={(v) => setForm({ ...form, fee_billing_mode: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="flat">Fee único (no se multiplica por sucursales)</SelectItem>
+                    <SelectItem value="per_branch">Fee por sucursal (se multiplica por la cantidad de sucursales)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
-                <Label>Fee por sucursal *</Label>
+                <Label>{form.fee_billing_mode === "flat" ? "Fee único *" : "Fee por sucursal *"}</Label>
                 <div className="flex gap-2">
                   <Input type="number" step="0.01" min={0} value={form.monthly_fee ?? 0} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} />
                   <Select value={form.fee_currency ?? defaultCurrency} onValueChange={(v) => setForm({ ...form, fee_currency: v })}>
@@ -858,12 +873,17 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                     </SelectContent>
                   </Select>
                 </div>
-                {Number(form.branches_count) > 0 && Number(form.monthly_fee) > 0 && (
+                {form.fee_billing_mode !== "flat" && Number(form.branches_count) > 0 && Number(form.monthly_fee) > 0 && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}):{" "}
                     <span className="font-mono font-semibold text-foreground">
                       {formatMoney(Number(form.monthly_fee || 0) * Number(form.branches_count || 1), form.fee_currency)}
                     </span>
+                  </p>
+                )}
+                {form.fee_billing_mode === "flat" && Number(form.monthly_fee) > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Total: <span className="font-mono font-semibold text-foreground">{formatMoney(Number(form.monthly_fee || 0), form.fee_currency)}</span>
                   </p>
                 )}
               </div>
@@ -986,7 +1006,17 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                       </div>
                       <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
                       <div>
-                        <Label>Fee por sucursal</Label>
+                        <Label>Modalidad</Label>
+                        <Select value={brand.fee_billing_mode ?? "per_branch"} onValueChange={(v) => updateSubBrand(index, { fee_billing_mode: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="flat">Fee único</SelectItem>
+                            <SelectItem value="per_branch">Fee por sucursal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>{brand.fee_billing_mode === "flat" ? "Fee único" : "Fee por sucursal"}</Label>
                         <div className="flex gap-2">
                           <Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} />
                           <Select value={brand.fee_currency ?? defaultCurrency} onValueChange={(v) => updateSubBrand(index, { fee_currency: v })}>
@@ -1005,9 +1035,14 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                             </SelectContent>
                           </Select>
                         </div>
-                        {Number(brand.branches_count) > 0 && Number(brand.monthly_fee) > 0 && (
+                        {Number(brand.monthly_fee) > 0 && (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Total: <span className="font-mono font-semibold text-foreground">{formatMoney(Number(brand.monthly_fee || 0) * Number(brand.branches_count || 1), brand.fee_currency)}</span>
+                            Total: <span className="font-mono font-semibold text-foreground">{formatMoney(
+                              brand.fee_billing_mode === "flat"
+                                ? Number(brand.monthly_fee || 0)
+                                : Number(brand.monthly_fee || 0) * Number(brand.branches_count || 1),
+                              brand.fee_currency,
+                            )}</span>
                           </p>
                         )}
                       </div>
@@ -1145,22 +1180,34 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
               </div>
               {form.discount_percentage && Number(form.discount_percentage) > 0 && (
                 <div className="col-span-3 text-sm rounded-md border border-primary/30 bg-primary/5 p-2 space-y-1">
-                  <div>
-                    Por sucursal con descuento:{" "}
-                    <span className="font-mono font-semibold">
-                      {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
-                    </span>
-                  </div>
-                  <div>
-                    Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}) con descuento:{" "}
-                    <span className="font-mono font-semibold">
-                      {formatMoney(
-                        Number(form.monthly_fee || 0) * Number(form.branches_count || 1) * (1 - Number(form.discount_percentage) / 100),
-                        form.fee_currency,
-                      )}
-                    </span>
-                    {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
-                  </div>
+                  {form.fee_billing_mode === "flat" ? (
+                    <div>
+                      Fee único con descuento:{" "}
+                      <span className="font-mono font-semibold">
+                        {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
+                      </span>
+                      {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        Por sucursal con descuento:{" "}
+                        <span className="font-mono font-semibold">
+                          {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
+                        </span>
+                      </div>
+                      <div>
+                        Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}) con descuento:{" "}
+                        <span className="font-mono font-semibold">
+                          {formatMoney(
+                            Number(form.monthly_fee || 0) * Number(form.branches_count || 1) * (1 - Number(form.discount_percentage) / 100),
+                            form.fee_currency,
+                          )}
+                        </span>
+                        {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -33,7 +33,7 @@ export default function Dashboard() {
   });
   const { data: clientsAll = [] } = useQuery({
     queryKey: ["dash-clients"],
-    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, billing_frequency, branches_count, status")).data ?? [],
+    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, billing_frequency, branches_count, fee_billing_mode, status")).data ?? [],
   });
   const { data: prospectsAll = [] } = useQuery({
     queryKey: ["dash-prospects"],
@@ -60,7 +60,10 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
     const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
-    const normalizedClientFee = (c: any) => Number(c.monthly_fee || 0) * Math.max(1, Number(c.branches_count || 1)) * billingMultiplier(c.billing_frequency);
+    const normalizedClientFee = (c: any) => {
+      const branches = c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1));
+      return Number(c.monthly_fee || 0) * branches * billingMultiplier(c.billing_frequency);
+    };
     const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
     const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
     if (activeCurrency) {
@@ -123,7 +126,7 @@ export default function Dashboard() {
       const rows = currencies.map((currency) => {
         const totalBilling = countryClients
           .filter((c: any) => c.fee_currency === currency)
-          .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * Math.max(1, Number(c.branches_count || 1)) * billingMultiplier(c.billing_frequency), 0);
+          .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * (c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1))) * billingMultiplier(c.billing_frequency), 0);
         const income = countryInvoices
           .filter((i: any) => i.status === "paid" && i.currency === currency)
           .reduce((acc: number, i: any) => acc + Number(i.amount || 0), 0);
