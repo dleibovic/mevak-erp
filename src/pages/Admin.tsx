@@ -166,19 +166,38 @@ function CountriesManager() {
   const qc = useQueryClient();
   const { data = [] } = useCountries();
   const [selected, setSelected] = useState<string>("");
+  const [addCurrency, setAddCurrency] = useState<string>("");
   const [editing, setEditing] = useState<{ id: string; name: string; currency_code: string; currency_symbol: string } | null>(null);
 
   const existingNames = useMemo(() => new Set((data as any[]).map((c) => c.name.trim().toLowerCase())), [data]);
   const available = COUNTRY_OPTIONS.filter((c) => !existingNames.has(c.name.toLowerCase()));
+  const selectedCountry = COUNTRY_OPTIONS.find((c) => c.iso2 === selected);
+
+  const currencyOptionsFor = (countryCode?: string, countrySymbol?: string) => {
+    const opts: { code: string; symbol: string; label: string }[] = [];
+    const push = (code: string, symbol: string, label: string) => {
+      if (!opts.find((o) => o.code === code)) opts.push({ code, symbol, label });
+    };
+    if (countryCode) push(countryCode, countrySymbol ?? countryCode, `${countryCode} (moneda local)`);
+    push("USD", "$", "USD (Dólar)");
+    push("EUR", "€", "EUR (Euro)");
+    return opts;
+  };
+
+  const addCurrencyOpts = currencyOptionsFor(selectedCountry?.currency_code, selectedCountry?.currency_symbol);
+  const resolvedAddCurrency = addCurrency || selectedCountry?.currency_code || "";
+  const resolvedAddSymbol = addCurrencyOpts.find((o) => o.code === resolvedAddCurrency)?.symbol ?? selectedCountry?.currency_symbol ?? "";
 
   const add = useMutation({
     mutationFn: async () => {
       const opt = COUNTRY_OPTIONS.find((c) => c.iso2 === selected);
       if (!opt) throw new Error("Elegí un país");
-      const { error } = await supabase.from("countries").insert({ name: opt.name, currency_code: opt.currency_code, currency_symbol: opt.currency_symbol });
+      const code = resolvedAddCurrency || opt.currency_code;
+      const symbol = resolvedAddSymbol || opt.currency_symbol;
+      const { error } = await supabase.from("countries").insert({ name: opt.name, currency_code: code, currency_symbol: symbol });
       if (error) throw error;
     },
-    onSuccess: () => { setSelected(""); qc.invalidateQueries({ queryKey: ["countries"] }); toast.success("País agregado"); },
+    onSuccess: () => { setSelected(""); setAddCurrency(""); qc.invalidateQueries({ queryKey: ["countries"] }); toast.success("País agregado"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -198,10 +217,12 @@ function CountriesManager() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const editCurrencyOpts = editing ? currencyOptionsFor(editing.currency_code, editing.currency_symbol) : [];
+
   return (
     <Card className="p-5 bg-gradient-card border-border/60 mt-4">
       <div className="flex flex-col md:flex-row gap-2 mb-4">
-        <Select value={selected} onValueChange={setSelected}>
+        <Select value={selected} onValueChange={(v) => { setSelected(v); setAddCurrency(""); }}>
           <SelectTrigger className="md:w-80"><SelectValue placeholder="Seleccionar país a agregar" /></SelectTrigger>
           <SelectContent>
             {available.map((c) => (
@@ -209,6 +230,12 @@ function CountriesManager() {
                 <span className="mr-2">{c.flag}</span>{c.name} <span className="text-muted-foreground ml-1">({c.currency_code})</span>
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={resolvedAddCurrency} onValueChange={setAddCurrency} disabled={!selected}>
+          <SelectTrigger className="md:w-56"><SelectValue placeholder="Moneda" /></SelectTrigger>
+          <SelectContent>
+            {addCurrencyOpts.map((o) => <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Button onClick={() => add.mutate()} disabled={!selected || add.isPending}><Plus className="h-4 w-4 mr-1" />Agregar</Button>
@@ -239,8 +266,25 @@ function CountriesManager() {
           {editing && (
             <div className="space-y-3">
               <div><Label>Nombre</Label><Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
-              <div><Label>Código de moneda</Label><Input value={editing.currency_code} onChange={(e) => setEditing({ ...editing, currency_code: e.target.value })} /></div>
-              <div><Label>Símbolo</Label><Input value={editing.currency_symbol} onChange={(e) => setEditing({ ...editing, currency_symbol: e.target.value })} /></div>
+              <div>
+                <Label>Moneda</Label>
+                <Select
+                  value={editing.currency_code}
+                  onValueChange={(v) => {
+                    const opt = editCurrencyOpts.find((o) => o.code === v);
+                    setEditing({ ...editing, currency_code: v, currency_symbol: opt?.symbol ?? editing.currency_symbol });
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {editCurrencyOpts.map((o) => <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Código</Label><Input value={editing.currency_code} onChange={(e) => setEditing({ ...editing, currency_code: e.target.value })} /></div>
+                <div><Label>Símbolo</Label><Input value={editing.currency_symbol} onChange={(e) => setEditing({ ...editing, currency_symbol: e.target.value })} /></div>
+              </div>
             </div>
           )}
           <DialogFooter>
