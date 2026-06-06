@@ -143,6 +143,16 @@ export function MonthlyBillingView() {
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
         <div className="ml-auto flex gap-2">
+          {isAdmin && (
+            <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Responsable" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los responsables</SelectItem>
+                <SelectItem value="__none__">Sin asignar</SelectItem>
+                {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={groupBy} onValueChange={(v: any) => setGroupBy(v)}>
             <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>
