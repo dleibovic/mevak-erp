@@ -521,6 +521,7 @@ export type Database = {
           discount_ends_at: string | null
           discount_percentage: number | null
           discount_starts_at: string | null
+          fee_billing_mode: string
           fee_currency: string
           food_category_id: string | null
           id: string
@@ -560,6 +561,7 @@ export type Database = {
           discount_ends_at?: string | null
           discount_percentage?: number | null
           discount_starts_at?: string | null
+          fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
           id?: string
@@ -601,6 +603,7 @@ export type Database = {
           discount_ends_at?: string | null
           discount_percentage?: number | null
           discount_starts_at?: string | null
+          fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
           id?: string
