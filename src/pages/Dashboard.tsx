@@ -33,7 +33,7 @@ export default function Dashboard() {
   });
   const { data: clientsAll = [] } = useQuery({
     queryKey: ["dash-clients"],
-    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, billing_frequency, status")).data ?? [],
+    queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, billing_frequency, branches_count, status")).data ?? [],
   });
   const { data: prospectsAll = [] } = useQuery({
     queryKey: ["dash-prospects"],
