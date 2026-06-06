@@ -33,6 +33,12 @@ export function MonthlyBillingView() {
   const [period, setPeriod] = useState(currentPeriod);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [groupBy, setGroupBy] = useState<"none" | "channel">("channel");
+  const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-billing"],
+    queryFn: async () => (await supabase.from("profiles").select("id, full_name, email").order("full_name")).data ?? [],
+  });
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["monthly_invoices", period],
