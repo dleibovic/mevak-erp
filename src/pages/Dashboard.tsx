@@ -123,7 +123,7 @@ export default function Dashboard() {
       const rows = currencies.map((currency) => {
         const totalBilling = countryClients
           .filter((c: any) => c.fee_currency === currency)
-          .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * billingMultiplier(c.billing_frequency), 0);
+          .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * Math.max(1, Number(c.branches_count || 1)) * billingMultiplier(c.billing_frequency), 0);
         const income = countryInvoices
           .filter((i: any) => i.status === "paid" && i.currency === currency)
           .reduce((acc: number, i: any) => acc + Number(i.amount || 0), 0);
