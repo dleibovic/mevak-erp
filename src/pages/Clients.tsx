@@ -839,17 +839,33 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Económico</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Fee por cobro *</Label>
+                <Label>Fee por sucursal *</Label>
                 <div className="flex gap-2">
                   <Input type="number" step="0.01" min={0} value={form.monthly_fee ?? 0} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} />
                   <Select value={form.fee_currency ?? defaultCurrency} onValueChange={(v) => setForm({ ...form, fee_currency: v })}>
-                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ARS">ARS</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
+                      {(() => {
+                        const c = countries.find((x: any) => x.id === form.country_id);
+                        const opts: { code: string; label: string }[] = [];
+                        const push = (code: string, label: string) => { if (code && !opts.find((o) => o.code === code)) opts.push({ code, label }); };
+                        if (c?.currency_code) push(c.currency_code, `${c.currency_code} (local)`);
+                        push("USD", "USD");
+                        push("EUR", "EUR");
+                        if (form.fee_currency) push(form.fee_currency, form.fee_currency);
+                        return opts.map((o) => <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>);
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>
+                {Number(form.branches_count) > 0 && Number(form.monthly_fee) > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}):{" "}
+                    <span className="font-mono font-semibold text-foreground">
+                      {formatMoney(Number(form.monthly_fee || 0) * Number(form.branches_count || 1), form.fee_currency)}
+                    </span>
+                  </p>
+                )}
               </div>
               <div>
                 <Label>CMV (Costo de Mercadería Vendida) %</Label>
