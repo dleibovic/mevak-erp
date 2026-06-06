@@ -616,6 +616,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
           cmv_cost: Number(brand.cmv_cost) || 0,
           cmv_currency: brand.cmv_currency || defaultCurrency,
           branches_count: Number(brand.branches_count) || 1,
+          fee_billing_mode: brand.fee_billing_mode === "flat" ? "flat" : "per_branch",
           contact_name: brand.contact_name || null,
           contact_phone: brand.contact_phone || null,
           contact_email: brand.contact_email || null,
