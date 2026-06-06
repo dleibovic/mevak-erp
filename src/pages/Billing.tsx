@@ -29,6 +29,7 @@ export default function Billing() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [localCountry, setLocalCountry] = useState<string | null>(null);
+  const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
 
   useQuery({
     queryKey: ["refresh-statuses"],
@@ -36,12 +37,17 @@ export default function Billing() {
     refetchOnWindowFocus: false,
   });
 
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-billing"],
+    queryFn: async () => (await supabase.from("profiles").select("id, full_name, email").order("full_name")).data ?? [],
+  });
+
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, client:clients(id, company_name, billing_frequency, country_id, country:countries(*))")
+        .select("*, client:clients(id, company_name, billing_frequency, country_id, billing_user_id, country:countries(*))")
         .order("due_date", { ascending: true });
       if (error) throw error;
       return data;
