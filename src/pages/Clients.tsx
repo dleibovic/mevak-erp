@@ -187,7 +187,30 @@ export default function Clients() {
         <Card className="p-3 mb-4 border-warning/40 bg-warning/10 flex items-center gap-2 text-sm">
           <AlertCircle className="h-4 w-4 text-warning" />
           <span><strong>{incompleteCount}</strong> cliente(s) sin método o responsable de cobro asignado.</span>
-        </Card>
+      </Card>
+
+      <Card className="p-4 mb-4 bg-gradient-card border-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Facturación total {countryId ? "del país filtrado" : "(todos los países)"} · {filtered.length} cliente(s)</div>
+            <div className="flex flex-wrap gap-3 mt-1">
+              {totalsFiltered.length ? totalsFiltered.map(([cur, total]) => (
+                <span key={cur} className="font-mono text-base font-semibold">{formatMoney(total, cur)}</span>
+              )) : <span className="text-sm text-muted-foreground">Sin datos</span>}
+            </div>
+          </div>
+          {selected.size > 0 && (
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Seleccionados · {selected.size}</div>
+              <div className="flex flex-wrap gap-3 justify-end mt-1">
+                {totalsSelected.map(([cur, total]) => (
+                  <span key={cur} className="font-mono text-base font-semibold text-primary">{formatMoney(total, cur)}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
       )}
 
       <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-3">
