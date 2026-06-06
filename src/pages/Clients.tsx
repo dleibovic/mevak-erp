@@ -560,6 +560,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         cmv_cost: Number(form.cmv_cost) || 0,
         cmv_currency: form.cmv_currency,
         branches_count: Number(form.branches_count) || 1,
+        fee_billing_mode: form.fee_billing_mode === "flat" ? "flat" : "per_branch",
         contact_name: form.contact_name || null,
         contact_phone: form.contact_phone || null,
         contact_email: form.contact_email || null,
