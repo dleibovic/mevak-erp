@@ -419,6 +419,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         cmv_cost: client.cmv_cost ?? 0,
         cmv_currency: client.cmv_currency ?? "ARS",
         branches_count: client.branches_count ?? 1,
+        fee_billing_mode: (client as any).fee_billing_mode ?? "per_branch",
         contact_name: client.contact_name ?? "",
         contact_phone: client.contact_phone ?? "",
         contact_email: client.contact_email ?? "",
