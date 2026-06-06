@@ -839,17 +839,33 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Económico</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Fee por cobro *</Label>
+                <Label>Fee por sucursal *</Label>
                 <div className="flex gap-2">
                   <Input type="number" step="0.01" min={0} value={form.monthly_fee ?? 0} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} />
                   <Select value={form.fee_currency ?? defaultCurrency} onValueChange={(v) => setForm({ ...form, fee_currency: v })}>
-                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ARS">ARS</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
+                      {(() => {
+                        const c = countries.find((x: any) => x.id === form.country_id);
+                        const opts: { code: string; label: string }[] = [];
+                        const push = (code: string, label: string) => { if (code && !opts.find((o) => o.code === code)) opts.push({ code, label }); };
+                        if (c?.currency_code) push(c.currency_code, `${c.currency_code} (local)`);
+                        push("USD", "USD");
+                        push("EUR", "EUR");
+                        if (form.fee_currency) push(form.fee_currency, form.fee_currency);
+                        return opts.map((o) => <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>);
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>
+                {Number(form.branches_count) > 0 && Number(form.monthly_fee) > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}):{" "}
+                    <span className="font-mono font-semibold text-foreground">
+                      {formatMoney(Number(form.monthly_fee || 0) * Number(form.branches_count || 1), form.fee_currency)}
+                    </span>
+                  </p>
+                )}
               </div>
               <div>
                 <Label>CMV (Costo de Mercadería Vendida) %</Label>
@@ -969,7 +985,32 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                         </Select>
                       </div>
                       <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
-                      <div><Label>Fee por cobro</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div>
+                        <Label>Fee por sucursal</Label>
+                        <div className="flex gap-2">
+                          <Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} />
+                          <Select value={brand.fee_currency ?? defaultCurrency} onValueChange={(v) => updateSubBrand(index, { fee_currency: v })}>
+                            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {(() => {
+                                const c = countries.find((x: any) => x.id === (brand.country_id ?? form.country_id));
+                                const opts: { code: string; label: string }[] = [];
+                                const push = (code: string, label: string) => { if (code && !opts.find((o) => o.code === code)) opts.push({ code, label }); };
+                                if (c?.currency_code) push(c.currency_code, `${c.currency_code} (local)`);
+                                push("USD", "USD");
+                                push("EUR", "EUR");
+                                if (brand.fee_currency) push(brand.fee_currency, brand.fee_currency);
+                                return opts.map((o) => <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>);
+                              })()}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {Number(brand.branches_count) > 0 && Number(brand.monthly_fee) > 0 && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Total: <span className="font-mono font-semibold text-foreground">{formatMoney(Number(brand.monthly_fee || 0) * Number(brand.branches_count || 1), brand.fee_currency)}</span>
+                          </p>
+                        )}
+                      </div>
                       <div>
                         <Label>Frecuencia de cobro</Label>
                         <Select value={brand.billing_frequency ?? "monthly"} onValueChange={(v) => updateSubBrand(index, { billing_frequency: v })}>
@@ -1103,9 +1144,23 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                 <Input type="date" value={form.discount_ends_at ?? ""} disabled={form.discount_duration && form.discount_duration !== "custom"} onChange={(e) => setForm({ ...form, discount_ends_at: e.target.value || null })} />
               </div>
               {form.discount_percentage && Number(form.discount_percentage) > 0 && (
-                <div className="col-span-3 text-sm rounded-md border border-primary/30 bg-primary/5 p-2">
-                  Monto con descuento: <span className="font-mono font-semibold">{formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage)/100), form.fee_currency)}</span>
-                  {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                <div className="col-span-3 text-sm rounded-md border border-primary/30 bg-primary/5 p-2 space-y-1">
+                  <div>
+                    Por sucursal con descuento:{" "}
+                    <span className="font-mono font-semibold">
+                      {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
+                    </span>
+                  </div>
+                  <div>
+                    Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}) con descuento:{" "}
+                    <span className="font-mono font-semibold">
+                      {formatMoney(
+                        Number(form.monthly_fee || 0) * Number(form.branches_count || 1) * (1 - Number(form.discount_percentage) / 100),
+                        form.fee_currency,
+                      )}
+                    </span>
+                    {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                  </div>
                 </div>
               )}
             </div>
