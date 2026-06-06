@@ -1165,22 +1165,34 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
               </div>
               {form.discount_percentage && Number(form.discount_percentage) > 0 && (
                 <div className="col-span-3 text-sm rounded-md border border-primary/30 bg-primary/5 p-2 space-y-1">
-                  <div>
-                    Por sucursal con descuento:{" "}
-                    <span className="font-mono font-semibold">
-                      {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
-                    </span>
-                  </div>
-                  <div>
-                    Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}) con descuento:{" "}
-                    <span className="font-mono font-semibold">
-                      {formatMoney(
-                        Number(form.monthly_fee || 0) * Number(form.branches_count || 1) * (1 - Number(form.discount_percentage) / 100),
-                        form.fee_currency,
-                      )}
-                    </span>
-                    {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
-                  </div>
+                  {form.fee_billing_mode === "flat" ? (
+                    <div>
+                      Fee único con descuento:{" "}
+                      <span className="font-mono font-semibold">
+                        {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
+                      </span>
+                      {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        Por sucursal con descuento:{" "}
+                        <span className="font-mono font-semibold">
+                          {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
+                        </span>
+                      </div>
+                      <div>
+                        Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}) con descuento:{" "}
+                        <span className="font-mono font-semibold">
+                          {formatMoney(
+                            Number(form.monthly_fee || 0) * Number(form.branches_count || 1) * (1 - Number(form.discount_percentage) / 100),
+                            form.fee_currency,
+                          )}
+                        </span>
+                        {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
