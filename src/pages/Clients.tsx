@@ -985,7 +985,32 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                         </Select>
                       </div>
                       <div><Label>Sucursales *</Label><Input type="number" min={1} value={brand.branches_count ?? 1} onChange={(e) => updateSubBrand(index, { branches_count: e.target.value })} /></div>
-                      <div><Label>Fee por cobro</Label><Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} /></div>
+                      <div>
+                        <Label>Fee por sucursal</Label>
+                        <div className="flex gap-2">
+                          <Input type="number" step="0.01" min={0} value={brand.monthly_fee ?? 0} onChange={(e) => updateSubBrand(index, { monthly_fee: e.target.value })} />
+                          <Select value={brand.fee_currency ?? defaultCurrency} onValueChange={(v) => updateSubBrand(index, { fee_currency: v })}>
+                            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {(() => {
+                                const c = countries.find((x: any) => x.id === (brand.country_id ?? form.country_id));
+                                const opts: { code: string; label: string }[] = [];
+                                const push = (code: string, label: string) => { if (code && !opts.find((o) => o.code === code)) opts.push({ code, label }); };
+                                if (c?.currency_code) push(c.currency_code, `${c.currency_code} (local)`);
+                                push("USD", "USD");
+                                push("EUR", "EUR");
+                                if (brand.fee_currency) push(brand.fee_currency, brand.fee_currency);
+                                return opts.map((o) => <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>);
+                              })()}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {Number(brand.branches_count) > 0 && Number(brand.monthly_fee) > 0 && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Total: <span className="font-mono font-semibold text-foreground">{formatMoney(Number(brand.monthly_fee || 0) * Number(brand.branches_count || 1), brand.fee_currency)}</span>
+                          </p>
+                        )}
+                      </div>
                       <div>
                         <Label>Frecuencia de cobro</Label>
                         <Select value={brand.billing_frequency ?? "monthly"} onValueChange={(v) => updateSubBrand(index, { billing_frequency: v })}>
