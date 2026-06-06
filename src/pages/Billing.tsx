@@ -77,13 +77,24 @@ export default function Billing() {
     () => effectiveCountry ? invoices.filter((i: any) => i.client?.country_id === effectiveCountry) : invoices,
     [invoices, effectiveCountry]
   );
-  const filtered = useMemo(() => filterStatus === "all" ? byCountry : byCountry.filter((i: any) => i.status === filterStatus), [byCountry, filterStatus]);
+  const byBillingUser = useMemo(() => {
+    if (filterBillingUser === "all") return byCountry;
+    if (filterBillingUser === "__none__") return byCountry.filter((i: any) => !i.client?.billing_user_id);
+    return byCountry.filter((i: any) => i.client?.billing_user_id === filterBillingUser);
+  }, [byCountry, filterBillingUser]);
+  const filtered = useMemo(() => filterStatus === "all" ? byBillingUser : byBillingUser.filter((i: any) => i.status === filterStatus), [byBillingUser, filterStatus]);
+
+  const totalsByCurrency = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((i: any) => { map[i.currency] = (map[i.currency] ?? 0) + Number(i.amount || 0); });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered]);
 
   const stats = useMemo(() => {
-    const overdue = byCountry.filter((i: any) => i.status === "overdue");
-    const pending = byCountry.filter((i: any) => i.status === "pending");
+    const overdue = byBillingUser.filter((i: any) => i.status === "overdue");
+    const pending = byBillingUser.filter((i: any) => i.status === "pending");
     return { overdueCount: overdue.length, pendingCount: pending.length };
-  }, [byCountry]);
+  }, [byBillingUser]);
 
   return (
     <PageContainer>
