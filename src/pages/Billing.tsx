@@ -127,8 +127,30 @@ export default function Billing() {
         ].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap gap-2 items-center">
+          <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
+            <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Responsable" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los responsables</SelectItem>
+              <SelectItem value="__none__">Sin asignar</SelectItem>
+              {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-[180px]" size="sm" />
+        </div>
+      </Card>
+
+      <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">
+          Total filtrado · {filtered.length} factura(s)
+          {filterBillingUser !== "all" && (
+            <span> · Responsable: {filterBillingUser === "__none__" ? "Sin asignar" : (profiles.find((p: any) => p.id === filterBillingUser)?.full_name ?? profiles.find((p: any) => p.id === filterBillingUser)?.email ?? "—")}</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {totalsByCurrency.length ? totalsByCurrency.map(([cur, total]) => (
+            <span key={cur} className="font-mono text-base font-semibold">{formatMoney(total, cur)}</span>
+          )) : <span className="text-sm text-muted-foreground">Sin datos</span>}
         </div>
       </Card>
 
