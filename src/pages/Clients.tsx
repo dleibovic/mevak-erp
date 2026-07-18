@@ -158,7 +158,8 @@ export default function Clients() {
     });
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   };
-  const totalsFiltered = useMemo(() => sumByCurrency(filtered), [filtered]);
+  const activeFiltered = useMemo(() => filtered.filter((c: any) => c.status === "active"), [filtered]);
+  const totalsFiltered = useMemo(() => sumByCurrency(activeFiltered), [activeFiltered]);
   const selectedClients = useMemo(() => filtered.filter((c: any) => selected.has(c.id)), [filtered, selected]);
   const totalsSelected = useMemo(() => sumByCurrency(selectedClients), [selectedClients]);
 
