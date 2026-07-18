@@ -125,7 +125,7 @@ export default function Dashboard() {
       ].filter(Boolean))).sort();
       const rows = currencies.map((currency) => {
         const totalBilling = countryClients
-          .filter((c: any) => c.fee_currency === currency)
+          .filter((c: any) => c.fee_currency === currency && c.status === "active")
           .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * (c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1))) * billingMultiplier(c.billing_frequency), 0);
         const income = countryInvoices
           .filter((i: any) => i.status === "paid" && i.currency === currency)
