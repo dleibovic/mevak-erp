@@ -10,6 +10,15 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const expected = Deno.env.get("CRON_SHARED_SECRET");
+  const provided = req.headers.get("x-shared-secret") ?? "";
+  if (!expected || provided !== expected) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   const url = new URL(req.url);
   const periodParam = url.searchParams.get("period"); // YYYY-MM-01

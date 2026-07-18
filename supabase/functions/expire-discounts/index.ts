@@ -4,6 +4,15 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const expected = Deno.env.get("CRON_SHARED_SECRET");
+  const provided = req.headers.get("x-shared-secret") ?? "";
+  if (!expected || provided !== expected) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
