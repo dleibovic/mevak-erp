@@ -158,7 +158,8 @@ export default function Clients() {
     });
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   };
-  const totalsFiltered = useMemo(() => sumByCurrency(filtered), [filtered]);
+  const activeFiltered = useMemo(() => filtered.filter((c: any) => c.status === "active"), [filtered]);
+  const totalsFiltered = useMemo(() => sumByCurrency(activeFiltered), [activeFiltered]);
   const selectedClients = useMemo(() => filtered.filter((c: any) => selected.has(c.id)), [filtered, selected]);
   const totalsSelected = useMemo(() => sumByCurrency(selectedClients), [selectedClients]);
 
@@ -216,7 +217,7 @@ export default function Clients() {
       <Card className="p-4 mb-4 bg-gradient-card border-border/60">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-muted-foreground">Facturación total {countryId ? "del país filtrado" : "(todos los países)"} · {filtered.length} cliente(s)</div>
+            <div className="text-xs text-muted-foreground">Facturación mensual (solo activos) {countryId ? "del país filtrado" : "· todos los países"} · {activeFiltered.length} de {filtered.length} cliente(s)</div>
             <div className="flex flex-wrap gap-3 mt-1">
               {totalsFiltered.length ? totalsFiltered.map(([cur, total]) => (
                 <span key={cur} className="font-mono text-base font-semibold">{formatMoney(total, cur)}</span>

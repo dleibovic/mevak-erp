@@ -64,7 +64,7 @@ export default function Dashboard() {
       const branches = c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1));
       return Number(c.monthly_fee || 0) * branches * billingMultiplier(c.billing_frequency);
     };
-    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency).reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
+    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency && c.status === "active").reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
     const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
     if (activeCurrency) {
       const c = activeCurrency;
@@ -125,7 +125,7 @@ export default function Dashboard() {
       ].filter(Boolean))).sort();
       const rows = currencies.map((currency) => {
         const totalBilling = countryClients
-          .filter((c: any) => c.fee_currency === currency)
+          .filter((c: any) => c.fee_currency === currency && c.status === "active")
           .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * (c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1))) * billingMultiplier(c.billing_frequency), 0);
         const income = countryInvoices
           .filter((i: any) => i.status === "paid" && i.currency === currency)
