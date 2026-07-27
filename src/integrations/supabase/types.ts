@@ -4093,6 +4093,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_or_administracion: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       mevak_activate_client_manual: {
         Args: { _client_id: string }
         Returns: Database["public"]["Enums"]["client_status"]
