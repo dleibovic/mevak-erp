@@ -1188,7 +1188,30 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Vencimiento (días)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={form.payment_term_days ?? 5}
+                  onChange={(e) => setForm({ ...form, payment_term_days: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Días desde la fecha de factura hasta el vencimiento.</p>
+              </div>
+              <div>
+                <Label>Tipo de Factura</Label>
+                <Select value={form.invoice_letter ?? "none"} onValueChange={(v) => setForm({ ...form, invoice_letter: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sin definir" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin definir</SelectItem>
+                    <SelectItem value="B">B — Blanco / formal</SelectItem>
+                    <SelectItem value="N">N — Negro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
           </section>
 
           {/* Descuento */}
