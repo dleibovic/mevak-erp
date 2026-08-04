@@ -44,7 +44,7 @@ export function generateInvoicePdf(inv: InvoiceData, opts?: { download?: boolean
   // Logo blanco (fallback a wordmark si algo falla)
   try {
     const logoW = 120;
-    const logoH = (logoW * 130) / 600; // ≈ 26
+    const logoH = (logoW * 113) / 520;
     doc.addImage(MEVAK_LOGO_BLANCO, "PNG", M, 34, logoW, logoH);
   } catch {
     doc.setTextColor("#FFFFFF");
