@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useExpenseCategories, useCountries } from "@/hooks/useCatalogs";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
@@ -36,6 +37,8 @@ export default function Expenses() {
       return data;
     },
   });
+
+  const { isAdmin } = useAuth();
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("expenses").delete().eq("id", id); if (error) throw error; },
@@ -80,13 +83,13 @@ export default function Expenses() {
                   <TableCell>{e.recurring ? <Badge variant="outline" className="gap-1"><RefreshCw className="h-3 w-3" />{e.recurrence_frequency}</Badge> : "—"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                    <AlertDialog>
+                    {isAdmin && <AlertDialog>
                       <AlertDialogTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader><AlertDialogTitle>¿Eliminar gasto?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
                         <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => del.mutate(e.id)}>Eliminar</AlertDialogAction></AlertDialogFooter>
                       </AlertDialogContent>
-                    </AlertDialog>
+                    </AlertDialog>}
                   </TableCell>
                 </TableRow>
               ))}

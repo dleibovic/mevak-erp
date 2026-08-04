@@ -27,7 +27,7 @@ function periodList() {
 
 export function MonthlyBillingView() {
   const qc = useQueryClient();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, canEditAdminFinance, user } = useAuth();
   const periods = periodList();
   const currentPeriod = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   const [period, setPeriod] = useState(currentPeriod);
@@ -86,9 +86,9 @@ export function MonthlyBillingView() {
       if (filterBillingUser === "__none__") r = r.filter((x) => !(x.billing_user_id ?? x.client?.billing_user_id));
       else r = r.filter((x) => (x.billing_user_id ?? x.client?.billing_user_id) === filterBillingUser);
     }
-    if (!isAdmin) r = r.filter((x) => x.billing_user_id === user?.id);
+    if (!canEditAdminFinance) r = r.filter((x) => x.billing_user_id === user?.id);
     return r;
-  }, [rows, filterStatus, filterBillingUser, isAdmin, user]);
+  }, [rows, filterStatus, filterBillingUser, canEditAdminFinance, user]);
 
   const stats = useMemo(() => {
     const totalsByCcy: Record<string, { total: number; pending: number; paid: number; invoiced: number }> = {};
@@ -143,7 +143,7 @@ export function MonthlyBillingView() {
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
         <div className="ml-auto flex gap-2">
-          {isAdmin && (
+          {canEditAdminFinance && (
             <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Responsable" /></SelectTrigger>
               <SelectContent>
