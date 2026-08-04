@@ -32,6 +32,8 @@ export function MonthlyBillingView() {
   const { isAdmin, canEditAdminFinance, user } = useAuth();
   const periods = periodList();
   const currentPeriod = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const todayISO = new Date().toISOString().slice(0, 10);
+
   const [period, setPeriod] = useState(currentPeriod);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [groupBy, setGroupBy] = useState<"none" | "channel">("channel");
