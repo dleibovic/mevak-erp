@@ -47,7 +47,7 @@ type UserRow = {
 
 export default function Usuarios() {
   const qc = useQueryClient();
-  const { isAdmin, loading, user } = useAuth();
+  const { isAdmin, loading, roleLoading, user } = useAuth();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "executive" as AppRole });
