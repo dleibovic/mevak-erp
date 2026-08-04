@@ -3342,6 +3342,7 @@ export type Database = {
           notes: string | null
           paid_at: string | null
           paid_by: string | null
+          payment_assigned_at: string | null
           payment_channel: Database["public"]["Enums"]["payment_channel"] | null
           period_month: string
           status: Database["public"]["Enums"]["monthly_invoice_status"]
@@ -3361,6 +3362,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          payment_assigned_at?: string | null
           payment_channel?:
             | Database["public"]["Enums"]["payment_channel"]
             | null
@@ -3382,6 +3384,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          payment_assigned_at?: string | null
           payment_channel?:
             | Database["public"]["Enums"]["payment_channel"]
             | null
