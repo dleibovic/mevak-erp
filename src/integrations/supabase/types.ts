@@ -528,12 +528,14 @@ export type Database = {
           fee_currency: string
           food_category_id: string | null
           id: string
+          invoice_letter: string | null
           legal_name: string | null
           monthly_fee: number
           notes: string | null
           paused_at: string | null
           payment_channel: Database["public"]["Enums"]["payment_channel"] | null
           payment_method_id: string | null
+          payment_term_days: number
           province_id: string | null
           reports_email: string | null
           status: Database["public"]["Enums"]["client_status"]
@@ -568,6 +570,7 @@ export type Database = {
           fee_currency?: string
           food_category_id?: string | null
           id?: string
+          invoice_letter?: string | null
           legal_name?: string | null
           monthly_fee?: number
           notes?: string | null
@@ -576,6 +579,7 @@ export type Database = {
             | Database["public"]["Enums"]["payment_channel"]
             | null
           payment_method_id?: string | null
+          payment_term_days?: number
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
@@ -610,6 +614,7 @@ export type Database = {
           fee_currency?: string
           food_category_id?: string | null
           id?: string
+          invoice_letter?: string | null
           legal_name?: string | null
           monthly_fee?: number
           notes?: string | null
@@ -618,6 +623,7 @@ export type Database = {
             | Database["public"]["Enums"]["payment_channel"]
             | null
           payment_method_id?: string | null
+          payment_term_days?: number
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
@@ -3223,7 +3229,9 @@ export type Database = {
           client_id: string
           created_at: string
           currency: string
+          due_date: string | null
           id: string
+          invoice_date: string | null
           invoiced_at: string | null
           invoiced_by: string | null
           notes: string | null
@@ -3240,7 +3248,9 @@ export type Database = {
           client_id: string
           created_at?: string
           currency?: string
+          due_date?: string | null
           id?: string
+          invoice_date?: string | null
           invoiced_at?: string | null
           invoiced_by?: string | null
           notes?: string | null
@@ -3259,7 +3269,9 @@ export type Database = {
           client_id?: string
           created_at?: string
           currency?: string
+          due_date?: string | null
           id?: string
+          invoice_date?: string | null
           invoiced_at?: string | null
           invoiced_by?: string | null
           notes?: string | null
