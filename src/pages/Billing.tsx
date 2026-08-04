@@ -32,6 +32,8 @@ export default function Billing() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [localCountry, setLocalCountry] = useState<string | null>(null);
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
+  const [month, setMonth] = useState<string>(currentMonthValue());
+
 
   useQuery({
     queryKey: ["refresh-statuses"],
