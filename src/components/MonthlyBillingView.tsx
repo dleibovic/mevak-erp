@@ -95,6 +95,22 @@ export function MonthlyBillingView() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updatePaidAt = useMutation({
+    mutationFn: async ({ id, paid_at }: { id: string; paid_at: string | null }) => {
+      const { error } = await supabase.from("monthly_invoices").update({ paid_at }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Fecha de pago actualizada"); qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const profileName = (id: string | null | undefined) => {
+    if (!id) return "—";
+    const p = profiles.find((x: any) => x.id === id);
+    return p?.full_name ?? p?.email ?? "—";
+  };
+
+
 
   const filtered = useMemo(() => {
     let r = rows as any[];
