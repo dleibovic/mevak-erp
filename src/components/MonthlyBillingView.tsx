@@ -217,6 +217,22 @@ export function MonthlyBillingView() {
                   <TableCell>{r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] : <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell className="font-mono">{formatMoney(r.amount, r.currency)}</TableCell>
                   <TableCell>
+                    {canEditAdminFinance ? (
+                      <Input
+                        type="date"
+                        className="h-8 w-[150px]"
+                        value={r.invoice_date ?? ""}
+                        onChange={(e) => updateInvoiceDate.mutate({ id: r.id, invoice_date: e.target.value || null })}
+                      />
+                    ) : (
+                      <span className="text-sm">{r.invoice_date ? fmtDate(r.invoice_date) : "—"}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className={`text-sm ${r.due_date && r.due_date < todayISO && r.status !== "paid" ? "text-destructive font-medium" : ""}`}>
+                    {r.due_date ? fmtDate(r.due_date) : "—"}
+                  </TableCell>
+                  <TableCell>
+
                     {r.status === "paid" && <Badge className="bg-success text-success-foreground hover:bg-success">Cobrada</Badge>}
                     {r.status === "invoiced" && <Badge className="bg-primary text-primary-foreground">Facturada</Badge>}
                     {r.status === "pending" && <Badge className="bg-warning text-warning-foreground hover:bg-warning">Pendiente</Badge>}
