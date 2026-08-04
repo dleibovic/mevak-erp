@@ -291,6 +291,18 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <MonthFilter value={month} onChange={setMonth} includeAll />
+        {month === ALL_MONTHS && (
+          <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
+            <TabsList className="h-9">
+              <TabsTrigger value="quarter">Trimestre</TabsTrigger>
+              <TabsTrigger value="year">Año</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+      </div>
+
       <Card className="p-5 bg-gradient-card border-border/60">
         <div className="flex flex-wrap justify-between items-baseline gap-2 mb-3">
           <div>
@@ -319,23 +331,12 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         <Card className="p-5 bg-gradient-card border-border/60">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h4 className="font-semibold">Historial completo</h4>
-            <div className="flex flex-wrap items-center gap-2">
-              <MonthFilter value={month} onChange={setMonth} includeAll />
-              {month === ALL_MONTHS && (
-                <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
-                  <TabsList className="h-9">
-                    <TabsTrigger value="quarter">Trimestre</TabsTrigger>
-                    <TabsTrigger value="year">Año</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="group">
-                  Ver
-                  <ChevronDown className="h-4 w-4 ml-1 transition-transform group-data-[state=open]:rotate-180" />
-                </Button>
-              </CollapsibleTrigger>
-            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="group">
+                Ver
+                <ChevronDown className="h-4 w-4 ml-1 transition-transform group-data-[state=open]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
           </div>
 
           <CollapsibleContent className="mt-4 space-y-3">
