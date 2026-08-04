@@ -675,6 +675,73 @@ export type Database = {
           },
         ]
       }
+      commission_snapshots: {
+        Row: {
+          billed_amount: number | null
+          billed_currency: string | null
+          client_id: string | null
+          client_name: string
+          commission_currency: string
+          commission_value: number
+          created_at: string
+          employee_id: string | null
+          employee_name: string
+          id: string
+          period_month: string
+          was_billed: boolean
+        }
+        Insert: {
+          billed_amount?: number | null
+          billed_currency?: string | null
+          client_id?: string | null
+          client_name: string
+          commission_currency: string
+          commission_value?: number
+          created_at?: string
+          employee_id?: string | null
+          employee_name: string
+          id?: string
+          period_month: string
+          was_billed?: boolean
+        }
+        Update: {
+          billed_amount?: number | null
+          billed_currency?: string | null
+          client_id?: string | null
+          client_name?: string
+          commission_currency?: string
+          commission_value?: number
+          created_at?: string
+          employee_id?: string | null
+          employee_name?: string
+          id?: string
+          period_month?: string
+          was_billed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_snapshots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_snapshots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "commission_snapshots_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_channels: {
         Row: {
           country_scope: string | null
@@ -5082,6 +5149,10 @@ export type Database = {
       }
       recompute_mrr_for_month: { Args: { _period: string }; Returns: undefined }
       refresh_invoice_statuses: { Args: never; Returns: undefined }
+      snapshot_commissions_for_month: {
+        Args: { _period?: string }
+        Returns: number
+      }
       start_mrr_recompute: { Args: { _months?: number }; Returns: string }
       to_usd: {
         Args: { _amount: number; _currency: string; _period_month: string }
