@@ -9,6 +9,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -16,8 +17,13 @@ export function useAuth() {
       if (!mounted) return;
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) setTimeout(() => fetchRole(s.user.id), 0);
-      else setRole(null);
+      if (s?.user) {
+        setRoleLoading(true);
+        setTimeout(() => fetchRole(s.user.id), 0);
+      } else {
+        setRole(null);
+        setRoleLoading(false);
+      }
     };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       applySession(s);
@@ -31,16 +37,21 @@ export function useAuth() {
   }, []);
 
   async function fetchRole(uid: string) {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-    const roles = (data ?? []).map((r: any) => r.role);
-    // prioridad: admin > administracion > executive
-    if (roles.includes("admin")) setRole("admin");
-    else if (roles.includes("administracion")) setRole("administracion");
-    else if (roles.includes("executive")) setRole("executive");
-    else setRole(null);
+    try {
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      const roles = (data ?? []).map((r: any) => r.role);
+      // prioridad: admin > administracion > executive
+      if (roles.includes("admin")) setRole("admin");
+      else if (roles.includes("administracion")) setRole("administracion");
+      else if (roles.includes("executive")) setRole("executive");
+      else setRole(null);
+    } finally {
+      setRoleLoading(false);
+    }
   }
 
   async function signOut() { await supabase.auth.signOut(); }
+
 
   return {
     session, user, role, loading, signOut,
