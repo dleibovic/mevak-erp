@@ -149,7 +149,7 @@ export function MonthlyBillingView() {
   }, [filtered, groupBy]);
 
   function exportCSV() {
-    const header = ["Cliente", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado", "Cobró", "Pago registrado"];
+    const header = ["Cliente", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado por", "Fecha de pago", "Registrado"];
     const lines = filtered.map((r: any) => [
       r.client?.company_name ?? "",
       r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] ?? r.payment_channel : "",
@@ -326,7 +326,7 @@ export function MonthlyBillingView() {
                 </TableRow>
               ))}
               {g.items.length === 0 && (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
