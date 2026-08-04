@@ -252,7 +252,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((i) => (
+        {(Array.isArray(items) ? items : []).map((i) => (
           <TableRow key={i.id} className={!i.was_billed ? "text-destructive" : undefined}>
             {showMonth && <TableCell className="text-sm capitalize">{monthLabel(i.period_month)}</TableCell>}
             <TableCell>{i.client_name}</TableCell>
