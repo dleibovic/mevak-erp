@@ -475,6 +475,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         notes: client.notes ?? "",
         payment_channel: client.payment_channel ?? null,
         billing_user_id: client.billing_user_id ?? null,
+        payment_term_days: (client as any).payment_term_days ?? 5,
+        invoice_letter: (client as any).invoice_letter ?? null,
+
         discount_percentage: client.discount_percentage ?? null,
         discount_duration: client.discount_duration ?? null,
         discount_starts_at: client.discount_starts_at ?? null,
