@@ -19,6 +19,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 import { MonthlyBillingView } from "@/components/MonthlyBillingView";
+import { MonthFilter, currentMonthValue, monthRange } from "@/components/MonthFilter";
+
 
 export default function Billing() {
   const qc = useQueryClient();
