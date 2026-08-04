@@ -136,6 +136,8 @@ export default function Billing() {
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
         <div className="ml-auto flex flex-wrap gap-2 items-center">
+          <MonthFilter value={month} onChange={setMonth} />
+
           <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
             <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Responsable" /></SelectTrigger>
             <SelectContent>
