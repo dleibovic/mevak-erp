@@ -255,36 +255,44 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
     <div className="space-y-4">
       {/* Filters */}
       <Card className="p-3 bg-gradient-card border-border/60 flex flex-wrap items-center gap-2">
-        <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setAnchor(v === "month" ? now.getMonth() : 0); }}>
-          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="month">Mensual</SelectItem>
-            <SelectItem value="quarter">Trimestral</SelectItem>
-            <SelectItem value="semester">Semestral</SelectItem>
-            <SelectItem value="year">Anual</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-          <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-          <SelectContent>{yearOpts.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-        </Select>
-        {period === "month" && (
-          <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{MONTHS_ES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
-        {period === "quarter" && (
-          <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{[0, 1, 2, 3].map((i) => <SelectItem key={i} value={String(i)}>{`T${i + 1}`}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
-        {period === "semester" && (
-          <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{[0, 1].map((i) => <SelectItem key={i} value={String(i)}>{`S${i + 1}`}</SelectItem>)}</SelectContent>
-          </Select>
+        {mRange ? (
+          <div className="text-sm text-muted-foreground">
+            Métricas acotadas al mes seleccionado: <span className="capitalize font-medium text-foreground">{monthLabel(month)}</span>. Elegí "Todos los meses" para usar los períodos.
+          </div>
+        ) : (
+          <>
+            <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setAnchor(v === "month" ? now.getMonth() : 0); }}>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Mensual</SelectItem>
+                <SelectItem value="quarter">Trimestral</SelectItem>
+                <SelectItem value="semester">Semestral</SelectItem>
+                <SelectItem value="year">Anual</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{yearOpts.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+            </Select>
+            {period === "month" && (
+              <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{MONTHS_ES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+            {period === "quarter" && (
+              <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{[0, 1, 2, 3].map((i) => <SelectItem key={i} value={String(i)}>{`T${i + 1}`}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+            {period === "semester" && (
+              <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{[0, 1].map((i) => <SelectItem key={i} value={String(i)}>{`S${i + 1}`}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+          </>
         )}
       </Card>
 
@@ -295,6 +303,13 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
         <KpiCard label="Ganancia" amounts={totals.profit} tone="primary" />
         <KpiCard label="Cobrado" amounts={totals.incPaid} tone="success" sub={`Mora: ${currencies.map((c) => formatMoney(totals.incOverdue[c] ?? 0, c)).join(" / ") || "—"}`} />
       </div>
+
+      {/* Movimientos de caja (transactions) */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+        <KpiCard label="Movimientos — ingresos" amounts={totals.txIn} tone="success" />
+        <KpiCard label="Movimientos — egresos" amounts={totals.txOut} tone="destructive" />
+      </div>
+
 
       {/* Monthly trend (ARS) */}
       <Card className="p-5 bg-gradient-card border-border/60">
