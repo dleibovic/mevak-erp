@@ -9,7 +9,7 @@ export const ISSUER = {
 };
 
 // Colores de marca (design.md)
-const BRAND_BG = "#14151F";
+const BRAND_BG = "#000000";
 const BRAND_VIOLET = "#5961C0";
 const BRAND_ORANGE = "#DD2F03";
 const INK = "#1A1B23";
