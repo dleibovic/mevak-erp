@@ -622,6 +622,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         notes: form.notes || null,
         payment_channel: form.payment_channel || null,
         billing_user_id: form.billing_user_id || null,
+        payment_term_days: form.payment_term_days === "" || form.payment_term_days == null ? 5 : Math.max(0, Number(form.payment_term_days) || 0),
+        invoice_letter: form.invoice_letter || null,
+
         discount_percentage: form.discount_percentage != null && form.discount_percentage !== "" ? Number(form.discount_percentage) : null,
         discount_duration: form.discount_duration || null,
         discount_starts_at: form.discount_starts_at || null,
