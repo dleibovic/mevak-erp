@@ -47,15 +47,19 @@ export default function Billing() {
   });
 
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ["invoices"],
+    queryKey: ["invoices", month],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("invoices")
         .select("*, client:clients(id, company_name, billing_frequency, country_id, billing_user_id, country:countries(*))")
         .order("due_date", { ascending: true });
+      const range = monthRange(month);
+      if (range) q = q.gte("due_date", range.start).lt("due_date", range.end);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
+
   });
 
   const effectiveCountry = localCountry ?? countryId;
