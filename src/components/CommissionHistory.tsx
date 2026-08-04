@@ -163,28 +163,41 @@ export function CommissionHistory() {
 }
 
 /** Nivel 2: mes actual + historial agrupado. */
-function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOption; onBack: () => void }) {
+function EmployeeCommissionDetail({
+  employee,
+  employees,
+  onSelectEmployee,
+  onBack,
+}: {
+  employee: EmployeeOption;
+  employees: EmployeeOption[];
+  onSelectEmployee: (e: EmployeeOption) => void;
+  onBack: () => void;
+}) {
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
   const [month, setMonth] = useState<string>(ALL_MONTHS);
   const [grouping, setGrouping] = useState<Grouping>("quarter");
   const thisMonth = currentMonthValue();
+  // El mes enfocado en la tarjeta superior sigue al filtro (o el mes en curso si es "Todos").
+  const focusMonth = month === ALL_MONTHS ? thisMonth : month;
 
   const applyEmployee = (q: any) =>
     employee.id ? q.eq("employee_id", employee.id) : q.is("employee_id", null).eq("employee_name", employee.name);
 
-  // Mes actual: snapshot congelado o cálculo en vivo
+  // Mes enfocado: snapshot congelado o cálculo en vivo
   const { data: currentMonth, isLoading: loadingCurrent } = useQuery({
-    queryKey: ["commission-current-month", employee.key, thisMonth],
+    queryKey: ["commission-current-month", employee.key, focusMonth],
     queryFn: async () => {
       const { data, error } = await applyEmployee(
-        supabase.from("commission_snapshots").select("*").eq("period_month", thisMonth)
+        supabase.from("commission_snapshots").select("*").eq("period_month", focusMonth)
       );
       if (error) throw error;
       const snapRows = (Array.isArray(data) ? data : []) as unknown as Snapshot[];
       if (snapRows.length > 0) return { live: false, rows: snapRows };
 
-      if (!employee.id) return { live: true, rows: [] as Snapshot[] };
+      // Sólo el mes en curso admite cálculo en vivo
+      if (!employee.id || focusMonth !== thisMonth) return { live: focusMonth === thisMonth, rows: [] as Snapshot[] };
       const { data: live, error: e2 } = await supabase
         .from("client_executive_commission")
         .select("id, client_id, commission_value, currency, client:clients(company_name)")
@@ -192,7 +205,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
       if (e2) throw e2;
       const rows: Snapshot[] = (Array.isArray(live) ? live : []).map((r: any) => ({
         id: r.id,
-        period_month: thisMonth,
+        period_month: focusMonth,
         employee_id: employee.id,
         employee_name: employee.name,
         client_id: r.client_id,
