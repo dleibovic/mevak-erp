@@ -31,9 +31,10 @@ type EmployeeOption = { key: string; id: string | null; name: string };
 
 type Grouping = "quarter" | "year";
 
-function totalsByCurrency(items: { commission_value: number; commission_currency: string }[]) {
+function totalsByCurrency(items?: { commission_value: number; commission_currency: string }[] | null) {
+  const list = Array.isArray(items) ? items : [];
   const map = new Map<string, number>();
-  for (const i of items) {
+  for (const i of list) {
     const cur = i.commission_currency || "ARS";
     map.set(cur, (map.get(cur) ?? 0) + Number(i.commission_value || 0));
   }
@@ -166,14 +167,15 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
     employee.id ? q.eq("employee_id", employee.id) : q.is("employee_id", null).eq("employee_name", employee.name);
 
   // Mes actual: snapshot congelado o cálculo en vivo
-  const { data: currentMonthRows = [], isLoading: loadingCurrent } = useQuery({
+  const { data: currentMonth, isLoading: loadingCurrent } = useQuery({
     queryKey: ["commission-current-month", employee.key, thisMonth],
     queryFn: async () => {
       const { data, error } = await applyEmployee(
         supabase.from("commission_snapshots").select("*").eq("period_month", thisMonth)
       );
       if (error) throw error;
-      if ((data ?? []).length > 0) return { live: false, rows: data as unknown as Snapshot[] };
+      const snapRows = (Array.isArray(data) ? data : []) as unknown as Snapshot[];
+      if (snapRows.length > 0) return { live: false, rows: snapRows };
 
       if (!employee.id) return { live: true, rows: [] as Snapshot[] };
       const { data: live, error: e2 } = await supabase
@@ -181,7 +183,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         .select("id, client_id, commission_value, currency, client:clients(company_name)")
         .eq("employee_id", employee.id);
       if (e2) throw e2;
-      const rows: Snapshot[] = (live ?? []).map((r: any) => ({
+      const rows: Snapshot[] = (Array.isArray(live) ? live : []).map((r: any) => ({
         id: r.id,
         period_month: thisMonth,
         employee_id: employee.id,
@@ -196,21 +198,24 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
       }));
       return { live: true, rows };
     },
-    select: (d: any) => d,
   });
 
-  const cm = (currentMonthRows as any) || { live: false, rows: [] };
+  const cmLive = currentMonth?.live ?? false;
+  const cmRows: Snapshot[] = Array.isArray(currentMonth?.rows) ? currentMonth!.rows : [];
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: historyRows, isLoading } = useQuery({
     queryKey: ["commission-snapshots", employee.key, month],
     queryFn: async () => {
       let q = supabase.from("commission_snapshots").select("*").order("period_month", { ascending: false });
       if (month !== ALL_MONTHS) q = q.eq("period_month", month);
       const { data, error } = await applyEmployee(q);
       if (error) throw error;
-      return (data ?? []) as unknown as Snapshot[];
+      const rows = data ?? [];
+      return (Array.isArray(rows) ? rows : []) as unknown as Snapshot[];
     },
   });
+
+  const rows: Snapshot[] = Array.isArray(historyRows) ? historyRows : [];
 
   const periodGroups = useMemo(() => {
     if (month !== ALL_MONTHS) return [];
@@ -247,7 +252,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((i) => (
+        {(Array.isArray(items) ? items : []).map((i) => (
           <TableRow key={i.id} className={!i.was_billed ? "text-destructive" : undefined}>
             {showMonth && <TableCell className="text-sm capitalize">{monthLabel(i.period_month)}</TableCell>}
             <TableCell>{i.client_name}</TableCell>
@@ -290,11 +295,11 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         <div className="flex flex-wrap justify-between items-baseline gap-2 mb-3">
           <div>
             <h4 className="font-semibold capitalize">{monthLabel(thisMonth)}</h4>
-            {cm.live && <p className="text-xs text-muted-foreground">Cálculo en vivo (mes aún no congelado)</p>}
+            {cmLive && <p className="text-xs text-muted-foreground">Cálculo en vivo (mes aún no congelado)</p>}
           </div>
           <div className="text-right">
             <div className="text-xs text-muted-foreground">Total comisiones</div>
-            {totalsByCurrency(cm.rows).map(([cur, total]) => (
+            {totalsByCurrency(cmRows).map(([cur, total]) => (
               <div key={cur} className="font-mono font-semibold text-primary">
                 {formatMoney(total, cur)}
               </div>
@@ -303,10 +308,10 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         </div>
         {loadingCurrent ? (
           <p className="text-muted-foreground">Cargando...</p>
-        ) : cm.rows.length === 0 ? (
+        ) : cmRows.length === 0 ? (
           <EmptyState title="Sin comisiones en el mes actual" />
         ) : (
-          detailTable(cm.rows, false)
+          detailTable(cmRows, false)
         )}
       </Card>
 
