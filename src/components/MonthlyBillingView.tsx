@@ -249,17 +249,21 @@ export function MonthlyBillingView() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        generateInvoicePdf({
-                          number: `${(r.period_month ?? "").slice(0, 7)}-${(r.client?.company_name ?? "XXX").slice(0, 3).toUpperCase()}`,
-                          invoiceDate: r.invoice_date ?? r.period_month,
-                          dueDate: r.due_date ?? "",
-                          clientName: r.client?.company_name ?? "",
-                          amount: Number(r.amount || 0),
-                          currency: r.currency || "USD",
-                          concept: "Servicio de gestión de aplicaciones",
-                        })
-                      }
+                      onClick={async () => {
+                        try {
+                          await generateInvoicePdf({
+                            number: `${(r.period_month ?? "").slice(0, 7)}-${(r.client?.company_name ?? "XXX").slice(0, 3).toUpperCase()}`,
+                            invoiceDate: r.invoice_date ?? r.period_month,
+                            dueDate: r.due_date ?? "",
+                            clientName: r.client?.company_name ?? "",
+                            amount: Number(r.amount || 0),
+                            currency: r.currency || "USD",
+                            concept: "Servicio de gestión de aplicaciones",
+                          });
+                        } catch (e: any) {
+                          toast.error(e?.message ?? "Error al generar PDF");
+                        }
+                      }}
                     >
                       <FileText className="h-4 w-4 mr-1" />PDF
                     </Button>
