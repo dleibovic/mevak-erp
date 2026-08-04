@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -30,6 +32,8 @@ export function MonthlyBillingView() {
   const { isAdmin, canEditAdminFinance, user } = useAuth();
   const periods = periodList();
   const currentPeriod = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const todayISO = new Date().toISOString().slice(0, 10);
+
   const [period, setPeriod] = useState(currentPeriod);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [groupBy, setGroupBy] = useState<"none" | "channel">("channel");
@@ -78,6 +82,16 @@ export function MonthlyBillingView() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const updateInvoiceDate = useMutation({
+    mutationFn: async ({ id, invoice_date }: { id: string; invoice_date: string | null }) => {
+      const { error } = await supabase.from("monthly_invoices").update({ invoice_date }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   const filtered = useMemo(() => {
     let r = rows as any[];
@@ -191,11 +205,14 @@ export function MonthlyBillingView() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Canal</TableHead>
                 <TableHead>Monto</TableHead>
+                <TableHead>Fecha factura</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Facturado</TableHead>
                 <TableHead>Cobrado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
+
             </TableHeader>
             <TableBody>
               {g.items.map((r: any) => (
@@ -204,6 +221,22 @@ export function MonthlyBillingView() {
                   <TableCell>{r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] : <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell className="font-mono">{formatMoney(r.amount, r.currency)}</TableCell>
                   <TableCell>
+                    {canEditAdminFinance ? (
+                      <Input
+                        type="date"
+                        className="h-8 w-[150px]"
+                        value={r.invoice_date ?? ""}
+                        onChange={(e) => updateInvoiceDate.mutate({ id: r.id, invoice_date: e.target.value || null })}
+                      />
+                    ) : (
+                      <span className="text-sm">{r.invoice_date ? fmtDate(r.invoice_date) : "—"}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className={`text-sm ${r.due_date && r.due_date < todayISO && r.status !== "paid" ? "text-destructive font-medium" : ""}`}>
+                    {r.due_date ? fmtDate(r.due_date) : "—"}
+                  </TableCell>
+                  <TableCell>
+
                     {r.status === "paid" && <Badge className="bg-success text-success-foreground hover:bg-success">Cobrada</Badge>}
                     {r.status === "invoiced" && <Badge className="bg-primary text-primary-foreground">Facturada</Badge>}
                     {r.status === "pending" && <Badge className="bg-warning text-warning-foreground hover:bg-warning">Pendiente</Badge>}
@@ -226,7 +259,7 @@ export function MonthlyBillingView() {
                 </TableRow>
               ))}
               {g.items.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

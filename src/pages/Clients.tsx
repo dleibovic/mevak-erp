@@ -268,7 +268,10 @@ export default function Clients() {
                 <TableHead>Sucursales</TableHead>
                 <TableHead>Fee cobro</TableHead>
                 <TableHead>Quién cobra</TableHead>
+                <TableHead>Tipo factura</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead>Responsable</TableHead>
+
                 <TableHead>Descuento</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
@@ -298,7 +301,14 @@ export default function Clients() {
                       ? <Badge variant="outline">{PAYMENT_CHANNEL_LABEL[c.payment_channel]}</Badge>
                       : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}
                   </TableCell>
+                  <TableCell>
+                    {c.invoice_letter
+                      ? <Badge variant="outline">{c.invoice_letter}</Badge>
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">Vencimiento de factura: {c.payment_term_days ?? 5} días</TableCell>
                   <TableCell className="text-sm">{c.billing_user_id ? profileName(c.billing_user_id) : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}</TableCell>
+
                   <TableCell>
                     {discountVigent ? (
                       <Badge className="bg-primary text-primary-foreground hover:bg-primary text-[10px]">{c.discount_percentage}% · vence {c.discount_ends_at ? fmtDate(c.discount_ends_at) : "—"}</Badge>
@@ -475,6 +485,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         notes: client.notes ?? "",
         payment_channel: client.payment_channel ?? null,
         billing_user_id: client.billing_user_id ?? null,
+        payment_term_days: (client as any).payment_term_days ?? 5,
+        invoice_letter: (client as any).invoice_letter ?? null,
+
         discount_percentage: client.discount_percentage ?? null,
         discount_duration: client.discount_duration ?? null,
         discount_starts_at: client.discount_starts_at ?? null,
@@ -519,6 +532,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         notes: "",
         payment_channel: null,
         billing_user_id: null,
+        payment_term_days: 5,
+        invoice_letter: null,
+
         discount_percentage: null,
         discount_duration: null,
         discount_starts_at: null,
@@ -616,6 +632,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         notes: form.notes || null,
         payment_channel: form.payment_channel || null,
         billing_user_id: form.billing_user_id || null,
+        payment_term_days: form.payment_term_days === "" || form.payment_term_days == null ? 5 : Math.max(0, Number(form.payment_term_days) || 0),
+        invoice_letter: form.invoice_letter || null,
+
         discount_percentage: form.discount_percentage != null && form.discount_percentage !== "" ? Number(form.discount_percentage) : null,
         discount_duration: form.discount_duration || null,
         discount_starts_at: form.discount_starts_at || null,
@@ -1188,7 +1207,30 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Vencimiento (días)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={form.payment_term_days ?? 5}
+                  onChange={(e) => setForm({ ...form, payment_term_days: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Días desde la fecha de factura hasta el vencimiento.</p>
+              </div>
+              <div>
+                <Label>Tipo de Factura</Label>
+                <Select value={form.invoice_letter ?? "none"} onValueChange={(v) => setForm({ ...form, invoice_letter: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sin definir" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin definir</SelectItem>
+                    <SelectItem value="B">B — Blanco / formal</SelectItem>
+                    <SelectItem value="N">N — Negro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
           </section>
 
           {/* Descuento */}
