@@ -19,6 +19,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 import { MonthlyBillingView } from "@/components/MonthlyBillingView";
+import { MonthFilter, currentMonthValue, monthRange } from "@/components/MonthFilter";
+
 
 export default function Billing() {
   const qc = useQueryClient();
@@ -30,6 +32,8 @@ export default function Billing() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [localCountry, setLocalCountry] = useState<string | null>(null);
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
+  const [month, setMonth] = useState<string>(currentMonthValue());
+
 
   useQuery({
     queryKey: ["refresh-statuses"],
@@ -43,15 +47,19 @@ export default function Billing() {
   });
 
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ["invoices"],
+    queryKey: ["invoices", month],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("invoices")
         .select("*, client:clients(id, company_name, billing_frequency, country_id, billing_user_id, country:countries(*))")
         .order("due_date", { ascending: true });
+      const range = monthRange(month);
+      if (range) q = q.gte("due_date", range.start).lt("due_date", range.end);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
+
   });
 
   const effectiveCountry = localCountry ?? countryId;
@@ -128,6 +136,8 @@ export default function Billing() {
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
         <div className="ml-auto flex flex-wrap gap-2 items-center">
+          <MonthFilter value={month} onChange={setMonth} />
+
           <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
             <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Responsable" /></SelectTrigger>
             <SelectContent>

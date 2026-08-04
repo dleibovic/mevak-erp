@@ -18,6 +18,7 @@ import { formatMoney, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
+import { MonthFilter, currentMonthValue, monthRange } from "@/components/MonthFilter";
 
 export default function Expenses() {
   const qc = useQueryClient();
@@ -25,13 +26,16 @@ export default function Expenses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [localCountry, setLocalCountry] = useState<string | null>(null);
+  const [month, setMonth] = useState<string>(currentMonthValue());
   const effectiveCountry = localCountry ?? countryId;
 
   const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ["expenses", effectiveCountry],
+    queryKey: ["expenses", effectiveCountry, month],
     queryFn: async () => {
       let q = supabase.from("expenses").select("*, category:expense_categories(name), country:countries(name, currency_code)").order("date", { ascending: false });
       if (effectiveCountry) q = q.eq("country_id", effectiveCountry);
+      const range = monthRange(month);
+      if (range) q = q.gte("date", range.start).lt("date", range.end);
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -49,9 +53,11 @@ export default function Expenses() {
     <PageContainer>
       <PageHeader title="Gastos" description="Egresos operativos y recurrentes" actions={<Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nuevo gasto</Button>} />
 
-      <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex justify-end">
+      <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap justify-end gap-2">
+        <MonthFilter value={month} onChange={setMonth} />
         <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-[200px]" size="sm" />
       </Card>
+
 
       <Card className="bg-gradient-card border-border/60 overflow-hidden">
         {isLoading ? <div className="p-10 text-center text-muted-foreground">Cargando...</div> :

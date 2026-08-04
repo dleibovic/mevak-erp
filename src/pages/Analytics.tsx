@@ -12,6 +12,8 @@ import {
 } from "recharts";
 import { formatMoney } from "@/lib/format";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { MonthFilter, currentMonthValue, monthLabel, monthRange } from "@/components/MonthFilter";
+
 
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 60% 45%)", "hsl(310 65% 60%)", "hsl(220 70% 60%)"];
 
@@ -35,10 +37,15 @@ const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep"
 
 export default function Analytics() {
   const { countryId, current } = useCountryFilter();
+  const [month, setMonth] = useState<string>(currentMonthValue());
 
   return (
     <PageContainer>
-      <PageHeader title="Analytics" description={current ? `Reportes — ${current.name}` : "Reportes y desempeño"} />
+      <PageHeader
+        title="Analytics"
+        description={`${current ? `Reportes — ${current.name}` : "Reportes y desempeño"} · ${monthLabel(month)}`}
+        actions={<MonthFilter value={month} onChange={setMonth} />}
+      />
 
       <Tabs defaultValue="admin" className="w-full">
         <TabsList>
@@ -46,7 +53,7 @@ export default function Analytics() {
           <TabsTrigger value="ops">Plataformas y ejecutivos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="admin"><AdminDashboard countryId={countryId} /></TabsContent>
+        <TabsContent value="admin"><AdminDashboard countryId={countryId} month={month} /></TabsContent>
         <TabsContent value="ops"><OpsDashboard countryId={countryId} /></TabsContent>
       </Tabs>
     </PageContainer>
@@ -55,23 +62,44 @@ export default function Analytics() {
 
 /* ---------- Administración ---------- */
 
-function AdminDashboard({ countryId }: { countryId: string | null }) {
+function AdminDashboard({ countryId, month }: { countryId: string | null; month: string }) {
   const now = new Date();
   const [period, setPeriod] = useState<Period>("year");
   const [year, setYear] = useState<number>(now.getFullYear());
   const [anchor, setAnchor] = useState<number>(period === "month" ? now.getMonth() : 0);
 
-  const { start, end } = useMemo(() => getPeriodRange(period, year, anchor), [period, year, anchor]);
+  const mRange = monthRange(month);
+
+  const { start, end } = useMemo(() => {
+    if (mRange) return { start: new Date(mRange.start + "T00:00:00"), end: new Date(mRange.end + "T00:00:00") };
+    return getPeriodRange(period, year, anchor);
+  }, [period, year, anchor, month]);
   const monthsCount = monthsInRange(start, end);
 
   // Data
   const { data: invoices = [] } = useQuery({
-    queryKey: ["an-invoices", countryId],
-    queryFn: async () => (await supabase.from("invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency)")).data ?? [],
+    queryKey: ["an-invoices", countryId, month],
+    queryFn: async () => {
+      let q = supabase.from("invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency)");
+      if (mRange) q = q.gte("due_date", mRange.start).lt("due_date", mRange.end);
+      return (await q).data ?? [];
+    },
   });
   const { data: expenses = [] } = useQuery({
-    queryKey: ["an-expenses", countryId],
-    queryFn: async () => (await supabase.from("expenses").select("*, category:expense_categories(id, name)")).data ?? [],
+    queryKey: ["an-expenses", countryId, month],
+    queryFn: async () => {
+      let q = supabase.from("expenses").select("*, category:expense_categories(id, name)");
+      if (mRange) q = q.gte("date", mRange.start).lt("date", mRange.end);
+      return (await q).data ?? [];
+    },
+  });
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["an-transactions", countryId, month],
+    queryFn: async () => {
+      let q = supabase.from("transactions").select("*");
+      if (mRange) q = q.gte("date", mRange.start).lt("date", mRange.end);
+      return (await q).data ?? [];
+    },
   });
   const { data: employees = [] } = useQuery({
     queryKey: ["an-employees", countryId],
@@ -84,6 +112,7 @@ function AdminDashboard({ countryId }: { countryId: string | null }) {
 
   const inCountry = (cid?: string | null) => !countryId || cid === countryId;
   const inRange = (d: string | Date) => { const x = new Date(d); return x >= start && x < end; };
+
 
   /* Totals by currency */
   const totals = useMemo(() => {
@@ -116,13 +145,25 @@ function AdminDashboard({ countryId }: { countryId: string | null }) {
       exp[cur] = (exp[cur] ?? 0) + (Number(e.base_salary) || 0) * monthsCount;
     });
 
+    // Movimientos registrados en transactions (caja) — filtrados por su fecha
+    const txIn: Record<string, number> = {};
+    const txOut: Record<string, number> = {};
+    transactions.forEach((t: any) => {
+      if (!inRange(t.date)) return;
+      const cur = t.currency || "ARS";
+      const amt = Number(t.amount) || 0;
+      if (t.type === "income") txIn[cur] = (txIn[cur] ?? 0) + amt;
+      else txOut[cur] = (txOut[cur] ?? 0) + amt;
+    });
+
     const profit: Record<string, number> = {};
     new Set([...Object.keys(inc), ...Object.keys(exp)]).forEach((c) => {
       profit[c] = (inc[c] ?? 0) - (exp[c] ?? 0);
     });
 
-    return { inc, incPaid, incPending, incOverdue, exp, profit };
-  }, [invoices, expenses, employees, countryId, period, year, anchor, monthsCount]);
+    return { inc, incPaid, incPending, incOverdue, exp, profit, txIn, txOut };
+  }, [invoices, expenses, employees, transactions, countryId, period, year, anchor, monthsCount, month]);
+
 
   /* Expenses by category (with salaries) */
   const expByCategory = useMemo(() => {
@@ -214,36 +255,44 @@ function AdminDashboard({ countryId }: { countryId: string | null }) {
     <div className="space-y-4">
       {/* Filters */}
       <Card className="p-3 bg-gradient-card border-border/60 flex flex-wrap items-center gap-2">
-        <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setAnchor(v === "month" ? now.getMonth() : 0); }}>
-          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="month">Mensual</SelectItem>
-            <SelectItem value="quarter">Trimestral</SelectItem>
-            <SelectItem value="semester">Semestral</SelectItem>
-            <SelectItem value="year">Anual</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-          <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-          <SelectContent>{yearOpts.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-        </Select>
-        {period === "month" && (
-          <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{MONTHS_ES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
-        {period === "quarter" && (
-          <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{[0, 1, 2, 3].map((i) => <SelectItem key={i} value={String(i)}>{`T${i + 1}`}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
-        {period === "semester" && (
-          <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{[0, 1].map((i) => <SelectItem key={i} value={String(i)}>{`S${i + 1}`}</SelectItem>)}</SelectContent>
-          </Select>
+        {mRange ? (
+          <div className="text-sm text-muted-foreground">
+            Métricas acotadas al mes seleccionado: <span className="capitalize font-medium text-foreground">{monthLabel(month)}</span>. Elegí "Todos los meses" para usar los períodos.
+          </div>
+        ) : (
+          <>
+            <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setAnchor(v === "month" ? now.getMonth() : 0); }}>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Mensual</SelectItem>
+                <SelectItem value="quarter">Trimestral</SelectItem>
+                <SelectItem value="semester">Semestral</SelectItem>
+                <SelectItem value="year">Anual</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{yearOpts.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+            </Select>
+            {period === "month" && (
+              <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{MONTHS_ES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+            {period === "quarter" && (
+              <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{[0, 1, 2, 3].map((i) => <SelectItem key={i} value={String(i)}>{`T${i + 1}`}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+            {period === "semester" && (
+              <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{[0, 1].map((i) => <SelectItem key={i} value={String(i)}>{`S${i + 1}`}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+          </>
         )}
       </Card>
 
@@ -254,6 +303,13 @@ function AdminDashboard({ countryId }: { countryId: string | null }) {
         <KpiCard label="Ganancia" amounts={totals.profit} tone="primary" />
         <KpiCard label="Cobrado" amounts={totals.incPaid} tone="success" sub={`Mora: ${currencies.map((c) => formatMoney(totals.incOverdue[c] ?? 0, c)).join(" / ") || "—"}`} />
       </div>
+
+      {/* Movimientos de caja (transactions) */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+        <KpiCard label="Movimientos — ingresos" amounts={totals.txIn} tone="success" />
+        <KpiCard label="Movimientos — egresos" amounts={totals.txOut} tone="destructive" />
+      </div>
+
 
       {/* Monthly trend (ARS) */}
       <Card className="p-5 bg-gradient-card border-border/60">
