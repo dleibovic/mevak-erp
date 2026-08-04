@@ -37,8 +37,23 @@ type InvoiceData = {
 const money = (n: number, cur: string) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: cur || "USD" }).format(n);
 
+async function loadLogoDataUrl(): Promise<string | null> {
+  try {
+    const res = await fetch("/logo-mevak.png");
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 /** Genera la factura. Devuelve { blob, filename }. Si download !== false, la descarga. */
-export function generateInvoicePdf(inv: InvoiceData, opts?: { download?: boolean }) {
+export async function generateInvoicePdf(inv: InvoiceData, opts?: { download?: boolean }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -50,11 +65,16 @@ export function generateInvoicePdf(inv: InvoiceData, opts?: { download?: boolean
   doc.setFillColor(BRAND_ORANGE);
   doc.rect(0, 96, W, 4, "F");
 
-  // Wordmark (si cargás public/logo-mevak.png blanco, reemplazá por doc.addImage)
-  doc.setTextColor("#FFFFFF");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(26);
-  doc.text("MEVAK", M, 58);
+  // Logo blanco (fallback al wordmark si no carga)
+  const logoDataUrl = await loadLogoDataUrl();
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, "PNG", M, 28, 120, 40);
+  } else {
+    doc.setTextColor("#FFFFFF");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(26);
+    doc.text("MEVAK", M, 58);
+  }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor("#C9CCF0");
