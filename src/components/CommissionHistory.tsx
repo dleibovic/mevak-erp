@@ -43,7 +43,8 @@ export function CommissionHistory() {
       if (error) throw error;
       const map = new Map<string, EmployeeOption>();
       for (const r of data ?? []) {
- 1 map.set(key, { key, id: r.employee_id, name: r.employee_name });
+        const key = r.employee_id ?? r.employee_name;
+        if (!map.has(key)) map.set(key, { key, id: r.employee_id, name: r.employee_name });
       }
       return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
