@@ -145,13 +145,25 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
       exp[cur] = (exp[cur] ?? 0) + (Number(e.base_salary) || 0) * monthsCount;
     });
 
+    // Movimientos registrados en transactions (caja) — filtrados por su fecha
+    const txIn: Record<string, number> = {};
+    const txOut: Record<string, number> = {};
+    transactions.forEach((t: any) => {
+      if (!inRange(t.date)) return;
+      const cur = t.currency || "ARS";
+      const amt = Number(t.amount) || 0;
+      if (t.type === "income") txIn[cur] = (txIn[cur] ?? 0) + amt;
+      else txOut[cur] = (txOut[cur] ?? 0) + amt;
+    });
+
     const profit: Record<string, number> = {};
     new Set([...Object.keys(inc), ...Object.keys(exp)]).forEach((c) => {
       profit[c] = (inc[c] ?? 0) - (exp[c] ?? 0);
     });
 
-    return { inc, incPaid, incPending, incOverdue, exp, profit };
-  }, [invoices, expenses, employees, countryId, period, year, anchor, monthsCount]);
+    return { inc, incPaid, incPending, incOverdue, exp, profit, txIn, txOut };
+  }, [invoices, expenses, employees, transactions, countryId, period, year, anchor, monthsCount, month]);
+
 
   /* Expenses by category (with salaries) */
   const expByCategory = useMemo(() => {
