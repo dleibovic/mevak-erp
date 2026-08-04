@@ -50,7 +50,7 @@ const BILLING_FREQUENCY_OPTIONS = [
 
 export default function Clients() {
   const qc = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canEditAdminFinance } = useAuth();
   const { countryId } = useCountryFilter();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
@@ -177,14 +177,14 @@ export default function Clients() {
       <PageHeader
         title="Clientes"
         description="Gestión de cuentas, plataformas y comisiones"
-        actions={isAdmin && (
+        actions={canEditAdminFinance && (
           <Button onClick={() => openClientDialog(null)}>
             <Plus className="h-4 w-4 mr-2" /> Nuevo cliente
           </Button>
         )}
       />
 
-      {isAdmin && incompleteCount > 0 && (
+      {canEditAdminFinance && incompleteCount > 0 && (
         <Card className="p-3 mb-4 border-warning/40 bg-warning/10 flex items-center gap-2 text-sm">
           <AlertCircle className="h-4 w-4 text-warning" />
           <span><strong>{incompleteCount}</strong> cliente(s) sin método o responsable de cobro asignado.</span>
@@ -237,7 +237,7 @@ export default function Clients() {
         </div>
       </Card>
 
-      {isAdmin && selected.size > 0 && (
+      {canEditAdminFinance && selected.size > 0 && (
         <Card className="p-3 mb-3 bg-primary/5 border-primary/30 flex flex-wrap items-center gap-3">
           <span className="text-sm">{selected.size} seleccionado(s)</span>
           <Select value={bulkUserId} onValueChange={setBulkUserId}>
@@ -256,12 +256,12 @@ export default function Clients() {
         {isLoading ? (
           <div className="p-10 text-center text-muted-foreground">Cargando...</div>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Sin clientes" description="Comenzá creando tu primer cliente" action={isAdmin && <Button onClick={() => openClientDialog(null)}><Plus className="h-4 w-4 mr-2" />Nuevo cliente</Button>} />
+          <EmptyState title="Sin clientes" description="Comenzá creando tu primer cliente" action={canEditAdminFinance && <Button onClick={() => openClientDialog(null)}><Plus className="h-4 w-4 mr-2" />Nuevo cliente</Button>} />
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                {isAdmin && <TableHead className="w-8"></TableHead>}
+                {canEditAdminFinance && <TableHead className="w-8"></TableHead>}
                 <TableHead>Empresa</TableHead>
                 <TableHead>País</TableHead>
                 <TableHead>Sub-marcas</TableHead>
@@ -274,7 +274,7 @@ export default function Clients() {
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Ejecutivo</TableHead>
                 <TableHead>Estado</TableHead>
-                {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
+                {canEditAdminFinance && <TableHead className="text-right">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -283,7 +283,7 @@ export default function Clients() {
                 const discountExpired = c.discount_percentage && c.discount_ends_at && c.discount_ends_at < today;
                 return (
                 <TableRow key={c.id}>
-                  {isAdmin && (
+                  {canEditAdminFinance && (
                     <TableCell>
                       <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => toggleSelected(c.id, v)} />
                     </TableCell>
@@ -320,10 +320,10 @@ export default function Clients() {
                       {STATUS_LABEL[c.status] ?? c.status}
                     </Badge>
                   </TableCell>
-                  {isAdmin && (
+                  {canEditAdminFinance && (
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openClientDialog(c)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => setClientToDelete(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      {isAdmin && <Button variant="ghost" size="icon" onClick={() => setClientToDelete(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                     </TableCell>
                   )}
                 </TableRow>

@@ -12,7 +12,7 @@ import { ExchangeRatesAdmin } from "@/components/ExchangeRatesAdmin";
 
 export function SaasMetricsConfig() {
   const qc = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { canEditAdminFinance } = useAuth();
   const [pausedDays, setPausedDays] = useState(60);
   const [baseCurrency, setBaseCurrency] = useState("USD");
   const [cacDefault, setCacDefault] = useState(0);
@@ -62,27 +62,27 @@ export function SaasMetricsConfig() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <Label>Días pausado → churn automático</Label>
-            <Input type="number" min={1} max={365} value={pausedDays} onChange={(e) => setPausedDays(Number(e.target.value) || 60)} disabled={!isAdmin} />
+            <Input type="number" min={1} max={365} value={pausedDays} onChange={(e) => setPausedDays(Number(e.target.value) || 60)} disabled={!canEditAdminFinance} />
             <p className="text-xs text-muted-foreground mt-1"><code>paused_to_churned_days</code></p>
           </div>
           <div>
             <Label>Moneda base MRR</Label>
-            <Input value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value.toUpperCase())} disabled={!isAdmin} />
+            <Input value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value.toUpperCase())} disabled={!canEditAdminFinance} />
             <p className="text-xs text-muted-foreground mt-1"><code>mrr_base_currency</code></p>
           </div>
           <div>
             <Label>CAC promedio (USD) — estimado</Label>
-            <Input type="number" min={0} step="0.01" value={cacDefault} onChange={(e) => setCacDefault(Number(e.target.value) || 0)} disabled={!isAdmin} />
+            <Input type="number" min={0} step="0.01" value={cacDefault} onChange={(e) => setCacDefault(Number(e.target.value) || 0)} disabled={!canEditAdminFinance} />
             <p className="text-xs text-muted-foreground mt-1"><code>cac_default_usd</code></p>
           </div>
           <div>
             <Label>Margen bruto default (%) — estimado</Label>
-            <Input type="number" min={0} max={100} step="0.1" value={grossMarginDefault} onChange={(e) => setGrossMarginDefault(Number(e.target.value) || 0)} disabled={!isAdmin} />
+            <Input type="number" min={0} max={100} step="0.1" value={grossMarginDefault} onChange={(e) => setGrossMarginDefault(Number(e.target.value) || 0)} disabled={!canEditAdminFinance} />
             <p className="text-xs text-muted-foreground mt-1"><code>gross_margin_default_pct</code></p>
           </div>
         </div>
         <div className="mt-4">
-          <Button onClick={() => save.mutate()} disabled={!isAdmin || save.isPending}>Guardar</Button>
+          <Button onClick={() => save.mutate()} disabled={!canEditAdminFinance || save.isPending}>Guardar</Button>
         </div>
       </Card>
 

@@ -22,7 +22,7 @@ import { MonthlyBillingView } from "@/components/MonthlyBillingView";
 
 export default function Billing() {
   const qc = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canEditAdminFinance } = useAuth();
   const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -101,7 +101,7 @@ export default function Billing() {
       <PageHeader
         title="Facturación"
         description="Cuentas corrientes, vencimientos y cobranzas"
-        actions={isAdmin && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nueva factura</Button>}
+        actions={canEditAdminFinance && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nueva factura</Button>}
       />
 
       <Tabs defaultValue="invoices" className="mb-4">
@@ -166,7 +166,7 @@ export default function Billing() {
                 <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Cobró</TableHead>
-                {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
+                {canEditAdminFinance && <TableHead className="text-right">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -184,14 +184,14 @@ export default function Billing() {
                       {inv.status === "overdue" && <Badge variant="destructive">Vencida · {od}d</Badge>}
                     </TableCell>
                     <TableCell className="capitalize text-muted-foreground">{inv.collected_by ?? "—"}</TableCell>
-                    {isAdmin && (
+                    {canEditAdminFinance && (
                       <TableCell className="text-right">
                         <div className="inline-flex gap-1 items-center justify-end flex-wrap">
                           {inv.status !== "paid" && (
                             <CollectMenu onPick={(by) => markPaid.mutate({ id: inv.id, collected_by: by })} />
                           )}
                           <Button size="icon" variant="ghost" onClick={() => { setEditing(inv); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          {isAdmin && <Button size="icon" variant="ghost" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                         </div>
                       </TableCell>
                     )}

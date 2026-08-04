@@ -28,7 +28,7 @@ function buildMonths(count: number): string[] {
 
 export function ExchangeRatesAdmin() {
   const qc = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { canEditAdminFinance } = useAuth();
   const [monthsCount, setMonthsCount] = useState(6);
   const months = useMemo(() => buildMonths(monthsCount), [monthsCount]);
 
@@ -146,7 +146,7 @@ export function ExchangeRatesAdmin() {
                   api={apiFor(currency, m)} override={overrideFor(currency, m)}
                   range={rangeFor(currency)}
                   onSave={upsert.mutate} onDelete={del.mutate}
-                  disabled={!isAdmin} />
+                  disabled={!canEditAdminFinance} />
               ))
             )}
           </TableBody>
