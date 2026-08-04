@@ -155,8 +155,8 @@ export function MonthlyBillingView() {
       r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] ?? r.payment_channel : "",
       r.amount, r.currency, r.status,
       r.invoiced_at ? fmtDate(r.invoiced_at) : "",
-      r.paid_at ? fmtDate(r.paid_at) : "",
       r.paid_by ? profileName(r.paid_by) : "",
+      r.paid_at ? fmtDate(r.paid_at) : "",
       r.payment_assigned_at ? fmtDate(r.payment_assigned_at) : "",
     ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
 
