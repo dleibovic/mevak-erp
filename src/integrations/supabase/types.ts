@@ -984,6 +984,63 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_templates: {
+        Row: {
+          active: boolean
+          amount: number
+          assigned_to: Database["public"]["Enums"]["expense_assignee"]
+          category_id: string | null
+          country_id: string | null
+          created_at: string
+          currency: string
+          description: string
+          id: string
+          recurrence_frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          start_month: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          assigned_to?: Database["public"]["Enums"]["expense_assignee"]
+          category_id?: string | null
+          country_id?: string | null
+          created_at?: string
+          currency?: string
+          description: string
+          id?: string
+          recurrence_frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          start_month?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          assigned_to?: Database["public"]["Enums"]["expense_assignee"]
+          category_id?: string | null
+          country_id?: string | null
+          created_at?: string
+          currency?: string
+          description?: string
+          id?: string
+          recurrence_frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          start_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_templates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_templates_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -996,10 +1053,12 @@ export type Database = {
           description: string
           id: string
           paid_by: Database["public"]["Enums"]["collector"] | null
+          period_month: string | null
           recurrence_frequency:
             | Database["public"]["Enums"]["recurrence_frequency"]
             | null
           recurring: boolean
+          template_id: string | null
         }
         Insert: {
           amount: number
@@ -1012,10 +1071,12 @@ export type Database = {
           description: string
           id?: string
           paid_by?: Database["public"]["Enums"]["collector"] | null
+          period_month?: string | null
           recurrence_frequency?:
             | Database["public"]["Enums"]["recurrence_frequency"]
             | null
           recurring?: boolean
+          template_id?: string | null
         }
         Update: {
           amount?: number
@@ -1028,10 +1089,12 @@ export type Database = {
           description?: string
           id?: string
           paid_by?: Database["public"]["Enums"]["collector"] | null
+          period_month?: string | null
           recurrence_frequency?:
             | Database["public"]["Enums"]["recurrence_frequency"]
             | null
           recurring?: boolean
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -1046,6 +1109,13 @@ export type Database = {
             columns: ["country_id"]
             isOneToOne: false
             referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "expense_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -4197,6 +4267,10 @@ export type Database = {
         }[]
       }
       generate_monthly_invoices: { Args: { _period?: string }; Returns: number }
+      generate_recurring_expenses: {
+        Args: { _period?: string }
+        Returns: number
+      }
       get_exchange_rate: {
         Args: { _currency: string; _period_month: string }
         Returns: number
