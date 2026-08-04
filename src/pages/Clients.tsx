@@ -522,6 +522,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         notes: "",
         payment_channel: null,
         billing_user_id: null,
+        payment_term_days: 5,
+        invoice_letter: null,
+
         discount_percentage: null,
         discount_duration: null,
         discount_starts_at: null,
