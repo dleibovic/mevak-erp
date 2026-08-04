@@ -167,14 +167,15 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
     employee.id ? q.eq("employee_id", employee.id) : q.is("employee_id", null).eq("employee_name", employee.name);
 
   // Mes actual: snapshot congelado o cálculo en vivo
-  const { data: currentMonthRows = [], isLoading: loadingCurrent } = useQuery({
+  const { data: currentMonth, isLoading: loadingCurrent } = useQuery({
     queryKey: ["commission-current-month", employee.key, thisMonth],
     queryFn: async () => {
       const { data, error } = await applyEmployee(
         supabase.from("commission_snapshots").select("*").eq("period_month", thisMonth)
       );
       if (error) throw error;
-      if ((data ?? []).length > 0) return { live: false, rows: data as unknown as Snapshot[] };
+      const snapRows = (Array.isArray(data) ? data : []) as unknown as Snapshot[];
+      if (snapRows.length > 0) return { live: false, rows: snapRows };
 
       if (!employee.id) return { live: true, rows: [] as Snapshot[] };
       const { data: live, error: e2 } = await supabase
@@ -182,7 +183,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         .select("id, client_id, commission_value, currency, client:clients(company_name)")
         .eq("employee_id", employee.id);
       if (e2) throw e2;
-      const rows: Snapshot[] = (live ?? []).map((r: any) => ({
+      const rows: Snapshot[] = (Array.isArray(live) ? live : []).map((r: any) => ({
         id: r.id,
         period_month: thisMonth,
         employee_id: employee.id,
@@ -197,21 +198,24 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
       }));
       return { live: true, rows };
     },
-    select: (d: any) => d,
   });
 
-  const cm = (currentMonthRows as any) || { live: false, rows: [] };
+  const cmLive = currentMonth?.live ?? false;
+  const cmRows: Snapshot[] = Array.isArray(currentMonth?.rows) ? currentMonth!.rows : [];
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: historyRows, isLoading } = useQuery({
     queryKey: ["commission-snapshots", employee.key, month],
     queryFn: async () => {
       let q = supabase.from("commission_snapshots").select("*").order("period_month", { ascending: false });
       if (month !== ALL_MONTHS) q = q.eq("period_month", month);
       const { data, error } = await applyEmployee(q);
       if (error) throw error;
-      return (data ?? []) as unknown as Snapshot[];
+      const rows = data ?? [];
+      return (Array.isArray(rows) ? rows : []) as unknown as Snapshot[];
     },
   });
+
+  const rows: Snapshot[] = Array.isArray(historyRows) ? historyRows : [];
 
   const periodGroups = useMemo(() => {
     if (month !== ALL_MONTHS) return [];
