@@ -12,6 +12,8 @@ import { CheckCircle2, FileCheck2, Download, FileText } from "lucide-react";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { subirDoc } from "@/lib/invoiceDocs";
+import { InvoiceDocsCell } from "@/components/InvoiceDocsCell";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
