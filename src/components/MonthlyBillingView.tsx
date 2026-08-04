@@ -201,11 +201,14 @@ export function MonthlyBillingView() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Canal</TableHead>
                 <TableHead>Monto</TableHead>
+                <TableHead>Fecha factura</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Facturado</TableHead>
                 <TableHead>Cobrado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
+
             </TableHeader>
             <TableBody>
               {g.items.map((r: any) => (
