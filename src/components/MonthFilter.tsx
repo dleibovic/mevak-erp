@@ -2,10 +2,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export const ALL_MONTHS = "all";
 
+/** Formatea una fecha local como YYYY-MM-DD (sin corrimiento por UTC). */
+function ymd(d: Date) {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 /** Valor del mes actual, en formato YYYY-MM-01 */
 export function currentMonthValue() {
   const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10);
+  return ymd(new Date(n.getFullYear(), n.getMonth(), 1));
 }
 
 /** Lista de meses (mismo patrón que el selector de período de Facturación mensual). */
@@ -15,7 +22,7 @@ export function monthList(back = 11, forward = 1) {
   for (let i = -back; i <= forward; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     items.push({
-      value: d.toISOString().slice(0, 10),
+      value: ymd(d),
       label: d.toLocaleDateString("es-AR", { month: "long", year: "numeric" }),
     });
   }
