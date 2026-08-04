@@ -97,7 +97,14 @@ export function CommissionHistory() {
   }, [current]);
 
   if (selected) {
-    return <EmployeeCommissionDetail employee={selected} onBack={() => setSelected(null)} />;
+    return (
+      <EmployeeCommissionDetail
+        employee={selected}
+        employees={employees}
+        onSelectEmployee={setSelected}
+        onBack={() => setSelected(null)}
+      />
+    );
   }
 
   return (
