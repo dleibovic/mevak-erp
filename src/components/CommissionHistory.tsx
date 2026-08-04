@@ -295,11 +295,11 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         <div className="flex flex-wrap justify-between items-baseline gap-2 mb-3">
           <div>
             <h4 className="font-semibold capitalize">{monthLabel(thisMonth)}</h4>
-            {cm.live && <p className="text-xs text-muted-foreground">Cálculo en vivo (mes aún no congelado)</p>}
+            {cmLive && <p className="text-xs text-muted-foreground">Cálculo en vivo (mes aún no congelado)</p>}
           </div>
           <div className="text-right">
             <div className="text-xs text-muted-foreground">Total comisiones</div>
-            {totalsByCurrency(cm.rows).map(([cur, total]) => (
+            {totalsByCurrency(cmRows).map(([cur, total]) => (
               <div key={cur} className="font-mono font-semibold text-primary">
                 {formatMoney(total, cur)}
               </div>
@@ -308,10 +308,10 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         </div>
         {loadingCurrent ? (
           <p className="text-muted-foreground">Cargando...</p>
-        ) : cm.rows.length === 0 ? (
+        ) : cmRows.length === 0 ? (
           <EmptyState title="Sin comisiones en el mes actual" />
         ) : (
-          detailTable(cm.rows, false)
+          detailTable(cmRows, false)
         )}
       </Card>
 
