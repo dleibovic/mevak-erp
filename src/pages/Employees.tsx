@@ -16,6 +16,9 @@ import { useCountries } from "@/hooks/useCatalogs";
 import { formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommissionHistory } from "@/components/CommissionHistory";
+
 
 export default function Employees() {
   const qc = useQueryClient();
