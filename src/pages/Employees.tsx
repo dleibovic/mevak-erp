@@ -113,9 +113,16 @@ export default function Employees() {
             );
           })}
       </div>
+        </TabsContent>
+
+        <TabsContent value="comisiones">
+          <CommissionHistory />
+        </TabsContent>
+      </Tabs>
 
       <EmployeeDialog open={open} onOpenChange={setOpen} employee={editing} />
     </PageContainer>
+
   );
 }
 
