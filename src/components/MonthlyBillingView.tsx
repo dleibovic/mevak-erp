@@ -95,6 +95,22 @@ export function MonthlyBillingView() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updatePaidAt = useMutation({
+    mutationFn: async ({ id, paid_at }: { id: string; paid_at: string | null }) => {
+      const { error } = await supabase.from("monthly_invoices").update({ paid_at }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Fecha de pago actualizada"); qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const profileName = (id: string | null | undefined) => {
+    if (!id) return "—";
+    const p = profiles.find((x: any) => x.id === id);
+    return p?.full_name ?? p?.email ?? "—";
+  };
+
+
 
   const filtered = useMemo(() => {
     let r = rows as any[];
@@ -133,14 +149,17 @@ export function MonthlyBillingView() {
   }, [filtered, groupBy]);
 
   function exportCSV() {
-    const header = ["Cliente", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado"];
+    const header = ["Cliente", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado", "Cobró", "Pago registrado"];
     const lines = filtered.map((r: any) => [
       r.client?.company_name ?? "",
       r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] ?? r.payment_channel : "",
       r.amount, r.currency, r.status,
       r.invoiced_at ? fmtDate(r.invoiced_at) : "",
       r.paid_at ? fmtDate(r.paid_at) : "",
+      r.paid_by ? profileName(r.paid_by) : "",
+      r.payment_assigned_at ? fmtDate(r.payment_assigned_at) : "",
     ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
+
     const csv = [header.join(","), ...lines].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -213,6 +232,8 @@ export function MonthlyBillingView() {
                 <TableHead>Estado</TableHead>
                 <TableHead>Facturado</TableHead>
                 <TableHead>Cobrado</TableHead>
+                <TableHead>Cobró</TableHead>
+
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
 
@@ -246,7 +267,33 @@ export function MonthlyBillingView() {
                     {r.status === "overdue" && <Badge variant="destructive">Vencida</Badge>}
                   </TableCell>
                   <TableCell className="text-sm">{r.invoiced_at ? fmtDate(r.invoiced_at) : "—"}</TableCell>
-                  <TableCell className="text-sm">{r.paid_at ? fmtDate(r.paid_at) : "—"}</TableCell>
+                  <TableCell>
+                    {r.status === "paid" ? (
+                      canEditAdminFinance ? (
+                        <Input
+                          type="date"
+                          className="h-8 w-[150px]"
+                          value={r.paid_at ? String(r.paid_at).slice(0, 10) : ""}
+                          onChange={(e) => updatePaidAt.mutate({ id: r.id, paid_at: e.target.value || null })}
+                        />
+                      ) : (
+                        <span className="text-sm">{r.paid_at ? fmtDate(r.paid_at) : "—"}</span>
+                      )
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {r.status === "paid" ? (
+                      <div className="leading-tight">
+                        <div>{profileName(r.paid_by)}</div>
+                        {r.payment_assigned_at && (
+                          <div className="text-xs text-muted-foreground">Registrado {fmtDate(r.payment_assigned_at)}</div>
+                        )}
+                      </div>
+                    ) : "—"}
+                  </TableCell>
+
                   <TableCell className="text-right space-x-1">
                     <Button
                       size="sm"
@@ -278,7 +325,7 @@ export function MonthlyBillingView() {
                       </Button>
                     )}
                     {r.status !== "paid" && (
-                      <Button size="sm" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "paid", paid_at: new Date().toISOString(), paid_by: user?.id } })}>
+                      <Button size="sm" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "paid" } })}>
                         <CheckCircle2 className="h-4 w-4 mr-1" />Cobrada
                       </Button>
                     )}
@@ -286,7 +333,7 @@ export function MonthlyBillingView() {
                 </TableRow>
               ))}
               {g.items.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
