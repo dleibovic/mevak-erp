@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,7 +17,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLES: { value: AppRole; label: string }[] = [
@@ -43,7 +44,27 @@ type UserRow = {
   full_name: string | null;
   email: string | null;
   role: AppRole | null;
+  banned: boolean;
 };
+
+type EditForm = {
+  full_name: string;
+  email: string;
+  password: string;
+  role: AppRole | "";
+  active: boolean;
+};
+
+function fnError(error: any, data: any): { code?: string; message?: string } | null {
+  const d = data as any;
+  if (d?.error) return { code: d.error, message: d.message ?? d.error };
+  if (error) {
+    const ctxBody = (error as any)?.context?.body;
+    if (ctxBody && typeof ctxBody === "object") return { code: ctxBody.error, message: ctxBody.message };
+    return { message: error.message };
+  }
+  return null;
+}
 
 export default function Usuarios() {
   const qc = useQueryClient();
@@ -52,14 +73,18 @@ export default function Usuarios() {
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "executive" as AppRole });
   const [pendingChange, setPendingChange] = useState<{ row: UserRow; role: AppRole } | null>(null);
+  const [editRow, setEditRow] = useState<UserRow | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", email: "", password: "", role: "", active: true });
+  const [deleteRow, setDeleteRow] = useState<UserRow | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["usuarios"],
     enabled: isAdmin,
     queryFn: async (): Promise<UserRow[]> => {
-      const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
+      const [{ data: profiles, error: pErr }, { data: roles, error: rErr }, statusRes] = await Promise.all([
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("user_roles").select("user_id, role"),
+        (supabase as any).rpc("admin_list_user_status"),
       ]);
       if (pErr) throw pErr;
       if (rErr) throw rErr;
@@ -67,12 +92,15 @@ export default function Usuarios() {
       (roles ?? []).forEach((r: any) => {
         byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r.role]);
       });
+      const bannedBy = new Map<string, boolean>();
+      ((statusRes?.data ?? []) as any[]).forEach((s) => bannedBy.set(s.user_id, !!s.banned));
       return (profiles ?? [])
         .map((p: any) => ({
           id: p.id,
           full_name: p.full_name,
           email: p.email,
           role: topRole(byUser.get(p.id) ?? []),
+          banned: bannedBy.get(p.id) ?? false,
         }))
         .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
     },
@@ -125,6 +153,73 @@ export default function Usuarios() {
     onSettled: () => setPendingChange(null),
   });
 
+  const updateUser = useMutation({
+    mutationFn: async () => {
+      if (!editRow) return;
+      const body: Record<string, unknown> = { user_id: editRow.id };
+
+      const full_name = editForm.full_name.trim();
+      const email = editForm.email.trim();
+      if (!full_name) throw new Error("El nombre es obligatorio");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Email inválido");
+
+      if (full_name !== (editRow.full_name ?? "")) body.full_name = full_name;
+      if (email !== (editRow.email ?? "")) body.email = email;
+      if (editForm.password) {
+        if (editForm.password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres");
+        body.password = editForm.password;
+      }
+      if (editForm.role && editForm.role !== editRow.role) body.role = editForm.role;
+      const banned = !editForm.active;
+      if (banned !== editRow.banned) body.banned = banned;
+
+      if (Object.keys(body).length === 1) return { noop: true };
+
+      const { data, error } = await supabase.functions.invoke("admin-update-user", { body });
+      const err = fnError(error, data);
+      if (err) throw new Error(err.message ?? "No se pudo actualizar el usuario");
+      return data;
+    },
+    onSuccess: (res: any) => {
+      if (res?.noop) { toast.info("No había cambios para guardar"); }
+      else toast.success("Usuario actualizado");
+      setEditRow(null);
+      qc.invalidateQueries({ queryKey: ["usuarios"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "No se pudo actualizar el usuario"),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (row: UserRow) => {
+      const { data, error } = await supabase.functions.invoke("admin-delete-user", { body: { user_id: row.id } });
+      const err = fnError(error, data);
+      if (err) {
+        if (err.code === "delete_failed") {
+          throw new Error(`${err.message ?? "No se pudo eliminar"} — Desactivá el usuario en su lugar (Editar → Inactivo).`);
+        }
+        throw new Error(err.message ?? "No se pudo eliminar el usuario");
+      }
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Usuario eliminado");
+      qc.invalidateQueries({ queryKey: ["usuarios"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "No se pudo eliminar el usuario"),
+    onSettled: () => setDeleteRow(null),
+  });
+
+  function openEdit(row: UserRow) {
+    setEditRow(row);
+    setEditForm({
+      full_name: row.full_name ?? "",
+      email: row.email ?? "",
+      password: "",
+      role: row.role ?? "",
+      active: !row.banned,
+    });
+  }
+
   if (loading || roleLoading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
@@ -158,7 +253,9 @@ export default function Usuarios() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Rol actual</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="w-[220px]">Cambiar rol</TableHead>
+                <TableHead className="w-[120px] text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -172,6 +269,9 @@ export default function Usuarios() {
                       : <Badge variant="outline">Sin rol</Badge>}
                   </TableCell>
                   <TableCell>
+                    <Badge variant={u.banned ? "destructive" : "secondary"}>{u.banned ? "Inactivo" : "Activo"}</Badge>
+                  </TableCell>
+                  <TableCell>
                     <Select
                       value={u.role ?? ""}
                       onValueChange={(v) => setPendingChange({ row: u, role: v as AppRole })}
@@ -183,6 +283,18 @@ export default function Usuarios() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => openEdit(u)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {u.id !== user?.id && (
+                        <Button variant="ghost" size="icon" aria-label="Eliminar" onClick={() => setDeleteRow(u)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -230,6 +342,55 @@ export default function Usuarios() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!editRow} onOpenChange={(o) => { if (!o) setEditRow(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar usuario</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-nombre">Nombre</Label>
+              <Input id="edit-nombre" value={editForm.full_name} maxLength={200}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input id="edit-email" type="email" value={editForm.email} maxLength={255}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-password">Nueva contraseña</Label>
+              <Input id="edit-password" type="password" value={editForm.password} maxLength={72}
+                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} />
+              <p className="text-xs text-muted-foreground">Dejala vacía para no cambiarla. Mínimo 8 caracteres.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Rol</Label>
+              <Select value={editForm.role} onValueChange={(v) => setEditForm({ ...editForm, role: v as AppRole })}>
+                <SelectTrigger><SelectValue placeholder="Asignar rol" /></SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
+              <div>
+                <Label htmlFor="edit-active">Estado</Label>
+                <p className="text-xs text-muted-foreground">
+                  {editForm.active ? "Activo: puede iniciar sesión." : "Inactivo: no puede iniciar sesión."}
+                </p>
+              </div>
+              <Switch id="edit-active" checked={editForm.active}
+                onCheckedChange={(v) => setEditForm({ ...editForm, active: v })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRow(null)}>Cancelar</Button>
+            <Button onClick={() => updateUser.mutate()} disabled={updateUser.isPending}>
+              {updateUser.isPending ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!pendingChange} onOpenChange={(o) => { if (!o) setPendingChange(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -244,6 +405,28 @@ export default function Usuarios() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => pendingChange && changeRole.mutate(pendingChange)}>
               Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteRow} onOpenChange={(o) => { if (!o) setDeleteRow(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteRow && (
+                <>Se eliminará definitivamente a {deleteRow.full_name ?? deleteRow.email}. Si ya generó registros, desactivalo en lugar de borrarlo.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteRow && deleteUser.mutate(deleteRow)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
