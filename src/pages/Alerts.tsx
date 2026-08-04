@@ -44,7 +44,7 @@ export default function Alerts() {
   });
 
   const unbilled = useMemo(() => {
-    if (!canSeeUnbilled || periodInvoices.length === 0) return [];
+    if (!canSeeUnbilled) return [];
     const billed = new Set(periodInvoices.map((i: any) => i.client_id));
     return assignments
       .filter((a: any) => a.client && a.client.status !== "churned" && !billed.has(a.client_id))
