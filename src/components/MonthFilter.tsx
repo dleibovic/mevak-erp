@@ -35,7 +35,7 @@ export function monthRange(value: string): { start: string; end: string } | null
   const d = new Date(value + "T00:00:00");
   const start = new Date(d.getFullYear(), d.getMonth(), 1);
   const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+  return { start: ymd(start), end: ymd(end) };
 }
 
 export function monthLabel(value: string) {
