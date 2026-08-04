@@ -268,7 +268,10 @@ export default function Clients() {
                 <TableHead>Sucursales</TableHead>
                 <TableHead>Fee cobro</TableHead>
                 <TableHead>Quién cobra</TableHead>
+                <TableHead>Tipo factura</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead>Responsable</TableHead>
+
                 <TableHead>Descuento</TableHead>
                 <TableHead>Plataformas</TableHead>
                 <TableHead>Frecuencia</TableHead>
