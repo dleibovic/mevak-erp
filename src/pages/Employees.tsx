@@ -16,6 +16,9 @@ import { useCountries } from "@/hooks/useCatalogs";
 import { formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommissionHistory } from "@/components/CommissionHistory";
+
 
 export default function Employees() {
   const qc = useQueryClient();
@@ -50,7 +53,15 @@ export default function Employees() {
     <PageContainer>
       <PageHeader title="Empleados" description="Equipo, sueldos y comisiones" actions={<Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nuevo empleado</Button>} />
 
+      <Tabs defaultValue="equipo" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="equipo">Equipo</TabsTrigger>
+          <TabsTrigger value="comisiones">Historial de comisiones</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="equipo">
       <div className="grid md:grid-cols-2 gap-4">
+
         {isLoading ? <p className="text-muted-foreground">Cargando...</p> :
           employees.length === 0 ? <EmptyState title="Sin empleados" /> :
           employees.map((emp: any) => {
@@ -105,9 +116,16 @@ export default function Employees() {
             );
           })}
       </div>
+        </TabsContent>
+
+        <TabsContent value="comisiones">
+          <CommissionHistory />
+        </TabsContent>
+      </Tabs>
 
       <EmployeeDialog open={open} onOpenChange={setOpen} employee={editing} />
     </PageContainer>
+
   );
 }
 
