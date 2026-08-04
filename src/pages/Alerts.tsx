@@ -129,7 +129,7 @@ export default function Alerts() {
           <Card className="p-5 bg-gradient-card border-border/60 lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <UserX className="h-5 w-5 text-destructive" />
-              <h3 className="font-semibold">Clientes asignados sin facturar (mes actual) ({unbilled.length})</h3>
+              <h3 className="font-semibold">Clientes asignados para pago de comisiones sin facturar (mes actual) ({unbilled.length})</h3>
             </div>
             <div className="grid md:grid-cols-2 gap-2">
               {unbilled.map((a: any, idx: number) => (
