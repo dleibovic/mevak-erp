@@ -31,9 +31,10 @@ type EmployeeOption = { key: string; id: string | null; name: string };
 
 type Grouping = "quarter" | "year";
 
-function totalsByCurrency(items: { commission_value: number; commission_currency: string }[]) {
+function totalsByCurrency(items?: { commission_value: number; commission_currency: string }[] | null) {
+  const list = Array.isArray(items) ? items : [];
   const map = new Map<string, number>();
-  for (const i of items) {
+  for (const i of list) {
     const cur = i.commission_currency || "ARS";
     map.set(cur, (map.get(cur) ?? 0) + Number(i.commission_value || 0));
   }
