@@ -4,10 +4,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/PageShell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, RefreshCw, AlertCircle } from "lucide-react";
+import { AlertTriangle, Clock, RefreshCw, AlertCircle, UserX } from "lucide-react";
 import { daysOverdue, fmtDate, formatMoney } from "@/lib/format";
+import { useAuth } from "@/hooks/useAuth";
+
+const periodMonth = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+};
 
 export default function Alerts() {
+  const { isAdmin, isAdministracion } = useAuth();
+  const canSeeUnbilled = isAdmin || isAdministracion;
+  const period = periodMonth();
+
   const { data: invoices = [] } = useQuery({
     queryKey: ["alerts-invoices"],
     queryFn: async () => (await supabase.from("invoices").select("*, client:clients(company_name)").neq("status", "paid").order("due_date")).data ?? [],
@@ -17,8 +27,35 @@ export default function Alerts() {
     queryFn: async () => (await supabase.from("expenses").select("*").eq("recurring", true)).data ?? [],
   });
 
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["alerts-assignments"],
+    enabled: canSeeUnbilled,
+    queryFn: async () =>
+      (await supabase
+        .from("client_executive_commission")
+        .select("client_id, client:clients(company_name, status), employee:employees(full_name)")).data ?? [],
+  });
+
+  const { data: periodInvoices = [] } = useQuery({
+    queryKey: ["alerts-monthly-invoices", period],
+    enabled: canSeeUnbilled,
+    queryFn: async () =>
+      (await supabase.from("monthly_invoices").select("client_id").eq("period_month", period)).data ?? [],
+  });
+
+  const unbilled = useMemo(() => {
+    if (!canSeeUnbilled || periodInvoices.length === 0) return [];
+    const billed = new Set(periodInvoices.map((i: any) => i.client_id));
+    return assignments
+      .filter((a: any) => a.client && a.client.status !== "churned" && !billed.has(a.client_id))
+      .sort((a: any, b: any) =>
+        (a.employee?.full_name ?? "").localeCompare(b.employee?.full_name ?? "") ||
+        (a.client?.company_name ?? "").localeCompare(b.client?.company_name ?? ""));
+  }, [assignments, periodInvoices, canSeeUnbilled]);
+
   const overdue = useMemo(() => invoices.filter((i: any) => i.status === "overdue"), [invoices]);
   const upcoming = useMemo(() => invoices.filter((i: any) => i.status === "pending" && daysOverdue(i.due_date) >= -7), [invoices]);
+
 
   return (
     <PageContainer>
