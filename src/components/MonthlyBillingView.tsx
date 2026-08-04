@@ -246,6 +246,23 @@ export function MonthlyBillingView() {
                   <TableCell className="text-sm">{r.invoiced_at ? fmtDate(r.invoiced_at) : "—"}</TableCell>
                   <TableCell className="text-sm">{r.paid_at ? fmtDate(r.paid_at) : "—"}</TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        generateInvoicePdf({
+                          number: `${(r.period_month ?? "").slice(0, 7)}-${(r.client?.company_name ?? "XXX").slice(0, 3).toUpperCase()}`,
+                          invoiceDate: r.invoice_date ?? r.period_month,
+                          dueDate: r.due_date ?? "",
+                          clientName: r.client?.company_name ?? "",
+                          amount: Number(r.amount || 0),
+                          currency: r.currency || "USD",
+                          concept: "Servicio de gestión de aplicaciones",
+                        })
+                      }
+                    >
+                      <FileText className="h-4 w-4 mr-1" />PDF
+                    </Button>
                     {r.status === "pending" && (
                       <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "invoiced", invoiced_at: new Date().toISOString(), invoiced_by: user?.id } })}>
                         <FileCheck2 className="h-4 w-4 mr-1" />Facturada
