@@ -47,7 +47,7 @@ type UserRow = {
 
 export default function Usuarios() {
   const qc = useQueryClient();
-  const { isAdmin, loading, user } = useAuth();
+  const { isAdmin, loading, roleLoading, user } = useAuth();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "executive" as AppRole });
@@ -125,7 +125,13 @@ export default function Usuarios() {
     onSettled: () => setPendingChange(null),
   });
 
-  if (loading) return null;
+  if (loading || roleLoading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
   if (!isAdmin) return <Navigate to="/" replace />;
 
   return (
