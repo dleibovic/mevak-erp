@@ -251,7 +251,7 @@ export function MonthlyBillingView() {
                       variant="outline"
                       onClick={async () => {
                         try {
-                          await generateInvoicePdf({
+                          const { blob, filename } = generateInvoicePdf({
                             number: `${(r.period_month ?? "").slice(0, 7)}-${(r.client?.company_name ?? "XXX").slice(0, 3).toUpperCase()}`,
                             invoiceDate: r.invoice_date ?? r.period_month,
                             dueDate: r.due_date ?? "",
@@ -260,6 +260,8 @@ export function MonthlyBillingView() {
                             currency: r.currency || "USD",
                             concept: "Servicio de gestión de aplicaciones",
                           });
+                          await subirDoc(r.id, blob, filename, "generated");
+                          qc.invalidateQueries({ queryKey: ["invoice-docs", r.id] });
                         } catch (e: any) {
                           toast.error(e?.message ?? "Error al generar PDF");
                         }
@@ -267,6 +269,7 @@ export function MonthlyBillingView() {
                     >
                       <FileText className="h-4 w-4 mr-1" />PDF
                     </Button>
+                    <InvoiceDocsCell invoiceId={r.id} />
                     {r.status === "pending" && (
                       <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "invoiced", invoiced_at: new Date().toISOString(), invoiced_by: user?.id } })}>
                         <FileCheck2 className="h-4 w-4 mr-1" />Facturada
