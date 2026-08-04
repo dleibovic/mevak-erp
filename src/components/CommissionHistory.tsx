@@ -300,7 +300,7 @@ function EmployeeCommissionDetail({
           </Button>
           <div>
             <h3 className="font-semibold">{employee.name}</h3>
-            <p className="text-sm text-muted-foreground capitalize">{monthLabel(thisMonth)}</p>
+            <p className="text-sm text-muted-foreground capitalize">{monthLabel(focusMonth)}</p>
           </div>
         </div>
         {isAdmin && (
@@ -312,6 +312,24 @@ function EmployeeCommissionDetail({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={employee.key}
+          onValueChange={(k) => {
+            const next = employees.find((e) => e.key === k);
+            if (next) onSelectEmployee(next);
+          }}
+        >
+          <SelectTrigger className="w-[220px] h-9">
+            <SelectValue placeholder="Empleado" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {employees.map((e) => (
+              <SelectItem key={e.key} value={e.key}>
+                {e.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <MonthFilter value={month} onChange={setMonth} includeAll />
         {month === ALL_MONTHS && (
           <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
@@ -326,7 +344,7 @@ function EmployeeCommissionDetail({
       <Card className="p-5 bg-gradient-card border-border/60">
         <div className="flex flex-wrap justify-between items-baseline gap-2 mb-3">
           <div>
-            <h4 className="font-semibold capitalize">{monthLabel(thisMonth)}</h4>
+            <h4 className="font-semibold capitalize">{monthLabel(focusMonth)}</h4>
             {cmLive && <p className="text-xs text-muted-foreground">Cálculo en vivo (mes aún no congelado)</p>}
           </div>
           <div className="text-right">
@@ -341,7 +359,7 @@ function EmployeeCommissionDetail({
         {loadingCurrent ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : cmRows.length === 0 ? (
-          <EmptyState title="Sin comisiones en el mes actual" />
+          <EmptyState title="Sin comisiones en el mes seleccionado" />
         ) : (
           detailTable(cmRows, false)
         )}
