@@ -124,7 +124,28 @@ export default function Alerts() {
             </div>
           )}
         </Card>
+
+        {canSeeUnbilled && unbilled.length > 0 && (
+          <Card className="p-5 bg-gradient-card border-border/60 lg:col-span-2">
+            <div className="flex items-center gap-2 mb-4">
+              <UserX className="h-5 w-5 text-destructive" />
+              <h3 className="font-semibold">Clientes asignados sin facturar (mes actual) ({unbilled.length})</h3>
+            </div>
+            <div className="grid md:grid-cols-2 gap-2">
+              {unbilled.map((a: any, idx: number) => (
+                <div key={`${a.client_id}-${idx}`} className="flex justify-between items-center p-3 rounded-md bg-destructive/10 border border-destructive/30">
+                  <div>
+                    <div className="font-medium">{a.client?.company_name}</div>
+                    <div className="text-xs text-muted-foreground">Ejecutivo: {a.employee?.full_name ?? "—"}</div>
+                  </div>
+                  <Badge variant="outline" className="capitalize">{a.client?.status}</Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
+
     </PageContainer>
   );
 }
