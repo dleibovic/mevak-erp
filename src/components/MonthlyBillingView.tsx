@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, FileCheck2, Download } from "lucide-react";
+import { CheckCircle2, FileCheck2, Download, FileText } from "lucide-react";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
+import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
