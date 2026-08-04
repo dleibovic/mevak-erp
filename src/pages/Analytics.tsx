@@ -35,10 +35,15 @@ const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep"
 
 export default function Analytics() {
   const { countryId, current } = useCountryFilter();
+  const [month, setMonth] = useState<string>(currentMonthValue());
 
   return (
     <PageContainer>
-      <PageHeader title="Analytics" description={current ? `Reportes — ${current.name}` : "Reportes y desempeño"} />
+      <PageHeader
+        title="Analytics"
+        description={`${current ? `Reportes — ${current.name}` : "Reportes y desempeño"} · ${monthLabel(month)}`}
+        actions={<MonthFilter value={month} onChange={setMonth} />}
+      />
 
       <Tabs defaultValue="admin" className="w-full">
         <TabsList>
@@ -46,7 +51,7 @@ export default function Analytics() {
           <TabsTrigger value="ops">Plataformas y ejecutivos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="admin"><AdminDashboard countryId={countryId} /></TabsContent>
+        <TabsContent value="admin"><AdminDashboard countryId={countryId} month={month} /></TabsContent>
         <TabsContent value="ops"><OpsDashboard countryId={countryId} /></TabsContent>
       </Tabs>
     </PageContainer>
@@ -55,23 +60,44 @@ export default function Analytics() {
 
 /* ---------- Administración ---------- */
 
-function AdminDashboard({ countryId }: { countryId: string | null }) {
+function AdminDashboard({ countryId, month }: { countryId: string | null; month: string }) {
   const now = new Date();
   const [period, setPeriod] = useState<Period>("year");
   const [year, setYear] = useState<number>(now.getFullYear());
   const [anchor, setAnchor] = useState<number>(period === "month" ? now.getMonth() : 0);
 
-  const { start, end } = useMemo(() => getPeriodRange(period, year, anchor), [period, year, anchor]);
+  const mRange = monthRange(month);
+
+  const { start, end } = useMemo(() => {
+    if (mRange) return { start: new Date(mRange.start + "T00:00:00"), end: new Date(mRange.end + "T00:00:00") };
+    return getPeriodRange(period, year, anchor);
+  }, [period, year, anchor, month]);
   const monthsCount = monthsInRange(start, end);
 
   // Data
   const { data: invoices = [] } = useQuery({
-    queryKey: ["an-invoices", countryId],
-    queryFn: async () => (await supabase.from("invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency)")).data ?? [],
+    queryKey: ["an-invoices", countryId, month],
+    queryFn: async () => {
+      let q = supabase.from("invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency)");
+      if (mRange) q = q.gte("due_date", mRange.start).lt("due_date", mRange.end);
+      return (await q).data ?? [];
+    },
   });
   const { data: expenses = [] } = useQuery({
-    queryKey: ["an-expenses", countryId],
-    queryFn: async () => (await supabase.from("expenses").select("*, category:expense_categories(id, name)")).data ?? [],
+    queryKey: ["an-expenses", countryId, month],
+    queryFn: async () => {
+      let q = supabase.from("expenses").select("*, category:expense_categories(id, name)");
+      if (mRange) q = q.gte("date", mRange.start).lt("date", mRange.end);
+      return (await q).data ?? [];
+    },
+  });
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["an-transactions", countryId, month],
+    queryFn: async () => {
+      let q = supabase.from("transactions").select("*");
+      if (mRange) q = q.gte("date", mRange.start).lt("date", mRange.end);
+      return (await q).data ?? [];
+    },
   });
   const { data: employees = [] } = useQuery({
     queryKey: ["an-employees", countryId],
@@ -84,6 +110,7 @@ function AdminDashboard({ countryId }: { countryId: string | null }) {
 
   const inCountry = (cid?: string | null) => !countryId || cid === countryId;
   const inRange = (d: string | Date) => { const x = new Date(d); return x >= start && x < end; };
+
 
   /* Totals by currency */
   const totals = useMemo(() => {
