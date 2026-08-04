@@ -29,7 +29,6 @@ type Snapshot = {
 };
 
 type EmployeeOption = { key: string; id: string | null; name: string };
-
 type Grouping = "quarter" | "year";
 
 function totalsByCurrency(items?: { commission_value: number; commission_currency: string }[] | null) {
@@ -89,7 +88,7 @@ export function CommissionHistory() {
 
   const currentByEmployee = useMemo(() => {
     const map = new Map<string, { commission_value: number; commission_currency: string }[]>();
-    for (const c of current) {
+    for (const c of Array.isArray(current) ? current : []) {
       const key = c.employee_id ?? "";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push({ commission_value: Number(c.commission_value || 0), commission_currency: c.currency || "ARS" });
@@ -163,106 +162,46 @@ export function CommissionHistory() {
   );
 }
 
-/** Nivel 2: mes actual + historial agrupado. */
-function EmployeeCommissionDetail({
-  employee,
-  employees,
-  onSelectEmployee,
-  onBack,
-}: {
-  employee: EmployeeOption;
-  employees: EmployeeOption[];
-  onSelectEmployee: (e: EmployeeOption) => void;
-  onBack: () => void;
-}) {
-  const qc = useQueryClient();
-  const { isAdmin } = useAuth();
-  const [month, setMonth] = useState<string>(ALL_MONTHS);
-  const [grouping, setGrouping] = useState<Grouping>("quarter");
-  const thisMonth = currentMonthValue();
-  // El mes enfocado en la tarjeta superior sigue al filtro (o el mes en curso si es "Todos").
-  const focusMonth = month === ALL_MONTHS ? thisMonth : month;
+/** Detalle por período de un grupo (trimestre/año), colapsable individualmente. */
+function PeriodGroupCard({ label, items }: { label: string; items: Snapshot[] }) {
+  const list = Array.isArray(items) ? items : [];
+  const sinFacturar = list.filter((i) => !i.was_billed).length;
+  return (
+    <Collapsible>
+      <Card className="p-4 bg-gradient-card border-border/60">
+        <div className="flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h5 className="font-semibold">{label}</h5>
+            {sinFacturar > 0 && <p className="text-xs text-destructive">{sinFacturar} cliente(s) sin factura</p>}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Total comisiones</div>
+              {totalsByCurrency(list).map(([cur, total]) => (
+                <div key={cur} className="font-mono font-semibold text-primary">
+                  {formatMoney(total, cur)}
+                </div>
+              ))}
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="group">
+                Detalle
+                <ChevronDown className="h-4 w-4 ml-1 transition-transform group-data-[state=open]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
+        <CollapsibleContent className="mt-3">
+          <DetailTable items={list} showMonth />
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
 
-  const applyEmployee = (q: any) =>
-    employee.id ? q.eq("employee_id", employee.id) : q.is("employee_id", null).eq("employee_name", employee.name);
-
-  // Mes enfocado: snapshot congelado o cálculo en vivo
-  const { data: currentMonth, isLoading: loadingCurrent } = useQuery({
-    queryKey: ["commission-current-month", employee.key, focusMonth],
-    queryFn: async () => {
-      const { data, error } = await applyEmployee(
-        supabase.from("commission_snapshots").select("*").eq("period_month", focusMonth)
-      );
-      if (error) throw error;
-      const snapRows = (Array.isArray(data) ? data : []) as unknown as Snapshot[];
-      if (snapRows.length > 0) return { live: false, rows: snapRows };
-
-      // Sólo el mes en curso admite cálculo en vivo
-      if (!employee.id || focusMonth !== thisMonth) return { live: focusMonth === thisMonth, rows: [] as Snapshot[] };
-      const { data: live, error: e2 } = await supabase
-        .from("client_executive_commission")
-        .select("id, client_id, commission_value, currency, client:clients(company_name)")
-        .eq("employee_id", employee.id);
-      if (e2) throw e2;
-      const rows: Snapshot[] = (Array.isArray(live) ? live : []).map((r: any) => ({
-        id: r.id,
-        period_month: focusMonth,
-        employee_id: employee.id,
-        employee_name: employee.name,
-        client_id: r.client_id,
-        client_name: r.client?.company_name ?? "—",
-        commission_value: Number(r.commission_value || 0),
-        commission_currency: r.currency || "ARS",
-        billed_amount: null,
-        billed_currency: null,
-        was_billed: false,
-      }));
-      return { live: true, rows };
-    },
-  });
-
-  const cmLive = currentMonth?.live ?? false;
-  const cmRows: Snapshot[] = Array.isArray(currentMonth?.rows) ? currentMonth!.rows : [];
-
-  const { data: historyRows, isLoading } = useQuery({
-    queryKey: ["commission-snapshots", employee.key, month],
-    queryFn: async () => {
-      let q = supabase.from("commission_snapshots").select("*").order("period_month", { ascending: false });
-      if (month !== ALL_MONTHS) q = q.eq("period_month", month);
-      const { data, error } = await applyEmployee(q);
-      if (error) throw error;
-      const rows = data ?? [];
-      return (Array.isArray(rows) ? rows : []) as unknown as Snapshot[];
-    },
-  });
-
-  const rows: Snapshot[] = Array.isArray(historyRows) ? historyRows : [];
-
-  const periodGroups = useMemo(() => {
-    if (month !== ALL_MONTHS) return [];
-    const map = new Map<string, { label: string; sort: number; items: Snapshot[] }>();
-    for (const r of rows) {
-      const { key, label, sort } = periodKey(r.period_month, grouping);
-      if (!map.has(key)) map.set(key, { label, sort, items: [] });
-      map.get(key)!.items.push(r);
-    }
-    return Array.from(map.values()).sort((a, b) => b.sort - a.sort);
-  }, [rows, month, grouping]);
-
-  const regenerate = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc("snapshot_commissions_for_month", { _period: thisMonth });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Snapshot del mes en curso regenerado");
-      qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
-      qc.invalidateQueries({ queryKey: ["commission-current-month"] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const detailTable = (items: Snapshot[], showMonth: boolean) => (
+function DetailTable({ items, showMonth = false }: { items: Snapshot[]; showMonth?: boolean }) {
+  const list = Array.isArray(items) ? items : [];
+  return (
     <Table>
       <TableHeader>
         <TableRow>
@@ -273,7 +212,7 @@ function EmployeeCommissionDetail({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {(Array.isArray(items) ? items : []).map((i) => (
+        {list.map((i) => (
           <TableRow key={i.id} className={!i.was_billed ? "text-destructive" : undefined}>
             {showMonth && <TableCell className="text-sm capitalize">{monthLabel(i.period_month)}</TableCell>}
             <TableCell>{i.client_name}</TableCell>
@@ -290,19 +229,76 @@ function EmployeeCommissionDetail({
       </TableBody>
     </Table>
   );
+}
+
+/** Nivel 2: historial del empleado, agrupado por trimestre/año (visible de entrada). */
+function EmployeeCommissionDetail({
+  employee,
+  employees,
+  onSelectEmployee,
+  onBack,
+}: {
+  employee: EmployeeOption;
+  employees: EmployeeOption[];
+  onSelectEmployee: (e: EmployeeOption) => void;
+  onBack: () => void;
+}) {
+  const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const [month, setMonth] = useState<string>(ALL_MONTHS);
+  const [grouping, setGrouping] = useState<Grouping>("quarter");
+  const thisMonth = currentMonthValue();
+
+  const applyEmployee = (q: any) =>
+    employee.id ? q.eq("employee_id", employee.id) : q.is("employee_id", null).eq("employee_name", employee.name);
+
+  const { data: historyRows, isLoading } = useQuery({
+    queryKey: ["commission-snapshots", employee.key, month],
+    queryFn: async () => {
+      let q = supabase.from("commission_snapshots").select("*").order("period_month", { ascending: false });
+      if (month !== ALL_MONTHS) q = q.eq("period_month", month);
+      const { data, error } = await applyEmployee(q);
+      if (error) throw error;
+      return (Array.isArray(data) ? data : []) as unknown as Snapshot[];
+    },
+  });
+
+  const rows: Snapshot[] = Array.isArray(historyRows) ? historyRows : [];
+
+  const periodGroups = useMemo(() => {
+    const map = new Map<string, { label: string; sort: number; items: Snapshot[] }>();
+    for (const r of rows) {
+      const { key, label, sort } = periodKey(r.period_month, grouping);
+      if (!map.has(key)) map.set(key, { label, sort, items: [] });
+      map.get(key)!.items.push(r);
+    }
+    return Array.from(map.values()).sort((a, b) => b.sort - a.sort);
+  }, [rows, grouping]);
+
+  const grandTotals = totalsByCurrency(rows);
+
+  const regenerate = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("snapshot_commissions_for_month", { _period: thisMonth });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Snapshot del mes en curso regenerado");
+      qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   return (
     <div className="space-y-4">
+      {/* Encabezado */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ChevronLeft className="h-4 w-4 mr-1" />
             Volver
           </Button>
-          <div>
-            <h3 className="font-semibold">{employee.name}</h3>
-            <p className="text-sm text-muted-foreground capitalize">{monthLabel(focusMonth)}</p>
-          </div>
+          <h3 className="font-semibold">{employee.name}</h3>
         </div>
         {isAdmin && (
           <Button variant="outline" onClick={() => regenerate.mutate()} disabled={regenerate.isPending}>
@@ -312,6 +308,7 @@ function EmployeeCommissionDetail({
         )}
       </div>
 
+      {/* Filtros: siempre visibles */}
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={employee.key}
@@ -331,99 +328,52 @@ function EmployeeCommissionDetail({
             ))}
           </SelectContent>
         </Select>
-        <MonthFilter value={month} onChange={setMonth} includeAll />
-        {month === ALL_MONTHS && (
-          <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
-            <TabsList className="h-9">
-              <TabsTrigger value="quarter">Trimestre</TabsTrigger>
-              <TabsTrigger value="year">Año</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
-      </div>
 
-      <Card className="p-5 bg-gradient-card border-border/60">
-        <div className="flex flex-wrap justify-between items-baseline gap-2 mb-3">
-          <div>
-            <h4 className="font-semibold capitalize">{monthLabel(focusMonth)}</h4>
-            {cmLive && <p className="text-xs text-muted-foreground">Cálculo en vivo (mes aún no congelado)</p>}
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Total comisiones</div>
-            {totalsByCurrency(cmRows).map(([cur, total]) => (
+        <MonthFilter value={month} onChange={setMonth} includeAll />
+
+        {/* El toggle SIEMPRE está; se deshabilita cuando hay un mes puntual elegido */}
+        <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
+          <TabsList className="h-9">
+            <TabsTrigger value="quarter" disabled={month !== ALL_MONTHS}>
+              Trimestre
+            </TabsTrigger>
+            <TabsTrigger value="year" disabled={month !== ALL_MONTHS}>
+              Año
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="ml-auto text-right">
+          <div className="text-xs text-muted-foreground">Total del período mostrado</div>
+          {grandTotals.length === 0 ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
+            grandTotals.map(([cur, total]) => (
               <div key={cur} className="font-mono font-semibold text-primary">
                 {formatMoney(total, cur)}
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
-        {loadingCurrent ? (
-          <p className="text-muted-foreground">Cargando...</p>
-        ) : cmRows.length === 0 ? (
-          <EmptyState title="Sin comisiones en el mes seleccionado" />
-        ) : (
-          detailTable(cmRows, false)
-        )}
-      </Card>
+      </div>
 
-      <Collapsible>
+      {/* Contenido: visible de entrada */}
+      {isLoading ? (
+        <p className="text-muted-foreground">Cargando...</p>
+      ) : rows.length === 0 ? (
+        <EmptyState title="Sin comisiones registradas para los filtros seleccionados" />
+      ) : month !== ALL_MONTHS ? (
         <Card className="p-5 bg-gradient-card border-border/60">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h4 className="font-semibold">Historial completo</h4>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="group">
-                Ver
-                <ChevronDown className="h-4 w-4 ml-1 transition-transform group-data-[state=open]:rotate-180" />
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-
-          <CollapsibleContent className="mt-4 space-y-3">
-            {isLoading ? (
-              <p className="text-muted-foreground">Cargando...</p>
-            ) : rows.length === 0 ? (
-              <EmptyState title="Sin comisiones registradas para los filtros seleccionados" />
-            ) : month !== ALL_MONTHS ? (
-              detailTable(rows, false)
-            ) : (
-              periodGroups.map((g) => {
-                const sinFacturar = g.items.filter((i) => !i.was_billed).length;
-                return (
-                  <Collapsible key={g.label}>
-                    <Card className="p-4 border-border/60">
-                      <div className="flex flex-wrap justify-between items-center gap-3">
-                        <div>
-                          <h5 className="font-semibold">{g.label}</h5>
-                          {sinFacturar > 0 && (
-                            <p className="text-xs text-destructive">{sinFacturar} cliente(s) sin factura</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-xs text-muted-foreground">Total comisiones</div>
-                            {totalsByCurrency(g.items).map(([cur, total]) => (
-                              <div key={cur} className="font-mono font-semibold text-primary">
-                                {formatMoney(total, cur)}
-                              </div>
-                            ))}
-                          </div>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm" className="group">
-                              Detalle
-                              <ChevronDown className="h-4 w-4 ml-1 transition-transform group-data-[state=open]:rotate-180" />
-                            </Button>
-                          </CollapsibleTrigger>
-                        </div>
-                      </div>
-                      <CollapsibleContent className="mt-3">{detailTable(g.items, true)}</CollapsibleContent>
-                    </Card>
-                  </Collapsible>
-                );
-              })
-            )}
-          </CollapsibleContent>
+          <h4 className="font-semibold capitalize mb-3">{monthLabel(month)}</h4>
+          <DetailTable items={rows} />
         </Card>
-      </Collapsible>
+      ) : (
+        <div className="space-y-3">
+          {periodGroups.map((g) => (
+            <PeriodGroupCard key={g.label} label={g.label} items={g.items} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
