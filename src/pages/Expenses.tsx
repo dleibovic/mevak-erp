@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useExpenseCategories, useCountries } from "@/hooks/useCatalogs";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
