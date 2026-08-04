@@ -301,7 +301,14 @@ export default function Clients() {
                       ? <Badge variant="outline">{PAYMENT_CHANNEL_LABEL[c.payment_channel]}</Badge>
                       : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}
                   </TableCell>
+                  <TableCell>
+                    {c.invoice_letter
+                      ? <Badge variant="outline">{c.invoice_letter}</Badge>
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">Vencimiento de factura: {c.payment_term_days ?? 5} días</TableCell>
                   <TableCell className="text-sm">{c.billing_user_id ? profileName(c.billing_user_id) : <Badge variant="secondary" className="text-[10px]">sin asignar</Badge>}</TableCell>
+
                   <TableCell>
                     {discountVigent ? (
                       <Badge className="bg-primary text-primary-foreground hover:bg-primary text-[10px]">{c.discount_percentage}% · vence {c.discount_ends_at ? fmtDate(c.discount_ends_at) : "—"}</Badge>
