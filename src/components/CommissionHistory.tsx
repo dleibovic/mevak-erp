@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/PageShell";
 import { MonthFilter, ALL_MONTHS, currentMonthValue, monthLabel } from "@/components/MonthFilter";
@@ -97,7 +98,14 @@ export function CommissionHistory() {
   }, [current]);
 
   if (selected) {
-    return <EmployeeCommissionDetail employee={selected} onBack={() => setSelected(null)} />;
+    return (
+      <EmployeeCommissionDetail
+        employee={selected}
+        employees={employees}
+        onSelectEmployee={setSelected}
+        onBack={() => setSelected(null)}
+      />
+    );
   }
 
   return (
@@ -156,28 +164,41 @@ export function CommissionHistory() {
 }
 
 /** Nivel 2: mes actual + historial agrupado. */
-function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOption; onBack: () => void }) {
+function EmployeeCommissionDetail({
+  employee,
+  employees,
+  onSelectEmployee,
+  onBack,
+}: {
+  employee: EmployeeOption;
+  employees: EmployeeOption[];
+  onSelectEmployee: (e: EmployeeOption) => void;
+  onBack: () => void;
+}) {
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
   const [month, setMonth] = useState<string>(ALL_MONTHS);
   const [grouping, setGrouping] = useState<Grouping>("quarter");
   const thisMonth = currentMonthValue();
+  // El mes enfocado en la tarjeta superior sigue al filtro (o el mes en curso si es "Todos").
+  const focusMonth = month === ALL_MONTHS ? thisMonth : month;
 
   const applyEmployee = (q: any) =>
     employee.id ? q.eq("employee_id", employee.id) : q.is("employee_id", null).eq("employee_name", employee.name);
 
-  // Mes actual: snapshot congelado o cálculo en vivo
+  // Mes enfocado: snapshot congelado o cálculo en vivo
   const { data: currentMonth, isLoading: loadingCurrent } = useQuery({
-    queryKey: ["commission-current-month", employee.key, thisMonth],
+    queryKey: ["commission-current-month", employee.key, focusMonth],
     queryFn: async () => {
       const { data, error } = await applyEmployee(
-        supabase.from("commission_snapshots").select("*").eq("period_month", thisMonth)
+        supabase.from("commission_snapshots").select("*").eq("period_month", focusMonth)
       );
       if (error) throw error;
       const snapRows = (Array.isArray(data) ? data : []) as unknown as Snapshot[];
       if (snapRows.length > 0) return { live: false, rows: snapRows };
 
-      if (!employee.id) return { live: true, rows: [] as Snapshot[] };
+      // Sólo el mes en curso admite cálculo en vivo
+      if (!employee.id || focusMonth !== thisMonth) return { live: focusMonth === thisMonth, rows: [] as Snapshot[] };
       const { data: live, error: e2 } = await supabase
         .from("client_executive_commission")
         .select("id, client_id, commission_value, currency, client:clients(company_name)")
@@ -185,7 +206,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
       if (e2) throw e2;
       const rows: Snapshot[] = (Array.isArray(live) ? live : []).map((r: any) => ({
         id: r.id,
-        period_month: thisMonth,
+        period_month: focusMonth,
         employee_id: employee.id,
         employee_name: employee.name,
         client_id: r.client_id,
@@ -280,7 +301,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
           </Button>
           <div>
             <h3 className="font-semibold">{employee.name}</h3>
-            <p className="text-sm text-muted-foreground capitalize">{monthLabel(thisMonth)}</p>
+            <p className="text-sm text-muted-foreground capitalize">{monthLabel(focusMonth)}</p>
           </div>
         </div>
         {isAdmin && (
@@ -292,6 +313,24 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={employee.key}
+          onValueChange={(k) => {
+            const next = employees.find((e) => e.key === k);
+            if (next) onSelectEmployee(next);
+          }}
+        >
+          <SelectTrigger className="w-[220px] h-9">
+            <SelectValue placeholder="Empleado" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {employees.map((e) => (
+              <SelectItem key={e.key} value={e.key}>
+                {e.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <MonthFilter value={month} onChange={setMonth} includeAll />
         {month === ALL_MONTHS && (
           <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
@@ -306,7 +345,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
       <Card className="p-5 bg-gradient-card border-border/60">
         <div className="flex flex-wrap justify-between items-baseline gap-2 mb-3">
           <div>
-            <h4 className="font-semibold capitalize">{monthLabel(thisMonth)}</h4>
+            <h4 className="font-semibold capitalize">{monthLabel(focusMonth)}</h4>
             {cmLive && <p className="text-xs text-muted-foreground">Cálculo en vivo (mes aún no congelado)</p>}
           </div>
           <div className="text-right">
@@ -321,7 +360,7 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         {loadingCurrent ? (
           <p className="text-muted-foreground">Cargando...</p>
         ) : cmRows.length === 0 ? (
-          <EmptyState title="Sin comisiones en el mes actual" />
+          <EmptyState title="Sin comisiones en el mes seleccionado" />
         ) : (
           detailTable(cmRows, false)
         )}
