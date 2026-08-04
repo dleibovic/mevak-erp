@@ -291,6 +291,18 @@ function EmployeeCommissionDetail({ employee, onBack }: { employee: EmployeeOpti
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <MonthFilter value={month} onChange={setMonth} includeAll />
+        {month === ALL_MONTHS && (
+          <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
+            <TabsList className="h-9">
+              <TabsTrigger value="quarter">Trimestre</TabsTrigger>
+              <TabsTrigger value="year">Año</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+      </div>
+
       <Card className="p-5 bg-gradient-card border-border/60">
         <div className="flex flex-wrap justify-between items-baseline gap-2 mb-3">
           <div>
