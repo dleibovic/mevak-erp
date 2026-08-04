@@ -54,7 +54,7 @@ export function useAuth() {
 
 
   return {
-    session, user, role, loading, signOut,
+    session, user, role, loading, roleLoading, signOut,
     isAdmin: role === "admin",
     isAdministracion: role === "administracion",
     // puede crear/editar en finanzas, clientes y CRM (NO eliminar, NO gestionar usuarios)
