@@ -229,6 +229,8 @@ export function MonthlyBillingView() {
                 <TableHead>Estado</TableHead>
                 <TableHead>Facturado</TableHead>
                 <TableHead>Cobrado</TableHead>
+                <TableHead>Cobró</TableHead>
+
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
 
