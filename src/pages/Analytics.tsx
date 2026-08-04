@@ -13,14 +13,15 @@ import {
 import { formatMoney } from "@/lib/format";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { MonthFilter, currentMonthValue, monthLabel, monthRange } from "@/components/MonthFilter";
-
+import { buildRateIndex, rateForMonth, toUsd as toUsdRate, monthsList, type RateRow } from "@/lib/monthlyRates";
 
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 60% 45%)", "hsl(310 65% 60%)", "hsl(220 70% 60%)"];
+
+const usdFmt = (v: number) => formatMoney(v as number, "USD");
 
 type Period = "month" | "quarter" | "semester" | "year";
 
 function getPeriodRange(period: Period, year: number, anchor: number) {
-  // anchor = month index for month, quarter index 0..3, semester 0..1, ignored for year
   let start: Date, end: Date;
   if (period === "month") { start = new Date(year, anchor, 1); end = new Date(year, anchor + 1, 1); }
   else if (period === "quarter") { start = new Date(year, anchor * 3, 1); end = new Date(year, anchor * 3 + 3, 1); }
@@ -60,7 +61,7 @@ export default function Analytics() {
   );
 }
 
-/* ---------- Administración ---------- */
+/* ---------- Administración (todo consolidado en USD por cotización mensual) ---------- */
 
 function AdminDashboard({ countryId, month }: { countryId: string | null; month: string }) {
   const now = new Date();
@@ -75,6 +76,7 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
     return getPeriodRange(period, year, anchor);
   }, [period, year, anchor, month]);
   const monthsCount = monthsInRange(start, end);
+  const mArr = useMemo(() => monthsList(start, end), [start, end]);
 
   // Data
   const { data: invoices = [] } = useQuery({
@@ -109,113 +111,90 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
     queryKey: ["an-clients", countryId],
     queryFn: async () => (await supabase.from("clients").select("id, company_name, country_id, monthly_fee, fee_currency, status")).data ?? [],
   });
+  const { data: rates = [] } = useQuery({
+    queryKey: ["an-rates"],
+    queryFn: async () => ((await supabase.from("exchange_rates").select("base_currency, rate, rate_date")).data ?? []) as RateRow[],
+  });
+
+  const rateIndex = useMemo(() => buildRateIndex(rates as RateRow[]), [rates]);
+  const usd = (amount: number, currency: string, dateOrMonth: string | Date) => toUsdRate(rateIndex, amount, currency, dateOrMonth);
+  // Fecha para valuar una factura: la de PAGO (collected_at) si ya se cobró; si no, el vencimiento.
+  const invValDate = (i: any) => i.collected_at ?? i.due_date;
 
   const inCountry = (cid?: string | null) => !countryId || cid === countryId;
   const inRange = (d: string | Date) => { const x = new Date(d); return x >= start && x < end; };
 
-
-  /* Totals by currency */
+  /* Totales en USD (convertidos por la cotización del mes de cada monto) */
   const totals = useMemo(() => {
-    const inc: Record<string, number> = {};
-    const incPaid: Record<string, number> = {};
-    const incPending: Record<string, number> = {};
-    const incOverdue: Record<string, number> = {};
+    let inc = 0, incPaid = 0, incPending = 0, incOverdue = 0, exp = 0, txIn = 0, txOut = 0;
     invoices.forEach((i: any) => {
-      if (!inCountry(i.client?.country_id)) return;
-      if (!inRange(i.due_date)) return;
-      const cur = i.currency;
-      const amt = Number(i.amount) || 0;
-      inc[cur] = (inc[cur] ?? 0) + amt;
-      if (i.status === "paid") incPaid[cur] = (incPaid[cur] ?? 0) + amt;
-      else if (i.status === "overdue") incOverdue[cur] = (incOverdue[cur] ?? 0) + amt;
-      else incPending[cur] = (incPending[cur] ?? 0) + amt;
+      if (!inCountry(i.client?.country_id) || !inRange(i.due_date)) return;
+      const v = usd(Number(i.amount) || 0, i.currency, invValDate(i));
+      inc += v;
+      if (i.status === "paid") incPaid += v;
+      else if (i.status === "overdue") incOverdue += v;
+      else incPending += v;
     });
-
-    const exp: Record<string, number> = {};
-    expenses.forEach((e: any) => {
-      if (!inCountry(e.country_id)) return;
-      if (!inRange(e.date)) return;
-      exp[e.currency] = (exp[e.currency] ?? 0) + (Number(e.amount) || 0);
-    });
-    // Salaries (active in range)
-    employees.forEach((e: any) => {
-      if (!e.is_active) return;
-      if (!inCountry(e.country_id)) return;
-      const cur = e.salary_currency || "ARS";
-      exp[cur] = (exp[cur] ?? 0) + (Number(e.base_salary) || 0) * monthsCount;
-    });
-
-    // Movimientos registrados en transactions (caja) — filtrados por su fecha
-    const txIn: Record<string, number> = {};
-    const txOut: Record<string, number> = {};
-    transactions.forEach((t: any) => {
-      if (!inRange(t.date)) return;
-      const cur = t.currency || "ARS";
-      const amt = Number(t.amount) || 0;
-      if (t.type === "income") txIn[cur] = (txIn[cur] ?? 0) + amt;
-      else txOut[cur] = (txOut[cur] ?? 0) + amt;
-    });
-
-    const profit: Record<string, number> = {};
-    new Set([...Object.keys(inc), ...Object.keys(exp)]).forEach((c) => {
-      profit[c] = (inc[c] ?? 0) - (exp[c] ?? 0);
-    });
-
-    return { inc, incPaid, incPending, incOverdue, exp, profit, txIn, txOut };
-  }, [invoices, expenses, employees, transactions, countryId, period, year, anchor, monthsCount, month]);
-
-
-  /* Expenses by category (with salaries) */
-  const expByCategory = useMemo(() => {
-    const m: Record<string, Record<string, number>> = {}; // cat -> currency -> amount
     expenses.forEach((e: any) => {
       if (!inCountry(e.country_id) || !inRange(e.date)) return;
-      const k = e.category?.name ?? "Sin categoría";
-      m[k] = m[k] ?? {};
-      m[k][e.currency] = (m[k][e.currency] ?? 0) + (Number(e.amount) || 0);
+      exp += usd(Number(e.amount) || 0, e.currency, e.date);
     });
     employees.forEach((e: any) => {
       if (!e.is_active || !inCountry(e.country_id)) return;
-      const cur = e.salary_currency || "ARS";
-      const k = "Salarios";
-      m[k] = m[k] ?? {};
-      m[k][cur] = (m[k][cur] ?? 0) + (Number(e.base_salary) || 0) * monthsCount;
+      mArr.forEach((mo) => { exp += usd(Number(e.base_salary) || 0, e.salary_currency || "ARS", mo); });
+    });
+    transactions.forEach((t: any) => {
+      if (!inRange(t.date)) return;
+      const v = usd(Number(t.amount) || 0, t.currency || "ARS", t.date);
+      if (t.type === "income") txIn += v; else txOut += v;
+    });
+    return { inc, incPaid, incPending, incOverdue, exp, profit: inc - exp, txIn, txOut };
+  }, [invoices, expenses, employees, transactions, countryId, start, end, mArr, rateIndex]);
+
+  /* Egresos por categoría (USD) */
+  const expByCategory = useMemo(() => {
+    const m: Record<string, number> = {};
+    expenses.forEach((e: any) => {
+      if (!inCountry(e.country_id) || !inRange(e.date)) return;
+      const k = e.category?.name ?? "Sin categoría";
+      m[k] = (m[k] ?? 0) + usd(Number(e.amount) || 0, e.currency, e.date);
+    });
+    employees.forEach((e: any) => {
+      if (!e.is_active || !inCountry(e.country_id)) return;
+      let s = 0;
+      mArr.forEach((mo) => { s += usd(Number(e.base_salary) || 0, e.salary_currency || "ARS", mo); });
+      m["Salarios"] = (m["Salarios"] ?? 0) + s;
     });
     return m;
-  }, [expenses, employees, countryId, period, year, anchor, monthsCount]);
+  }, [expenses, employees, countryId, start, end, mArr, rateIndex]);
 
-  /* Monthly series (income vs expense, per currency aggregated as ARS-equivalent? Keep separate per currency). For chart, aggregate using ARS only for visualization. */
+  /* Serie mensual (USD) */
   const monthlySeries = useMemo(() => {
-    const months: { key: string; label: string; ingresos: number; egresos: number; ganancia: number }[] = [];
-    const cur = new Date(start);
-    while (cur < end) {
-      const k = `${cur.getFullYear()}-${cur.getMonth()}`;
-      months.push({ key: k, label: `${MONTHS_ES[cur.getMonth()]} ${String(cur.getFullYear()).slice(2)}`, ingresos: 0, egresos: 0, ganancia: 0 });
-      cur.setMonth(cur.getMonth() + 1);
-    }
-    const idx = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
+    const months = mArr.map((k) => {
+      const [y, mo] = k.split("-").map(Number);
+      return { key: k, label: `${MONTHS_ES[mo - 1]} ${String(y).slice(2)}`, ingresos: 0, egresos: 0, ganancia: 0 };
+    });
+    const byKey = new Map(months.map((m) => [m.key, m]));
+    const keyOf = (d: string | Date) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`; };
     invoices.forEach((i: any) => {
-      if (!inCountry(i.client?.country_id) || i.currency !== "ARS") return;
-      const d = new Date(i.due_date);
-      const m = months.find((x) => x.key === idx(d));
-      if (m) m.ingresos += Number(i.amount) || 0;
+      if (!inCountry(i.client?.country_id)) return;
+      const m = byKey.get(keyOf(invValDate(i)));
+      if (m) m.ingresos += usd(Number(i.amount) || 0, i.currency, invValDate(i));
     });
     expenses.forEach((e: any) => {
-      if (!inCountry(e.country_id) || e.currency !== "ARS") return;
-      const d = new Date(e.date);
-      const m = months.find((x) => x.key === idx(d));
-      if (m) m.egresos += Number(e.amount) || 0;
+      if (!inCountry(e.country_id)) return;
+      const m = byKey.get(keyOf(e.date));
+      if (m) m.egresos += usd(Number(e.amount) || 0, e.currency, e.date);
     });
-    // Salaries each month for active employees
     employees.forEach((e: any) => {
-      if (!e.is_active || !inCountry(e.country_id) || (e.salary_currency || "ARS") !== "ARS") return;
-      months.forEach((m) => { m.egresos += Number(e.base_salary) || 0; });
+      if (!e.is_active || !inCountry(e.country_id)) return;
+      months.forEach((m) => { m.egresos += usd(Number(e.base_salary) || 0, e.salary_currency || "ARS", m.key); });
     });
     months.forEach((m) => { m.ganancia = m.ingresos - m.egresos; });
     return months;
-  }, [invoices, expenses, employees, countryId, start, end]);
+  }, [invoices, expenses, employees, countryId, mArr, rateIndex]);
 
-  /* Top 10 clientes por fee */
+  /* Top 10 clientes por fee (en su moneda original) */
   const topClients = useMemo(() => {
     return clients
       .filter((c: any) => inCountry(c.country_id) && c.status !== "inactive")
@@ -224,31 +203,52 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
       .slice(0, 10);
   }, [clients, countryId]);
 
-  /* Pareto clientes (revenue cobrado/total per cliente en periodo) */
+  /* Pareto clientes (ingresos en USD) */
   const paretoClients = useMemo(() => {
     const m: Record<string, { name: string; value: number }> = {};
     invoices.forEach((i: any) => {
-      if (!inCountry(i.client?.country_id) || !inRange(i.due_date) || i.currency !== "ARS") return;
+      if (!inCountry(i.client?.country_id) || !inRange(i.due_date)) return;
       const id = i.client?.id ?? "—";
       const name = i.client?.company_name ?? "—";
       m[id] = m[id] ?? { name, value: 0 };
-      m[id].value += Number(i.amount) || 0;
+      m[id].value += usd(Number(i.amount) || 0, i.currency, invValDate(i));
     });
     const arr = Object.values(m).sort((a, b) => b.value - a.value);
     const total = arr.reduce((s, x) => s + x.value, 0) || 1;
     let acc = 0;
     return arr.slice(0, 20).map((x) => { acc += x.value; return { ...x, pct: (x.value / total) * 100, cum: (acc / total) * 100 }; });
-  }, [invoices, countryId, start, end]);
+  }, [invoices, countryId, start, end, rateIndex]);
 
-  /* Pareto gastos por categoría */
+  /* Pareto gastos por categoría (USD) */
   const paretoExpenses = useMemo(() => {
-    const arr = Object.entries(expByCategory).map(([name, by]) => ({ name, value: by["ARS"] ?? 0 })).sort((a, b) => b.value - a.value);
+    const arr = Object.entries(expByCategory).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
     const total = arr.reduce((s, x) => s + x.value, 0) || 1;
     let acc = 0;
     return arr.map((x) => { acc += x.value; return { ...x, pct: (x.value / total) * 100, cum: (acc / total) * 100 }; });
   }, [expByCategory]);
 
-  const currencies = Array.from(new Set([...Object.keys(totals.inc), ...Object.keys(totals.exp)]));
+  /* Tipos de cambio usados (para transparencia) */
+  const dataCurrencies = useMemo(() => {
+    const s = new Set<string>();
+    invoices.forEach((i: any) => { if (inCountry(i.client?.country_id) && inRange(i.due_date)) s.add(i.currency); });
+    expenses.forEach((e: any) => { if (inCountry(e.country_id) && inRange(e.date)) s.add(e.currency); });
+    employees.forEach((e: any) => { if (e.is_active && inCountry(e.country_id)) s.add(e.salary_currency || "ARS"); });
+    transactions.forEach((t: any) => { if (inRange(t.date)) s.add(t.currency || "ARS"); });
+    s.delete("USD");
+    return [...s];
+  }, [invoices, expenses, employees, transactions, countryId, start, end]);
+
+  const ratesUsed = useMemo(() => {
+    const rows: { currency: string; month: string; rate: number | null; estimated: boolean }[] = [];
+    for (const cur of dataCurrencies) {
+      for (const mo of mArr) {
+        const { rate, estimated } = rateForMonth(rateIndex, cur, mo);
+        rows.push({ currency: cur, month: mo, rate, estimated });
+      }
+    }
+    return rows;
+  }, [dataCurrencies, mArr, rateIndex]);
+
   const yearOpts = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 4 + i);
 
   return (
@@ -296,31 +296,66 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
         )}
       </Card>
 
-      {/* KPIs por moneda */}
+      {/* KPIs en USD */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Ingresos" amounts={totals.inc} tone="success" />
-        <KpiCard label="Egresos (incl. salarios)" amounts={totals.exp} tone="destructive" />
-        <KpiCard label="Ganancia" amounts={totals.profit} tone="primary" />
-        <KpiCard label="Cobrado" amounts={totals.incPaid} tone="success" sub={`Mora: ${currencies.map((c) => formatMoney(totals.incOverdue[c] ?? 0, c)).join(" / ") || "—"}`} />
+        <KpiCard label="Ingresos" amount={totals.inc} tone="success" />
+        <KpiCard label="Egresos (incl. salarios)" amount={totals.exp} tone="destructive" />
+        <KpiCard label="Ganancia" amount={totals.profit} tone="primary" />
+        <KpiCard label="Cobrado" amount={totals.incPaid} tone="success" sub={`Mora: ${usdFmt(totals.incOverdue)}`} />
       </div>
 
       {/* Movimientos de caja (transactions) */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-        <KpiCard label="Movimientos — ingresos" amounts={totals.txIn} tone="success" />
-        <KpiCard label="Movimientos — egresos" amounts={totals.txOut} tone="destructive" />
+        <KpiCard label="Movimientos — ingresos" amount={totals.txIn} tone="success" />
+        <KpiCard label="Movimientos — egresos" amount={totals.txOut} tone="destructive" />
       </div>
 
+      {/* Tipos de cambio usados */}
+      {ratesUsed.length > 0 && (
+        <Card className="bg-gradient-card border-border/60 overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="font-semibold">Tipos de cambio aplicados (cotización mensual, moneda local por 1 USD)</h3>
+          </div>
+          <div className="max-h-64 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Moneda</TableHead>
+                  <TableHead>Mes</TableHead>
+                  <TableHead className="text-right">TC</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ratesUsed.map((r, i) => (
+                  <TableRow key={`${r.currency}-${r.month}-${i}`}>
+                    <TableCell>{r.currency}</TableCell>
+                    <TableCell>{r.month}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {r.rate == null ? <span className="text-destructive">sin cotización</span> : (
+                        <>
+                          {r.rate.toLocaleString("es-AR")}
+                          {r.estimated && <span className="text-muted-foreground text-[11px] ml-1">(est.)</span>}
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
 
-      {/* Monthly trend (ARS) */}
+      {/* Serie mensual (USD) */}
       <Card className="p-5 bg-gradient-card border-border/60">
-        <h3 className="font-semibold mb-3">Ingresos vs Egresos (ARS) — mensual</h3>
+        <h3 className="font-semibold mb-3">Ingresos vs Egresos (USD) — mensual</h3>
         <div className="h-72">
           <ResponsiveContainer>
             <BarChart data={monthlySeries}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
-              <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} formatter={(v: any) => formatMoney(v as number, "ARS")} />
+              <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} formatter={(v: any) => usdFmt(v as number)} />
               <Legend />
               <Bar dataKey="ingresos" fill="hsl(145 60% 48%)" radius={[4, 4, 0, 0]} />
               <Bar dataKey="egresos" fill="hsl(0 75% 60%)" radius={[4, 4, 0, 0]} />
@@ -333,14 +368,14 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Egresos por categoría */}
         <Card className="p-5 bg-gradient-card border-border/60">
-          <h3 className="font-semibold mb-3">Egresos por categoría (ARS)</h3>
+          <h3 className="font-semibold mb-3">Egresos por categoría (USD)</h3>
           <div className="h-64">
             <ResponsiveContainer>
               <PieChart>
                 <Pie data={paretoExpenses} dataKey="value" nameKey="name" outerRadius={90} innerRadius={40}>
                   {paretoExpenses.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} formatter={(v: any) => formatMoney(v as number, "ARS")} />
+                <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} formatter={(v: any) => usdFmt(v as number)} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -351,7 +386,7 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
               {paretoExpenses.map((c) => (
                 <TableRow key={c.name}>
                   <TableCell>{c.name}</TableCell>
-                  <TableCell className="text-right font-mono">{formatMoney(c.value, "ARS")}</TableCell>
+                  <TableCell className="text-right font-mono">{usdFmt(c.value)}</TableCell>
                   <TableCell className="text-right">{c.pct.toFixed(1)}%</TableCell>
                 </TableRow>
               ))}
@@ -361,15 +396,15 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
 
         {/* Cobros vs Mora */}
         <Card className="p-5 bg-gradient-card border-border/60">
-          <h3 className="font-semibold mb-3">Cobros vs Mora (ARS)</h3>
+          <h3 className="font-semibold mb-3">Cobros vs Mora (USD)</h3>
           <div className="h-64">
             <ResponsiveContainer>
               <PieChart>
                 <Pie
                   data={[
-                    { name: "Cobrado", value: totals.incPaid["ARS"] ?? 0 },
-                    { name: "Pendiente", value: totals.incPending["ARS"] ?? 0 },
-                    { name: "Mora", value: totals.incOverdue["ARS"] ?? 0 },
+                    { name: "Cobrado", value: totals.incPaid },
+                    { name: "Pendiente", value: totals.incPending },
+                    { name: "Mora", value: totals.incOverdue },
                   ]}
                   dataKey="value" nameKey="name" outerRadius={90} innerRadius={40}
                 >
@@ -377,7 +412,7 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
                   <Cell fill="hsl(50 90% 55%)" />
                   <Cell fill="hsl(0 75% 60%)" />
                 </Pie>
-                <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} formatter={(v: any) => formatMoney(v as number, "ARS")} />
+                <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }} formatter={(v: any) => usdFmt(v as number)} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -400,24 +435,19 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
 
       {/* Pareto Charts */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <ParetoCard title="Pareto — Clientes (ingresos ARS)" data={paretoClients} />
-        <ParetoCard title="Pareto — Gastos por categoría (ARS)" data={paretoExpenses} />
+        <ParetoCard title="Pareto — Clientes (ingresos USD)" data={paretoClients} />
+        <ParetoCard title="Pareto — Gastos por categoría (USD)" data={paretoExpenses} />
       </div>
     </div>
   );
 }
 
-function KpiCard({ label, amounts, tone, sub }: { label: string; amounts: Record<string, number>; tone: "success" | "destructive" | "primary"; sub?: string }) {
-  const entries = Object.entries(amounts);
+function KpiCard({ label, amount, tone, sub }: { label: string; amount: number; tone: "success" | "destructive" | "primary"; sub?: string }) {
   const toneClass = tone === "success" ? "text-success" : tone === "destructive" ? "text-destructive" : "text-primary";
   return (
     <Card className="p-4 bg-gradient-card border-border/60">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 space-y-0.5">
-        {entries.length === 0 ? <div className="text-lg font-mono">—</div> : entries.map(([cur, val]) => (
-          <div key={cur} className={`text-lg font-mono ${toneClass}`}>{formatMoney(val, cur)}</div>
-        ))}
-      </div>
+      <div className={`mt-1 text-lg font-mono ${toneClass}`}>{usdFmt(amount)}</div>
       {sub && <div className="text-[11px] text-muted-foreground mt-2">{sub}</div>}
     </Card>
   );
@@ -435,9 +465,9 @@ function ParetoCard({ title, data }: { title: string; data: { name: string; valu
             <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={11} />
             <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={11} domain={[0, 100]} unit="%" />
             <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 6 }}
-              formatter={(v: any, n: any) => n === "cum" ? `${(v as number).toFixed(1)}%` : formatMoney(v as number, "ARS")} />
+              formatter={(v: any, n: any) => n === "cum" ? `${(v as number).toFixed(1)}%` : usdFmt(v as number)} />
             <Legend />
-            <Bar yAxisId="left" dataKey="value" fill="hsl(var(--primary))" name="$" radius={[4, 4, 0, 0]} />
+            <Bar yAxisId="left" dataKey="value" fill="hsl(var(--primary))" name="USD" radius={[4, 4, 0, 0]} />
             <Line yAxisId="right" type="monotone" dataKey="cum" stroke="hsl(20 90% 55%)" name="% acumulado" strokeWidth={2} dot={false} />
           </ComposedChart>
         </ResponsiveContainer>
@@ -446,7 +476,7 @@ function ParetoCard({ title, data }: { title: string; data: { name: string; valu
   );
 }
 
-/* ---------- Operacional (existing content) ---------- */
+/* ---------- Operacional (sin cambios) ---------- */
 
 function OpsDashboard({ countryId }: { countryId: string | null }) {
   const { data: clients = [] } = useQuery({
