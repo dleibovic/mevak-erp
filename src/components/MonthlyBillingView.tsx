@@ -231,9 +231,9 @@ export function MonthlyBillingView() {
                 <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Facturado</TableHead>
-                <TableHead>Cobrado</TableHead>
-                <TableHead>Cobró</TableHead>
-
+                <TableHead>Cobrado por</TableHead>
+                <TableHead>Fecha de pago</TableHead>
+                <TableHead>Registrado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
 
