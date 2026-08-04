@@ -267,6 +267,7 @@ export function MonthlyBillingView() {
                     {r.status === "overdue" && <Badge variant="destructive">Vencida</Badge>}
                   </TableCell>
                   <TableCell className="text-sm">{r.invoiced_at ? fmtDate(r.invoiced_at) : "—"}</TableCell>
+                  <TableCell className="text-sm">{r.paid_by ? profileName(r.paid_by) : "—"}</TableCell>
                   <TableCell>
                     {r.status === "paid" ? (
                       canEditAdminFinance ? (
@@ -283,16 +284,8 @@ export function MonthlyBillingView() {
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {r.status === "paid" ? (
-                      <div className="leading-tight">
-                        <div>{profileName(r.paid_by)}</div>
-                        {r.payment_assigned_at && (
-                          <div className="text-xs text-muted-foreground">Registrado {fmtDate(r.payment_assigned_at)}</div>
-                        )}
-                      </div>
-                    ) : "—"}
-                  </TableCell>
+                  <TableCell className="text-sm">{r.payment_assigned_at ? fmtDate(r.payment_assigned_at) : "—"}</TableCell>
+
 
                   <TableCell className="text-right space-x-1">
                     <Button
