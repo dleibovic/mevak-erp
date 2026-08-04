@@ -149,14 +149,14 @@ export function MonthlyBillingView() {
   }, [filtered, groupBy]);
 
   function exportCSV() {
-    const header = ["Cliente", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado", "Cobró", "Pago registrado"];
+    const header = ["Cliente", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado por", "Fecha de pago", "Registrado"];
     const lines = filtered.map((r: any) => [
       r.client?.company_name ?? "",
       r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] ?? r.payment_channel : "",
       r.amount, r.currency, r.status,
       r.invoiced_at ? fmtDate(r.invoiced_at) : "",
-      r.paid_at ? fmtDate(r.paid_at) : "",
       r.paid_by ? profileName(r.paid_by) : "",
+      r.paid_at ? fmtDate(r.paid_at) : "",
       r.payment_assigned_at ? fmtDate(r.payment_assigned_at) : "",
     ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
 
@@ -231,9 +231,9 @@ export function MonthlyBillingView() {
                 <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Facturado</TableHead>
-                <TableHead>Cobrado</TableHead>
-                <TableHead>Cobró</TableHead>
-
+                <TableHead>Cobrado por</TableHead>
+                <TableHead>Fecha de pago</TableHead>
+                <TableHead>Registrado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
 
@@ -267,6 +267,7 @@ export function MonthlyBillingView() {
                     {r.status === "overdue" && <Badge variant="destructive">Vencida</Badge>}
                   </TableCell>
                   <TableCell className="text-sm">{r.invoiced_at ? fmtDate(r.invoiced_at) : "—"}</TableCell>
+                  <TableCell className="text-sm">{r.paid_by ? profileName(r.paid_by) : "—"}</TableCell>
                   <TableCell>
                     {r.status === "paid" ? (
                       canEditAdminFinance ? (
@@ -283,16 +284,8 @@ export function MonthlyBillingView() {
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {r.status === "paid" ? (
-                      <div className="leading-tight">
-                        <div>{profileName(r.paid_by)}</div>
-                        {r.payment_assigned_at && (
-                          <div className="text-xs text-muted-foreground">Registrado {fmtDate(r.payment_assigned_at)}</div>
-                        )}
-                      </div>
-                    ) : "—"}
-                  </TableCell>
+                  <TableCell className="text-sm">{r.payment_assigned_at ? fmtDate(r.payment_assigned_at) : "—"}</TableCell>
+
 
                   <TableCell className="text-right space-x-1">
                     <Button
@@ -333,7 +326,7 @@ export function MonthlyBillingView() {
                 </TableRow>
               ))}
               {g.items.length === 0 && (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
