@@ -79,6 +79,16 @@ export function MonthlyBillingView() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateInvoiceDate = useMutation({
+    mutationFn: async ({ id, invoice_date }: { id: string; invoice_date: string | null }) => {
+      const { error } = await supabase.from("monthly_invoices").update({ invoice_date }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
   const filtered = useMemo(() => {
     let r = rows as any[];
     if (filterStatus !== "all") r = r.filter((x) => x.status === filterStatus);
