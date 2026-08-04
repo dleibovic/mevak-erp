@@ -294,7 +294,7 @@ export function MonthlyBillingView() {
                       </Button>
                     )}
                     {r.status !== "paid" && (
-                      <Button size="sm" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "paid", paid_at: new Date().toISOString(), paid_by: user?.id } })}>
+                      <Button size="sm" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "paid" } })}>
                         <CheckCircle2 className="h-4 w-4 mr-1" />Cobrada
                       </Button>
                     )}
