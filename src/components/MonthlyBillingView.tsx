@@ -262,7 +262,33 @@ export function MonthlyBillingView() {
                     {r.status === "overdue" && <Badge variant="destructive">Vencida</Badge>}
                   </TableCell>
                   <TableCell className="text-sm">{r.invoiced_at ? fmtDate(r.invoiced_at) : "—"}</TableCell>
-                  <TableCell className="text-sm">{r.paid_at ? fmtDate(r.paid_at) : "—"}</TableCell>
+                  <TableCell>
+                    {r.status === "paid" ? (
+                      canEditAdminFinance ? (
+                        <Input
+                          type="date"
+                          className="h-8 w-[150px]"
+                          value={r.paid_at ? String(r.paid_at).slice(0, 10) : ""}
+                          onChange={(e) => updatePaidAt.mutate({ id: r.id, paid_at: e.target.value || null })}
+                        />
+                      ) : (
+                        <span className="text-sm">{r.paid_at ? fmtDate(r.paid_at) : "—"}</span>
+                      )
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {r.status === "paid" ? (
+                      <div className="leading-tight">
+                        <div>{profileName(r.paid_by)}</div>
+                        {r.payment_assigned_at && (
+                          <div className="text-xs text-muted-foreground">Registrado {fmtDate(r.payment_assigned_at)}</div>
+                        )}
+                      </div>
+                    ) : "—"}
+                  </TableCell>
+
                   <TableCell className="text-right space-x-1">
                     <Button
                       size="sm"
