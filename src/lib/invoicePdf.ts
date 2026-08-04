@@ -1,24 +1,15 @@
 import { jsPDF } from "jspdf";
+import { MEVAK_LOGO_BLANCO } from "@/lib/mevakLogo";
 
-// === DATOS DEL EMISOR (Mevak) — EDITAR con los datos reales ===
+// === DATOS DEL EMISOR (Mevak) — mínimos, factura comercial no fiscal ===
 export const ISSUER = {
   name: "Mevak",
-  legalName: "Mevak Food Agency",        // razón social — EDITAR
-  taxId: "",                              // CUIT / Tax ID — EDITAR
-  address: "",                            // dirección — EDITAR
-  email: "hola@mevak.com.ar",             // EDITAR
+  email: "administracion@mevak.com.ar",
   web: "growth.mevakfoodagency.com",
-  payment: {                              // pago internacional (transferencia) — EDITAR
-    bankName: "",
-    accountName: "",
-    iban: "",
-    swift: "",
-    notes: "",
-  },
 };
 
 // Colores de marca (design.md)
-const BRAND_BG = "#000000";
+const BRAND_BG = "#14151F";
 const BRAND_VIOLET = "#5961C0";
 const BRAND_ORANGE = "#DD2F03";
 const INK = "#1A1B23";
@@ -37,44 +28,31 @@ type InvoiceData = {
 const money = (n: number, cur: string) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: cur || "USD" }).format(n);
 
-async function loadLogoDataUrl(): Promise<string | null> {
-  try {
-    const res = await fetch("/logo-mevak.png");
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
 /** Genera la factura. Devuelve { blob, filename }. Si download !== false, la descarga. */
-export async function generateInvoicePdf(inv: InvoiceData, opts?: { download?: boolean }) {
+export function generateInvoicePdf(inv: InvoiceData, opts?: { download?: boolean }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 44;
 
-  // Encabezado: banda oscura de marca + franja naranja
+  // Encabezado: banda oscura + franja naranja
   doc.setFillColor(BRAND_BG);
   doc.rect(0, 0, W, 96, "F");
   doc.setFillColor(BRAND_ORANGE);
   doc.rect(0, 96, W, 4, "F");
 
-  // Logo blanco (fallback al wordmark si no carga)
-  const logoDataUrl = await loadLogoDataUrl();
-  if (logoDataUrl) {
-    doc.addImage(logoDataUrl, "PNG", M, 28, 120, 40);
-  } else {
+  // Logo blanco (fallback a wordmark si algo falla)
+  try {
+    const logoW = 120;
+    const logoH = (logoW * 130) / 600; // ≈ 26
+    doc.addImage(MEVAK_LOGO_BLANCO, "PNG", M, 34, logoW, logoH);
+  } catch {
     doc.setTextColor("#FFFFFF");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(26);
-    doc.text("MEVAK", M, 58);
+    doc.text("mevak", M, 60);
   }
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor("#C9CCF0");
@@ -83,17 +61,17 @@ export async function generateInvoicePdf(inv: InvoiceData, opts?: { download?: b
   doc.setFontSize(9);
   doc.text(`N° ${inv.number}`, W - M, 64, { align: "right" });
 
-  // Emisor
+  // Emisor (mínimo): nombre + email + web
   let y = 132;
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text(ISSUER.legalName || ISSUER.name, M, y);
+  doc.text(ISSUER.name, M, y);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(MUTED);
-  [ISSUER.address, ISSUER.taxId ? `Tax ID: ${ISSUER.taxId}` : "", ISSUER.email, ISSUER.web]
-    .filter(Boolean).forEach((l, i) => doc.text(l as string, M, y + 16 + i * 13));
+  doc.text(ISSUER.email, M, y + 16);
+  doc.text(ISSUER.web, M, y + 29);
 
   // Fechas (derecha)
   doc.setTextColor(INK);
@@ -102,7 +80,7 @@ export async function generateInvoicePdf(inv: InvoiceData, opts?: { download?: b
   doc.text(`Vencimiento: ${inv.dueDate}`, W - M, y + 16, { align: "right" });
 
   // Cliente
-  y += 84;
+  y += 80;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(BRAND_VIOLET);
@@ -111,7 +89,7 @@ export async function generateInvoicePdf(inv: InvoiceData, opts?: { download?: b
   doc.setTextColor(INK);
   doc.text(inv.clientName, M, y + 19);
 
-  // Tabla concepto / importe (encabezado con tinte violeta claro)
+  // Tabla concepto / importe
   y += 56;
   doc.setFillColor("#ECEDF7");
   doc.rect(M, y, W - 2 * M, 26, "F");
@@ -127,7 +105,7 @@ export async function generateInvoicePdf(inv: InvoiceData, opts?: { download?: b
   doc.text(inv.concept || "Servicio de gestión de aplicaciones", M + 12, y);
   doc.text(money(inv.amount, inv.currency), W - M - 12, y, { align: "right" });
 
-  // Total (regla naranja + monto en naranja = número clave)
+  // Total (regla + monto en naranja)
   y += 26;
   doc.setDrawColor(BRAND_ORANGE);
   doc.setLineWidth(1.4);
@@ -141,20 +119,12 @@ export async function generateInvoicePdf(inv: InvoiceData, opts?: { download?: b
   doc.setFontSize(14);
   doc.text(money(inv.amount, inv.currency), W - M - 12, y, { align: "right" });
 
-  // Datos de pago (internacionales)
-  if (ISSUER.payment.bankName || ISSUER.payment.iban) {
-    y += 48;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(BRAND_VIOLET);
-    doc.text("DATOS DE PAGO", M, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(INK);
-    const p = ISSUER.payment;
-    [p.bankName && `Banco: ${p.bankName}`, p.accountName && `Titular: ${p.accountName}`,
-     p.iban && `IBAN: ${p.iban}`, p.swift && `SWIFT/BIC: ${p.swift}`, p.notes]
-      .filter(Boolean).forEach((l, i) => doc.text(l as string, M, y + 16 + i * 13));
-  }
+  // Nota de pago (datos bancarios por email)
+  y += 42;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(MUTED);
+  doc.text(`Los datos bancarios para el pago se envían por email (${ISSUER.email}).`, M, y);
 
   // Footer
   doc.setFontSize(8);
