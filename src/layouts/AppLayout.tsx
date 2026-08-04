@@ -1,5 +1,5 @@
 import { NavLink, useLocation, Outlet, Navigate } from "react-router-dom";
-import { LayoutDashboard, Users, Receipt, Wallet, UserCog, Settings, LogOut, AlertTriangle, BarChart3, Target, Activity, TrendingDown, PiggyBank } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Wallet, UserCog, Settings, LogOut, AlertTriangle, BarChart3, Target, Activity, TrendingDown, PiggyBank, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ const NAV = [
   { to: "/churn", label: "Churn", icon: TrendingDown },
   { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
   { to: "/alertas", label: "Alertas", icon: AlertTriangle },
+  { to: "/usuarios", label: "Usuarios", icon: ShieldCheck, adminOnly: true },
   { to: "/admin", label: "Configuración", icon: Settings, adminOnly: true },
 ];
 
