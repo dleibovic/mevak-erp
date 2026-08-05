@@ -39,6 +39,7 @@ export function MonthlyBillingView() {
 
   const [period, setPeriod] = useState(currentPeriod);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [groupBy, setGroupBy] = useState<"none" | "channel">("channel");
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
 
