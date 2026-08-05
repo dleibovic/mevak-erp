@@ -178,6 +178,10 @@ export function MonthlyBillingView() {
             {periods.map((p) => <SelectItem key={p.value} value={p.value} className="capitalize">{p.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <div className="relative w-full sm:w-[220px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-8 h-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
         {[{ v: "all", l: "Todas" }, { v: "pending", l: "Pendientes" }, { v: "invoiced", l: "Facturadas" }, { v: "paid", l: "Cobradas" }, { v: "overdue", l: "Vencidas" }].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
