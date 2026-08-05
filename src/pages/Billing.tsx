@@ -12,7 +12,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2, Search, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { addDaysFromFrequency, daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +34,7 @@ export default function Billing() {
   const [localCountry, setLocalCountry] = useState<string | null>(null);
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
   const [month, setMonth] = useState<string>(currentMonthValue());
+  const [search, setSearch] = useState("");
 
 
   useQuery({
@@ -90,7 +92,31 @@ export default function Billing() {
     if (filterBillingUser === "__none__") return byCountry.filter((i: any) => !i.client?.billing_user_id);
     return byCountry.filter((i: any) => i.client?.billing_user_id === filterBillingUser);
   }, [byCountry, filterBillingUser]);
-  const filtered = useMemo(() => filterStatus === "all" ? byBillingUser : byBillingUser.filter((i: any) => i.status === filterStatus), [byBillingUser, filterStatus]);
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    let r = filterStatus === "all" ? byBillingUser : byBillingUser.filter((i: any) => i.status === filterStatus);
+    if (s) r = r.filter((i: any) => (i.client?.company_name ?? "").toLowerCase().includes(s));
+    return r;
+  }, [byBillingUser, filterStatus, search]);
+
+  function exportInvoicesExcel() {
+    const rows = filtered.map((i: any) => ({
+      "Cliente": i.client?.company_name ?? "",
+      "Tipo": i.invoice_type === "formal" ? "Factura" : "Efectivo",
+      "Monto": Number(i.amount || 0),
+      "Moneda": i.currency ?? "",
+      "Vencimiento": i.due_date ? fmtDate(i.due_date) : "",
+      "Estado": i.status === "paid" ? "Cobrada" : i.status === "overdue" ? "Vencida" : "Pendiente",
+      "Cobró": i.collected_by ?? "",
+      "Fecha de cobro": i.collected_at ? fmtDate(i.collected_at) : "",
+      "Notas": i.notes ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 26 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 36 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Facturas");
+    XLSX.writeFile(wb, `facturas-${month}.xlsx`);
+  }
 
   const totalsByCurrency = useMemo(() => {
     const map: Record<string, number> = {};
@@ -130,13 +156,19 @@ export default function Billing() {
       </div>
 
       <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap gap-2 items-center">
+        <div className="relative w-full sm:w-[240px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-8 h-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
         {[
           { v: "all", l: "Todas" }, { v: "overdue", l: "Vencidas" }, { v: "pending", l: "Pendientes" }, { v: "paid", l: "Cobradas" },
         ].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
         <div className="ml-auto flex flex-wrap gap-2 items-center">
+          <Button variant="outline" size="sm" onClick={exportInvoicesExcel}><Download className="h-4 w-4 mr-1" />Excel</Button>
           <MonthFilter value={month} onChange={setMonth} />
+
 
           <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
             <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Responsable" /></SelectTrigger>
