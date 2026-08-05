@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, FileCheck2, Download, FileText } from "lucide-react";
+import { CheckCircle2, FileCheck2, Download, FileText, Search } from "lucide-react";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
@@ -39,6 +39,7 @@ export function MonthlyBillingView() {
 
   const [period, setPeriod] = useState(currentPeriod);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [groupBy, setGroupBy] = useState<"none" | "channel">("channel");
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
 
@@ -114,6 +115,8 @@ export function MonthlyBillingView() {
 
   const filtered = useMemo(() => {
     let r = rows as any[];
+    const s = search.trim().toLowerCase();
+    if (s) r = r.filter((x) => (x.client?.company_name ?? "").toLowerCase().includes(s));
     if (filterStatus !== "all") r = r.filter((x) => x.status === filterStatus);
     if (filterBillingUser !== "all") {
       if (filterBillingUser === "__none__") r = r.filter((x) => !(x.billing_user_id ?? x.client?.billing_user_id));
@@ -121,7 +124,7 @@ export function MonthlyBillingView() {
     }
     if (!canEditAdminFinance) r = r.filter((x) => x.billing_user_id === user?.id);
     return r;
-  }, [rows, filterStatus, filterBillingUser, canEditAdminFinance, user]);
+  }, [rows, search, filterStatus, filterBillingUser, canEditAdminFinance, user]);
 
   const stats = useMemo(() => {
     const totalsByCcy: Record<string, { total: number; pending: number; paid: number; invoiced: number }> = {};
@@ -175,6 +178,10 @@ export function MonthlyBillingView() {
             {periods.map((p) => <SelectItem key={p.value} value={p.value} className="capitalize">{p.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <div className="relative w-full sm:w-[220px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-8 h-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
         {[{ v: "all", l: "Todas" }, { v: "pending", l: "Pendientes" }, { v: "invoiced", l: "Facturadas" }, { v: "paid", l: "Cobradas" }, { v: "overdue", l: "Vencidas" }].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
