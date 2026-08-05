@@ -31,6 +31,7 @@ import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 import { PAYMENT_CHANNEL_OPTIONS, PAYMENT_CHANNEL_LABEL, DISCOUNT_DURATION_OPTIONS, addDaysISO } from "@/lib/billing";
 import { PriceHistoryTimeline } from "@/components/PriceHistoryTimeline";
 import { Checkbox } from "@/components/ui/checkbox";
+import { exportClientsExcel } from "@/lib/clientsExport";
 
 type Client = any;
 
