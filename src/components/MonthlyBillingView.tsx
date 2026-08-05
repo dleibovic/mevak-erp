@@ -115,6 +115,8 @@ export function MonthlyBillingView() {
 
   const filtered = useMemo(() => {
     let r = rows as any[];
+    const s = search.trim().toLowerCase();
+    if (s) r = r.filter((x) => (x.client?.company_name ?? "").toLowerCase().includes(s));
     if (filterStatus !== "all") r = r.filter((x) => x.status === filterStatus);
     if (filterBillingUser !== "all") {
       if (filterBillingUser === "__none__") r = r.filter((x) => !(x.billing_user_id ?? x.client?.billing_user_id));
@@ -122,7 +124,7 @@ export function MonthlyBillingView() {
     }
     if (!canEditAdminFinance) r = r.filter((x) => x.billing_user_id === user?.id);
     return r;
-  }, [rows, filterStatus, filterBillingUser, canEditAdminFinance, user]);
+  }, [rows, search, filterStatus, filterBillingUser, canEditAdminFinance, user]);
 
   const stats = useMemo(() => {
     const totalsByCcy: Record<string, { total: number; pending: number; paid: number; invoiced: number }> = {};
