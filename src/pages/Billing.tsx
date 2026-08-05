@@ -12,7 +12,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2, Search, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { addDaysFromFrequency, daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
