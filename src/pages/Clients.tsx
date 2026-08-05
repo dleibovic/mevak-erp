@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, X, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X, AlertCircle, Download } from "lucide-react";
 import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories, usePaymentMethods } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +31,7 @@ import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 import { PAYMENT_CHANNEL_OPTIONS, PAYMENT_CHANNEL_LABEL, DISCOUNT_DURATION_OPTIONS, addDaysISO } from "@/lib/billing";
 import { PriceHistoryTimeline } from "@/components/PriceHistoryTimeline";
 import { Checkbox } from "@/components/ui/checkbox";
+import { exportClientsExcel } from "@/lib/clientsExport";
 
 type Client = any;
 
@@ -212,6 +213,14 @@ export default function Clients() {
             {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          className="ml-auto"
+          disabled={filtered.length === 0}
+          onClick={() => exportClientsExcel(filtered, profileName)}
+        >
+          <Download className="h-4 w-4 mr-2" /> Exportar Excel
+        </Button>
       </Card>
 
       <Card className="p-4 mb-4 bg-gradient-card border-border/60">
