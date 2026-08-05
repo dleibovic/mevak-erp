@@ -34,6 +34,7 @@ export default function Billing() {
   const [localCountry, setLocalCountry] = useState<string | null>(null);
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
   const [month, setMonth] = useState<string>(currentMonthValue());
+  const [search, setSearch] = useState("");
 
 
   useQuery({
