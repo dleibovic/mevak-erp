@@ -130,13 +130,19 @@ export default function Billing() {
       </div>
 
       <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap gap-2 items-center">
+        <div className="relative w-full sm:w-[240px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-8 h-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
         {[
           { v: "all", l: "Todas" }, { v: "overdue", l: "Vencidas" }, { v: "pending", l: "Pendientes" }, { v: "paid", l: "Cobradas" },
         ].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
         <div className="ml-auto flex flex-wrap gap-2 items-center">
+          <Button variant="outline" size="sm" onClick={exportInvoicesExcel}><Download className="h-4 w-4 mr-1" />Excel</Button>
           <MonthFilter value={month} onChange={setMonth} />
+
 
           <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
             <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Responsable" /></SelectTrigger>
