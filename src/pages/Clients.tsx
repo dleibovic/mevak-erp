@@ -213,6 +213,14 @@ export default function Clients() {
             {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          className="ml-auto"
+          disabled={filtered.length === 0}
+          onClick={() => exportClientsExcel(filtered, profileName)}
+        >
+          <Download className="h-4 w-4 mr-2" /> Exportar Excel
+        </Button>
       </Card>
 
       <Card className="p-4 mb-4 bg-gradient-card border-border/60">
