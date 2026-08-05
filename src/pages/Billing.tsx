@@ -90,7 +90,31 @@ export default function Billing() {
     if (filterBillingUser === "__none__") return byCountry.filter((i: any) => !i.client?.billing_user_id);
     return byCountry.filter((i: any) => i.client?.billing_user_id === filterBillingUser);
   }, [byCountry, filterBillingUser]);
-  const filtered = useMemo(() => filterStatus === "all" ? byBillingUser : byBillingUser.filter((i: any) => i.status === filterStatus), [byBillingUser, filterStatus]);
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    let r = filterStatus === "all" ? byBillingUser : byBillingUser.filter((i: any) => i.status === filterStatus);
+    if (s) r = r.filter((i: any) => (i.client?.company_name ?? "").toLowerCase().includes(s));
+    return r;
+  }, [byBillingUser, filterStatus, search]);
+
+  function exportInvoicesExcel() {
+    const rows = filtered.map((i: any) => ({
+      "Cliente": i.client?.company_name ?? "",
+      "Tipo": i.invoice_type === "formal" ? "Factura" : "Efectivo",
+      "Monto": Number(i.amount || 0),
+      "Moneda": i.currency ?? "",
+      "Vencimiento": i.due_date ? fmtDate(i.due_date) : "",
+      "Estado": i.status === "paid" ? "Cobrada" : i.status === "overdue" ? "Vencida" : "Pendiente",
+      "Cobró": i.collected_by ?? "",
+      "Fecha de cobro": i.collected_at ? fmtDate(i.collected_at) : "",
+      "Notas": i.notes ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 26 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 36 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Facturas");
+    XLSX.writeFile(wb, `facturas-${month}.xlsx`);
+  }
 
   const totalsByCurrency = useMemo(() => {
     const map: Record<string, number> = {};
