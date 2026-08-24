@@ -184,6 +184,9 @@ export type Database = {
           amount: number
           billing_user_id: string | null
           client_id: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           currency: string
           id: string
@@ -197,6 +200,9 @@ export type Database = {
           amount?: number
           billing_user_id?: string | null
           client_id: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           currency?: string
           id?: string
@@ -212,6 +218,9 @@ export type Database = {
           amount?: number
           billing_user_id?: string | null
           client_id?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           currency?: string
           id?: string
