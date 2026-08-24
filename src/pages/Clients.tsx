@@ -147,7 +147,7 @@ export default function Clients() {
   );
 
   const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
-  const activeBillingEntities = (c: any) => (c.client_billing_entities ?? []).filter((be: any) => be.active !== false);
+  const activeBillingEntities = (c: any) => (c.client_billing_entities ?? []).filter((be: any) => be.active !== false && !be.deleted_at);
   const normalizedClientFee = (c: any) => {
     const entities = activeBillingEntities(c);
     if (entities.length) return entities.reduce((s: number, be: any) => s + Number(be.amount || 0), 0);
@@ -305,7 +305,7 @@ export default function Clients() {
                   )}
                   <TableCell className="font-medium">{c.company_name}</TableCell>
                   <TableCell>{c.country?.name}</TableCell>
-                  <TableCell>{c.client_sub_brands?.length ?? 0}</TableCell>
+                  <TableCell>{(c.client_sub_brands ?? []).filter((b: any) => !b.deleted_at).length}</TableCell>
                   <TableCell>{c.branches_count}</TableCell>
                   <TableCell className="font-mono">{formatMoney(c.monthly_fee, c.fee_currency)}</TableCell>
                   <TableCell>
@@ -379,7 +379,7 @@ export default function Clients() {
 
 function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boolean; onOpenChange: (v: boolean) => void; client: Client | null; profiles?: any[] }) {
   const qc = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { data: countries = [] } = useCountries();
   const { data: platforms = [] } = usePlatforms();
   const { data: paymentMethods = [] } = usePaymentMethods();
@@ -403,6 +403,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
   const [newPaymentMethod, setNewPaymentMethod] = useState("");
   const [subBrands, setSubBrands] = useState<any[]>([]);
   const [billingEntities, setBillingEntities] = useState<any[]>([]);
+  const [deletedSubBrands, setDeletedSubBrands] = useState<any[]>([]);
+  const [deletedBillingEntities, setDeletedBillingEntities] = useState<any[]>([]);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
   const { data: cities = [] } = useCities(form.province_id);
@@ -480,6 +482,19 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
   const removeBillingEntity = (index: number) => {
     setBillingEntities(billingEntities.filter((_, i) => i !== index));
   };
+  // Recuperar (des-borrar) una submarca / razón social archivada
+  const restoreSubBrand = (id: string) => {
+    const item = deletedSubBrands.find((b) => b.id === id);
+    if (!item) return;
+    setSubBrands([...subBrands, { ...item, deleted_at: null, deleted_by: null }]);
+    setDeletedSubBrands(deletedSubBrands.filter((b) => b.id !== id));
+  };
+  const restoreBillingEntity = (id: string) => {
+    const item = deletedBillingEntities.find((b) => b.id === id);
+    if (!item) return;
+    setBillingEntities([...billingEntities, { ...item, deleted_at: null, deleted_by: null }]);
+    setDeletedBillingEntities(deletedBillingEntities.filter((b) => b.id !== id));
+  };
   const billingEntitiesTotal = billingEntities
     .filter((be) => be.active !== false)
     .reduce((s, be) => s + Number(be.amount || 0), 0);
@@ -544,8 +559,10 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         paused_at: client.paused_at ?? null,
         churned_at: client.churned_at ?? null,
       });
-      setSubBrands(client.client_sub_brands ?? []);
-      setBillingEntities((client.client_billing_entities ?? []).slice().sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+      setSubBrands((client.client_sub_brands ?? []).filter((b: any) => !b.deleted_at));
+      setDeletedSubBrands((client.client_sub_brands ?? []).filter((b: any) => b.deleted_at));
+      setBillingEntities((client.client_billing_entities ?? []).filter((b: any) => !b.deleted_at).slice().sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+      setDeletedBillingEntities((client.client_billing_entities ?? []).filter((b: any) => b.deleted_at));
       const sp: any = {};
       client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, selected: true }; });
       setSelectedPlatforms(sp);
@@ -596,6 +613,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
       setCommissions({});
       setSubBrands([]);
       setBillingEntities([]);
+      setDeletedSubBrands([]);
+      setDeletedBillingEntities([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, client?.id]);
@@ -714,55 +733,92 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         .map(([employee_id, v]) => ({ client_id: clientId!, employee_id, commission_value: Number(v), currency: defaultCurrency }));
       if (commRows.length) await supabase.from("client_executive_commission").insert(commRows);
 
-      await (supabase as any).from("client_sub_brands").delete().eq("client_id", clientId);
-      const subBrandRows = subBrands
-        .filter((brand) => brand.name?.trim())
-        .map((brand) => ({
-          client_id: clientId!,
-          name: brand.name.trim(),
-          country_id: brand.country_id || countryId,
-          province_id: brand.province_id || null,
-          city_id: brand.city_id || null,
-          address: brand.address || null,
-          billing_frequency: brand.billing_frequency || "monthly",
-          status: brand.status || "active",
-          monthly_fee: Number(brand.monthly_fee) || 0,
-          fee_currency: brand.fee_currency || defaultCurrency,
-          cmv_cost: Number(brand.cmv_cost) || 0,
-          cmv_currency: brand.cmv_currency || defaultCurrency,
-          branches_count: Number(brand.branches_count) || 1,
-          fee_billing_mode: brand.fee_billing_mode === "flat" ? "flat" : "per_branch",
-          contact_name: brand.contact_name || null,
-          contact_phone: brand.contact_phone || null,
-          contact_email: brand.contact_email || null,
-          reports_email: brand.reports_email || null,
-          legal_name: brand.legal_name || null,
-          tax_id: brand.tax_id || null,
-          payment_channel: brand.payment_channel || null,
-          bill_separately: !!brand.bill_separately,
-          food_category_id: brand.food_category_id === "__new__" ? foodCategoryId : brand.food_category_id || null,
-          notes: brand.notes || null,
-        }));
-      if (subBrandRows.length) await (supabase as any).from("client_sub_brands").insert(subBrandRows);
+      // ── Sub-marcas: guardar por diff + BORRADO LÓGICO (preserva ids, facturas e historial)
+      const buildSubRow = (brand: any) => ({
+        client_id: clientId!,
+        name: brand.name.trim(),
+        country_id: brand.country_id || countryId,
+        province_id: brand.province_id || null,
+        city_id: brand.city_id || null,
+        address: brand.address || null,
+        billing_frequency: brand.billing_frequency || "monthly",
+        status: brand.status || "active",
+        monthly_fee: Number(brand.monthly_fee) || 0,
+        fee_currency: brand.fee_currency || defaultCurrency,
+        cmv_cost: Number(brand.cmv_cost) || 0,
+        cmv_currency: brand.cmv_currency || defaultCurrency,
+        branches_count: Number(brand.branches_count) || 1,
+        fee_billing_mode: brand.fee_billing_mode === "flat" ? "flat" : "per_branch",
+        contact_name: brand.contact_name || null,
+        contact_phone: brand.contact_phone || null,
+        contact_email: brand.contact_email || null,
+        reports_email: brand.reports_email || null,
+        legal_name: brand.legal_name || null,
+        tax_id: brand.tax_id || null,
+        payment_channel: brand.payment_channel || null,
+        bill_separately: !!brand.bill_separately,
+        food_category_id: brand.food_category_id === "__new__" ? foodCategoryId : brand.food_category_id || null,
+        notes: brand.notes || null,
+      });
+      {
+        const keptSub = subBrands.filter((b: any) => b.name?.trim());
+        const keptSubIds: string[] = [];
+        for (const brand of keptSub) {
+          const row = buildSubRow(brand);
+          if (brand.id) {
+            keptSubIds.push(brand.id);
+            const { error } = await (supabase as any).from("client_sub_brands").update({ ...row, deleted_at: null, deleted_by: null }).eq("id", brand.id);
+            if (error) throw error;
+          } else {
+            const { error } = await (supabase as any).from("client_sub_brands").insert(row);
+            if (error) throw error;
+          }
+        }
+        const origActiveSubIds = ((client as any)?.client_sub_brands ?? []).filter((b: any) => !b.deleted_at).map((b: any) => b.id);
+        const removedSub = origActiveSubIds.filter((id: string) => !keptSubIds.includes(id));
+        if (removedSub.length) {
+          const { error } = await (supabase as any).from("client_sub_brands")
+            .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null }).in("id", removedSub);
+          if (error) throw error;
+        }
+      }
 
-      // Razones sociales de facturación (suman el fee del cliente)
-      await (supabase as any).from("client_billing_entities").delete().eq("client_id", clientId);
-      const entityRows = billingEntities
-        .filter((be) => be.legal_name?.trim())
-        .map((be, i) => ({
-          client_id: clientId!,
-          legal_name: be.legal_name.trim(),
-          tax_id: be.tax_id || null,
-          amount: Number(be.amount) || 0,
-          currency: be.currency || defaultCurrency,
-          payment_channel: be.payment_channel || null,
-          contact_name: be.contact_name || null,
-          contact_phone: be.contact_phone || null,
-          contact_email: be.contact_email || null,
-          active: be.active !== false,
-          sort_order: i,
-        }));
-      if (entityRows.length) await (supabase as any).from("client_billing_entities").insert(entityRows);
+      // ── Razones sociales de facturación: guardar por diff + BORRADO LÓGICO
+      {
+        const keptEnt = billingEntities.filter((be: any) => be.legal_name?.trim());
+        const keptEntIds: string[] = [];
+        for (let i = 0; i < keptEnt.length; i++) {
+          const be = keptEnt[i];
+          const row = {
+            client_id: clientId!,
+            legal_name: be.legal_name.trim(),
+            tax_id: be.tax_id || null,
+            amount: Number(be.amount) || 0,
+            currency: be.currency || defaultCurrency,
+            payment_channel: be.payment_channel || null,
+            contact_name: be.contact_name || null,
+            contact_phone: be.contact_phone || null,
+            contact_email: be.contact_email || null,
+            active: be.active !== false,
+            sort_order: i,
+          };
+          if (be.id) {
+            keptEntIds.push(be.id);
+            const { error } = await (supabase as any).from("client_billing_entities").update({ ...row, deleted_at: null, deleted_by: null }).eq("id", be.id);
+            if (error) throw error;
+          } else {
+            const { error } = await (supabase as any).from("client_billing_entities").insert(row);
+            if (error) throw error;
+          }
+        }
+        const origActiveEntIds = ((client as any)?.client_billing_entities ?? []).filter((b: any) => !b.deleted_at).map((b: any) => b.id);
+        const removedEnt = origActiveEntIds.filter((id: string) => !keptEntIds.includes(id));
+        if (removedEnt.length) {
+          const { error } = await (supabase as any).from("client_billing_entities")
+            .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null }).in("id", removedEnt);
+          if (error) throw error;
+        }
+      }
     },
     onSuccess: () => {
       toast.success(client ? "Cliente actualizado" : "Cliente creado");
@@ -1189,6 +1245,20 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                 )}
               </div>
             )}
+            {deletedBillingEntities.length > 0 && (
+              <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Eliminadas ({deletedBillingEntities.length}) — se pueden recuperar</p>
+                {deletedBillingEntities.map((be) => (
+                  <div key={be.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground line-through">
+                      {be.legal_name} · {formatMoney(Number(be.amount || 0), be.currency)}
+                      {be.deleted_at && <span className="ml-2 no-underline">(borrada {fmtDate(be.deleted_at)})</span>}
+                    </span>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => restoreBillingEntity(be.id)}>Recuperar</Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Sub-marcas */}
@@ -1313,6 +1383,20 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                       </div>
                       <div className="col-span-2"><Label>Notas</Label><Textarea rows={2} value={brand.notes ?? ""} onChange={(e) => updateSubBrand(index, { notes: e.target.value })} /></div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {deletedSubBrands.length > 0 && (
+              <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Eliminadas ({deletedSubBrands.length}) — se pueden recuperar</p>
+                {deletedSubBrands.map((brand) => (
+                  <div key={brand.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground line-through">
+                      {brand.name}{brand.legal_name ? ` · ${brand.legal_name}` : ""}
+                      {brand.deleted_at && <span className="ml-2 no-underline">(borrada {fmtDate(brand.deleted_at)})</span>}
+                    </span>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => restoreSubBrand(brand.id)}>Recuperar</Button>
                   </div>
                 ))}
               </div>
