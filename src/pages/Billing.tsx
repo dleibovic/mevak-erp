@@ -249,6 +249,7 @@ export default function Billing() {
                     <TableCell className="font-medium">
                       {inv.client?.company_name}
                       {inv.sub_brand && <span className="ml-1 text-xs text-muted-foreground">· submarca</span>}
+                      {inv.billing_entity_id && <span className="ml-1 text-xs text-muted-foreground">· razón social</span>}
                     </TableCell>
                     <TableCell className="text-sm">{entityLabel(inv)}</TableCell>
                     <TableCell><Badge variant="outline" className="capitalize">{inv.invoice_type === "formal" ? "Factura" : "Efectivo"}</Badge></TableCell>
@@ -342,7 +343,7 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, company_name, legal_name, tax_id, billing_frequency, monthly_fee, fee_currency, country:countries(*), client_sub_brands(id, name, legal_name, tax_id, monthly_fee, fee_currency)")
+        .select("id, company_name, legal_name, tax_id, billing_frequency, monthly_fee, fee_currency, country:countries(*), client_sub_brands(id, name, legal_name, tax_id, monthly_fee, fee_currency), client_billing_entities(id, legal_name, tax_id, amount, currency, active)")
         .eq("status", "active");
       if (error) throw error;
       return data;
@@ -357,7 +358,7 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
     if (editing) {
       setForm({
         client_id: editing.client_id,
-        sub_brand_id: editing.sub_brand_id ?? "__matriz__",
+        entity_sel: editing.billing_entity_id ? `be:${editing.billing_entity_id}` : editing.sub_brand_id ? `sb:${editing.sub_brand_id}` : "__matriz__",
         legal_name: editing.legal_name ?? "",
         tax_id: editing.tax_id ?? "",
         amount: editing.amount,
@@ -368,12 +369,13 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
         currency: editing.currency,
       });
     } else {
-      setForm({ amount: 0, invoice_type: "formal", sub_brand_id: "__matriz__" });
+      setForm({ amount: 0, invoice_type: "formal", entity_sel: "__matriz__" });
     }
   }, [open, editing]);
 
   const selectedClient = clients.find((c: any) => c.id === form.client_id);
   const subBrands = selectedClient?.client_sub_brands ?? [];
+  const entities = (selectedClient?.client_billing_entities ?? []).filter((be: any) => be.active !== false);
 
   // Auto-fill amount with client's fee when client changes (only if creating or amount empty)
   const handleClientChange = (v: string) => {
@@ -381,7 +383,7 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
     setForm((f: any) => ({
       ...f,
       client_id: v,
-      sub_brand_id: "__matriz__",
+      entity_sel: "__matriz__",
       legal_name: c?.legal_name ?? "",
       tax_id: c?.tax_id ?? "",
       amount: c?.monthly_fee ?? f.amount ?? 0,
@@ -389,13 +391,16 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
     }));
   };
 
-  // Elegir a qué razón social se factura: matriz o una submarca
+  // Elegir a qué se factura: marca (matriz), una razón social (be:) o una submarca (sb:)
   const handleEntityChange = (v: string) => {
     if (v === "__matriz__") {
-      setForm((f: any) => ({ ...f, sub_brand_id: "__matriz__", legal_name: selectedClient?.legal_name ?? "", tax_id: selectedClient?.tax_id ?? "", amount: selectedClient?.monthly_fee ?? f.amount, currency: selectedClient?.fee_currency ?? f.currency }));
+      setForm((f: any) => ({ ...f, entity_sel: v, legal_name: selectedClient?.legal_name ?? "", tax_id: selectedClient?.tax_id ?? "", amount: selectedClient?.monthly_fee ?? f.amount, currency: selectedClient?.fee_currency ?? f.currency }));
+    } else if (v.startsWith("be:")) {
+      const be = entities.find((e: any) => e.id === v.slice(3));
+      setForm((f: any) => ({ ...f, entity_sel: v, legal_name: be?.legal_name ?? "", tax_id: be?.tax_id ?? "", amount: be?.amount ?? f.amount, currency: be?.currency ?? f.currency }));
     } else {
-      const sb = subBrands.find((s: any) => s.id === v);
-      setForm((f: any) => ({ ...f, sub_brand_id: v, legal_name: sb?.legal_name ?? sb?.name ?? "", tax_id: sb?.tax_id ?? "", amount: sb?.monthly_fee ?? f.amount, currency: sb?.fee_currency ?? f.currency }));
+      const sb = subBrands.find((s: any) => s.id === v.slice(3));
+      setForm((f: any) => ({ ...f, entity_sel: v, legal_name: sb?.legal_name ?? sb?.name ?? "", tax_id: sb?.tax_id ?? "", amount: sb?.monthly_fee ?? f.amount, currency: sb?.fee_currency ?? f.currency }));
     }
   };
 
@@ -404,9 +409,11 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
       if (!selectedClient) throw new Error("Seleccione un cliente");
       const due = form.due_date || addDaysFromFrequency(selectedClient.billing_frequency);
       const currency = form.currency || selectedClient.fee_currency || selectedClient.country?.currency_code || "ARS";
+      const sel: string = form.entity_sel ?? "__matriz__";
       const payload = {
         client_id: form.client_id,
-        sub_brand_id: form.sub_brand_id && form.sub_brand_id !== "__matriz__" ? form.sub_brand_id : null,
+        sub_brand_id: sel.startsWith("sb:") ? sel.slice(3) : null,
+        billing_entity_id: sel.startsWith("be:") ? sel.slice(3) : null,
         legal_name: form.legal_name || null,
         tax_id: form.tax_id || null,
         amount: form.amount,
@@ -451,14 +458,15 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
               </p>
             )}
           </div>
-          {selectedClient && subBrands.length > 0 && (
+          {selectedClient && (entities.length > 0 || subBrands.length > 0) && (
             <div>
               <Label>Facturar a (razón social)</Label>
-              <Select value={form.sub_brand_id ?? "__matriz__"} onValueChange={handleEntityChange}>
+              <Select value={form.entity_sel ?? "__matriz__"} onValueChange={handleEntityChange}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__matriz__">{selectedClient.legal_name || selectedClient.company_name} (marca)</SelectItem>
-                  {subBrands.map((sb: any) => <SelectItem key={sb.id} value={sb.id}>{sb.legal_name || sb.name} (submarca)</SelectItem>)}
+                  {entities.map((be: any) => <SelectItem key={be.id} value={`be:${be.id}`}>{be.legal_name} (razón social)</SelectItem>)}
+                  {subBrands.map((sb: any) => <SelectItem key={sb.id} value={`sb:${sb.id}`}>{sb.legal_name || sb.name} (submarca)</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
