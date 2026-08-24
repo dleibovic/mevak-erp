@@ -178,6 +178,67 @@ export type Database = {
           },
         ]
       }
+      client_billing_entities: {
+        Row: {
+          active: boolean
+          amount: number
+          billing_user_id: string | null
+          client_id: string
+          created_at: string
+          currency: string
+          id: string
+          legal_name: string
+          payment_channel: Database["public"]["Enums"]["payment_channel"] | null
+          sort_order: number
+          tax_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          billing_user_id?: string | null
+          client_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          legal_name: string
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
+          sort_order?: number
+          tax_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          billing_user_id?: string | null
+          client_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          legal_name?: string
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
+          sort_order?: number
+          tax_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_billing_entities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_billing_entities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_metrics"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       client_executive_commission: {
         Row: {
           client_id: string
@@ -1222,6 +1283,7 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          billing_entity_id: string | null
           client_id: string
           collected_at: string | null
           collected_by: Database["public"]["Enums"]["collector"] | null
@@ -1241,6 +1303,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          billing_entity_id?: string | null
           client_id: string
           collected_at?: string | null
           collected_by?: Database["public"]["Enums"]["collector"] | null
@@ -1260,6 +1323,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          billing_entity_id?: string | null
           client_id?: string
           collected_at?: string | null
           collected_by?: Database["public"]["Enums"]["collector"] | null
@@ -1278,6 +1342,13 @@ export type Database = {
           voided_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_billing_entity_id_fkey"
+            columns: ["billing_entity_id"]
+            isOneToOne: false
+            referencedRelation: "client_billing_entities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_client_id_fkey"
             columns: ["client_id"]
@@ -3444,6 +3515,7 @@ export type Database = {
       monthly_invoices: {
         Row: {
           amount: number
+          billing_entity_id: string | null
           billing_user_id: string | null
           client_id: string
           created_at: string
@@ -3469,6 +3541,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          billing_entity_id?: string | null
           billing_user_id?: string | null
           client_id: string
           created_at?: string
@@ -3496,6 +3569,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          billing_entity_id?: string | null
           billing_user_id?: string | null
           client_id?: string
           created_at?: string
@@ -3522,6 +3596,13 @@ export type Database = {
           voided_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "monthly_invoices_billing_entity_id_fkey"
+            columns: ["billing_entity_id"]
+            isOneToOne: false
+            referencedRelation: "client_billing_entities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "monthly_invoices_client_id_fkey"
             columns: ["client_id"]
