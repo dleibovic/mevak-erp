@@ -696,6 +696,10 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
           contact_phone: brand.contact_phone || null,
           contact_email: brand.contact_email || null,
           reports_email: brand.reports_email || null,
+          legal_name: brand.legal_name || null,
+          tax_id: brand.tax_id || null,
+          payment_channel: brand.payment_channel || null,
+          bill_separately: !!brand.bill_separately,
           food_category_id: brand.food_category_id === "__new__" ? foodCategoryId : brand.food_category_id || null,
           notes: brand.notes || null,
         }));
@@ -1137,6 +1141,31 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                       <div><Label>Email de contacto</Label><Input type="email" value={brand.contact_email ?? ""} onChange={(e) => updateSubBrand(index, { contact_email: e.target.value })} /></div>
                       <div><Label>Email informes</Label><Input type="email" value={brand.reports_email ?? ""} onChange={(e) => updateSubBrand(index, { reports_email: e.target.value })} /></div>
                       <div><Label>Estado</Label><Select value={brand.status ?? "active"} onValueChange={(v) => updateSubBrand(index, { status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select></div>
+                      <div className="col-span-2 mt-1 rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3">
+                        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                          <Checkbox checked={!!brand.bill_separately} onCheckedChange={(v) => updateSubBrand(index, { bill_separately: v === true })} />
+                          Facturar por separado (razón social y monto propios)
+                        </label>
+                        {brand.bill_separately && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div><Label>Razón social</Label><Input value={brand.legal_name ?? ""} onChange={(e) => updateSubBrand(index, { legal_name: e.target.value })} /></div>
+                            <div><Label>CUIT</Label><Input value={brand.tax_id ?? ""} onChange={(e) => updateSubBrand(index, { tax_id: e.target.value })} placeholder="20-12345678-9" /></div>
+                            <div className="col-span-2">
+                              <Label>Canal de cobro</Label>
+                              <Select value={brand.payment_channel ?? "__inherit__"} onValueChange={(v) => updateSubBrand(index, { payment_channel: v === "__inherit__" ? null : v })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__inherit__">Igual que la marca</SelectItem>
+                                  {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <p className="col-span-2 text-xs text-muted-foreground">
+                              Con esto marcado, esta submarca genera su propia factura mensual (monto = el fee de arriba) con esta razón social.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                       <div className="col-span-2"><Label>Notas</Label><Textarea rows={2} value={brand.notes ?? ""} onChange={(e) => updateSubBrand(index, { notes: e.target.value })} /></div>
                     </div>
                   </div>

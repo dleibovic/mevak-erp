@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2, Search, Download } from "lucide-react";
+import { Plus, CheckCircle2, AlertTriangle, Pencil, Trash2, Search, Download, Ban, RotateCcw } from "lucide-react";
 import * as XLSX from "xlsx";
 import { addDaysFromFrequency, daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
@@ -25,7 +25,7 @@ import { MonthFilter, currentMonthValue, monthRange } from "@/components/MonthFi
 
 export default function Billing() {
   const qc = useQueryClient();
-  const { isAdmin, canEditAdminFinance } = useAuth();
+  const { isAdmin, canEditAdminFinance, user } = useAuth();
   const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -53,7 +53,7 @@ export default function Billing() {
     queryFn: async () => {
       let q = supabase
         .from("invoices")
-        .select("*, client:clients(id, company_name, billing_frequency, country_id, billing_user_id, country:countries(*))")
+        .select("*, client:clients(id, company_name, legal_name, billing_frequency, country_id, billing_user_id, country:countries(*)), sub_brand:client_sub_brands(id, name, legal_name)")
         .order("due_date", { ascending: true });
       const range = monthRange(month);
       if (range) q = q.gte("due_date", range.start).lt("due_date", range.end);
@@ -83,6 +83,32 @@ export default function Billing() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateInvoiceDate = useMutation({
+    mutationFn: async ({ id, invoice_date }: { id: string; invoice_date: string | null }) => {
+      const { error } = await supabase.from("invoices").update({ invoice_date }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const setVoid = useMutation({
+    mutationFn: async ({ id, voided }: { id: string; voided: boolean }) => {
+      const patch = voided
+        ? { voided_at: new Date().toISOString(), voided_by: user?.id }
+        : { voided_at: null, voided_by: null };
+      const { error } = await supabase.from("invoices").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => { toast.success(v.voided ? "Factura anulada" : "Anulación revertida"); qc.invalidateQueries({ queryKey: ["invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const entityLabel = (i: any) =>
+    i.sub_brand
+      ? (i.legal_name || i.sub_brand.legal_name || i.sub_brand.name)
+      : (i.legal_name || i.client?.legal_name || i.client?.company_name || "—");
+
   const byCountry = useMemo(
     () => effectiveCountry ? invoices.filter((i: any) => i.client?.country_id === effectiveCountry) : invoices,
     [invoices, effectiveCountry]
@@ -102,17 +128,19 @@ export default function Billing() {
   function exportInvoicesExcel() {
     const rows = filtered.map((i: any) => ({
       "Cliente": i.client?.company_name ?? "",
+      "Razón social / Submarca": entityLabel(i),
       "Tipo": i.invoice_type === "formal" ? "Factura" : "Efectivo",
       "Monto": Number(i.amount || 0),
       "Moneda": i.currency ?? "",
+      "Fecha factura": i.invoice_date ? fmtDate(i.invoice_date) : "",
       "Vencimiento": i.due_date ? fmtDate(i.due_date) : "",
-      "Estado": i.status === "paid" ? "Cobrada" : i.status === "overdue" ? "Vencida" : "Pendiente",
+      "Estado": i.voided_at ? "Anulada" : i.status === "paid" ? "Cobrada" : i.status === "overdue" ? "Vencida" : "Pendiente",
       "Cobró": i.collected_by ?? "",
       "Fecha de cobro": i.collected_at ? fmtDate(i.collected_at) : "",
       "Notas": i.notes ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [{ wch: 26 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 36 }];
+    ws["!cols"] = [{ wch: 26 }, { wch: 24 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 36 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Facturas");
     XLSX.writeFile(wb, `facturas-${month}.xlsx`);
@@ -120,7 +148,7 @@ export default function Billing() {
 
   const totalsByCurrency = useMemo(() => {
     const map: Record<string, number> = {};
-    filtered.forEach((i: any) => { map[i.currency] = (map[i.currency] ?? 0) + Number(i.amount || 0); });
+    filtered.forEach((i: any) => { if (i.voided_at) return; map[i.currency] = (map[i.currency] ?? 0) + Number(i.amount || 0); });
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
@@ -203,8 +231,10 @@ export default function Billing() {
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Razón social / Submarca</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Monto</TableHead>
+                <TableHead>Fecha factura</TableHead>
                 <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Cobró</TableHead>
@@ -215,25 +245,44 @@ export default function Billing() {
               {filtered.map((inv: any) => {
                 const od = inv.status === "overdue" ? daysOverdue(inv.due_date) : 0;
                 return (
-                  <TableRow key={inv.id}>
-                    <TableCell className="font-medium">{inv.client?.company_name}</TableCell>
+                  <TableRow key={inv.id} className={inv.voided_at ? "line-through opacity-60" : ""}>
+                    <TableCell className="font-medium">
+                      {inv.client?.company_name}
+                      {inv.sub_brand && <span className="ml-1 text-xs text-muted-foreground">· submarca</span>}
+                    </TableCell>
+                    <TableCell className="text-sm">{entityLabel(inv)}</TableCell>
                     <TableCell><Badge variant="outline" className="capitalize">{inv.invoice_type === "formal" ? "Factura" : "Efectivo"}</Badge></TableCell>
                     <TableCell className="font-mono">{formatMoney(inv.amount, inv.currency)}</TableCell>
+                    <TableCell>
+                      {canEditAdminFinance ? (
+                        <Input type="date" className="h-8 w-[150px]" value={inv.invoice_date ?? ""}
+                          onChange={(e) => updateInvoiceDate.mutate({ id: inv.id, invoice_date: e.target.value || null })} />
+                      ) : (
+                        <span className="text-sm">{inv.invoice_date ? fmtDate(inv.invoice_date) : "—"}</span>
+                      )}
+                    </TableCell>
                     <TableCell>{fmtDate(inv.due_date)}</TableCell>
                     <TableCell>
+                      {inv.voided_at ? <Badge variant="outline" className="border-destructive text-destructive">Anulada</Badge> : (<>
                       {inv.status === "paid" && <Badge className="bg-success text-success-foreground hover:bg-success">Cobrada</Badge>}
                       {inv.status === "pending" && <Badge className="bg-warning text-warning-foreground hover:bg-warning">Pendiente</Badge>}
                       {inv.status === "overdue" && <Badge variant="destructive">Vencida · {od}d</Badge>}
+                      </>)}
                     </TableCell>
                     <TableCell className="capitalize text-muted-foreground">{inv.collected_by ?? "—"}</TableCell>
                     {canEditAdminFinance && (
                       <TableCell className="text-right">
                         <div className="inline-flex gap-1 items-center justify-end flex-wrap">
-                          {inv.status !== "paid" && (
+                          {inv.status !== "paid" && !inv.voided_at && (
                             <CollectMenu onPick={(by) => markPaid.mutate({ id: inv.id, collected_by: by })} />
                           )}
                           <Button size="icon" variant="ghost" onClick={() => { setEditing(inv); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                          {isAdmin && <Button size="icon" variant="ghost" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                          {inv.voided_at ? (
+                            <Button size="sm" variant="ghost" onClick={() => setVoid.mutate({ id: inv.id, voided: false })}><RotateCcw className="h-4 w-4 mr-1" />Restaurar</Button>
+                          ) : (
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setVoid.mutate({ id: inv.id, voided: true })}><Ban className="h-4 w-4 mr-1" />Anular</Button>
+                          )}
+                          {isAdmin && <Button size="icon" variant="ghost" title="Eliminar definitivamente" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                         </div>
                       </TableCell>
                     )}
@@ -293,7 +342,7 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, company_name, billing_frequency, monthly_fee, fee_currency, country:countries(*)")
+        .select("id, company_name, legal_name, tax_id, billing_frequency, monthly_fee, fee_currency, country:countries(*), client_sub_brands(id, name, legal_name, tax_id, monthly_fee, fee_currency)")
         .eq("status", "active");
       if (error) throw error;
       return data;
@@ -308,18 +357,23 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
     if (editing) {
       setForm({
         client_id: editing.client_id,
+        sub_brand_id: editing.sub_brand_id ?? "__matriz__",
+        legal_name: editing.legal_name ?? "",
+        tax_id: editing.tax_id ?? "",
         amount: editing.amount,
         invoice_type: editing.invoice_type,
+        invoice_date: editing.invoice_date ?? "",
         due_date: editing.due_date,
         notes: editing.notes ?? "",
         currency: editing.currency,
       });
     } else {
-      setForm({ amount: 0, invoice_type: "formal" });
+      setForm({ amount: 0, invoice_type: "formal", sub_brand_id: "__matriz__" });
     }
   }, [open, editing]);
 
   const selectedClient = clients.find((c: any) => c.id === form.client_id);
+  const subBrands = selectedClient?.client_sub_brands ?? [];
 
   // Auto-fill amount with client's fee when client changes (only if creating or amount empty)
   const handleClientChange = (v: string) => {
@@ -327,9 +381,22 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
     setForm((f: any) => ({
       ...f,
       client_id: v,
+      sub_brand_id: "__matriz__",
+      legal_name: c?.legal_name ?? "",
+      tax_id: c?.tax_id ?? "",
       amount: c?.monthly_fee ?? f.amount ?? 0,
       currency: c?.fee_currency ?? c?.country?.currency_code ?? f.currency,
     }));
+  };
+
+  // Elegir a qué razón social se factura: matriz o una submarca
+  const handleEntityChange = (v: string) => {
+    if (v === "__matriz__") {
+      setForm((f: any) => ({ ...f, sub_brand_id: "__matriz__", legal_name: selectedClient?.legal_name ?? "", tax_id: selectedClient?.tax_id ?? "", amount: selectedClient?.monthly_fee ?? f.amount, currency: selectedClient?.fee_currency ?? f.currency }));
+    } else {
+      const sb = subBrands.find((s: any) => s.id === v);
+      setForm((f: any) => ({ ...f, sub_brand_id: v, legal_name: sb?.legal_name ?? sb?.name ?? "", tax_id: sb?.tax_id ?? "", amount: sb?.monthly_fee ?? f.amount, currency: sb?.fee_currency ?? f.currency }));
+    }
   };
 
   const save = useMutation({
@@ -339,8 +406,12 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
       const currency = form.currency || selectedClient.fee_currency || selectedClient.country?.currency_code || "ARS";
       const payload = {
         client_id: form.client_id,
+        sub_brand_id: form.sub_brand_id && form.sub_brand_id !== "__matriz__" ? form.sub_brand_id : null,
+        legal_name: form.legal_name || null,
+        tax_id: form.tax_id || null,
         amount: form.amount,
         currency,
+        invoice_date: form.invoice_date || null,
         due_date: due,
         invoice_type: form.invoice_type,
         notes: form.notes || null,
@@ -380,7 +451,29 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
               </p>
             )}
           </div>
+          {selectedClient && subBrands.length > 0 && (
+            <div>
+              <Label>Facturar a (razón social)</Label>
+              <Select value={form.sub_brand_id ?? "__matriz__"} onValueChange={handleEntityChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__matriz__">{selectedClient.legal_name || selectedClient.company_name} (marca)</SelectItem>
+                  {subBrands.map((sb: any) => <SelectItem key={sb.id} value={sb.id}>{sb.legal_name || sb.name} (submarca)</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 grid grid-cols-2 gap-3">
+              <div>
+                <Label>Razón social</Label>
+                <Input value={form.legal_name ?? ""} onChange={(e) => setForm({ ...form, legal_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>CUIT</Label>
+                <Input value={form.tax_id ?? ""} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} placeholder="20-12345678-9" />
+              </div>
+            </div>
             <div>
               <Label>Monto</Label>
               <Input type="number" step="0.01" value={form.amount ?? 0} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} />
@@ -395,7 +488,11 @@ function InvoiceDialog({ open, onOpenChange, editing }: { open: boolean; onOpenC
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2">
+            <div>
+              <Label>Fecha de facturación</Label>
+              <Input type="date" value={form.invoice_date ?? ""} onChange={(e) => setForm({ ...form, invoice_date: e.target.value })} />
+            </div>
+            <div>
               <Label>Vencimiento {selectedClient && !editing && <span className="text-xs text-muted-foreground">(auto: {addDaysFromFrequency(selectedClient.billing_frequency)})</span>}</Label>
               <Input type="date" value={form.due_date ?? ""} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
             </div>

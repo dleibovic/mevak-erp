@@ -384,7 +384,9 @@ export type Database = {
       client_sub_brands: {
         Row: {
           address: string | null
+          bill_separately: boolean
           billing_frequency: Database["public"]["Enums"]["billing_frequency"]
+          billing_user_id: string | null
           branches_count: number
           city_id: string | null
           client_id: string
@@ -399,16 +401,21 @@ export type Database = {
           fee_currency: string
           food_category_id: string | null
           id: string
+          legal_name: string | null
           monthly_fee: number
           name: string
           notes: string | null
+          payment_channel: Database["public"]["Enums"]["payment_channel"] | null
           province_id: string | null
           reports_email: string | null
           status: Database["public"]["Enums"]["client_status"]
+          tax_id: string | null
         }
         Insert: {
           address?: string | null
+          bill_separately?: boolean
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          billing_user_id?: string | null
           branches_count?: number
           city_id?: string | null
           client_id: string
@@ -423,16 +430,23 @@ export type Database = {
           fee_currency?: string
           food_category_id?: string | null
           id?: string
+          legal_name?: string | null
           monthly_fee?: number
           name: string
           notes?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          tax_id?: string | null
         }
         Update: {
           address?: string | null
+          bill_separately?: boolean
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          billing_user_id?: string | null
           branches_count?: number
           city_id?: string | null
           client_id?: string
@@ -447,12 +461,17 @@ export type Database = {
           fee_currency?: string
           food_category_id?: string | null
           id?: string
+          legal_name?: string | null
           monthly_fee?: number
           name?: string
           notes?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
           province_id?: string | null
           reports_email?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          tax_id?: string | null
         }
         Relationships: [
           {
@@ -1210,9 +1229,15 @@ export type Database = {
           currency: string
           due_date: string
           id: string
+          invoice_date: string | null
           invoice_type: Database["public"]["Enums"]["invoice_type"]
+          legal_name: string | null
           notes: string | null
           status: Database["public"]["Enums"]["invoice_status"]
+          sub_brand_id: string | null
+          tax_id: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount: number
@@ -1223,9 +1248,15 @@ export type Database = {
           currency: string
           due_date: string
           id?: string
+          invoice_date?: string | null
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          legal_name?: string | null
           notes?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          sub_brand_id?: string | null
+          tax_id?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount?: number
@@ -1236,9 +1267,15 @@ export type Database = {
           currency?: string
           due_date?: string
           id?: string
+          invoice_date?: string | null
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          legal_name?: string | null
           notes?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          sub_brand_id?: string | null
+          tax_id?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -1254,6 +1291,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_client_metrics"
             referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "invoices_sub_brand_id_fkey"
+            columns: ["sub_brand_id"]
+            isOneToOne: false
+            referencedRelation: "client_sub_brands"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3409,6 +3453,7 @@ export type Database = {
           invoice_date: string | null
           invoiced_at: string | null
           invoiced_by: string | null
+          legal_name: string | null
           notes: string | null
           paid_at: string | null
           paid_by: string | null
@@ -3416,7 +3461,11 @@ export type Database = {
           payment_channel: Database["public"]["Enums"]["payment_channel"] | null
           period_month: string
           status: Database["public"]["Enums"]["monthly_invoice_status"]
+          sub_brand_id: string | null
+          tax_id: string | null
           updated_at: string
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount?: number
@@ -3429,6 +3478,7 @@ export type Database = {
           invoice_date?: string | null
           invoiced_at?: string | null
           invoiced_by?: string | null
+          legal_name?: string | null
           notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
@@ -3438,7 +3488,11 @@ export type Database = {
             | null
           period_month: string
           status?: Database["public"]["Enums"]["monthly_invoice_status"]
+          sub_brand_id?: string | null
+          tax_id?: string | null
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount?: number
@@ -3451,6 +3505,7 @@ export type Database = {
           invoice_date?: string | null
           invoiced_at?: string | null
           invoiced_by?: string | null
+          legal_name?: string | null
           notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
@@ -3460,7 +3515,11 @@ export type Database = {
             | null
           period_month?: string
           status?: Database["public"]["Enums"]["monthly_invoice_status"]
+          sub_brand_id?: string | null
+          tax_id?: string | null
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -3476,6 +3535,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_client_metrics"
             referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "monthly_invoices_sub_brand_id_fkey"
+            columns: ["sub_brand_id"]
+            isOneToOne: false
+            referencedRelation: "client_sub_brands"
+            referencedColumns: ["id"]
           },
         ]
       }
