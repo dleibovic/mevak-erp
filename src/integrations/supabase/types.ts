@@ -4453,6 +4453,10 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      mevak_can_access_invoice: {
+        Args: { _invoice_id: string; _user_id: string }
+        Returns: boolean
+      }
       mevak_can_write_client: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
@@ -5289,6 +5293,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      mevak_storage_path_uuid: { Args: { _name: string }; Returns: string }
       mevak_update_item_comment: {
         Args: { _body: string; _comment_id: string }
         Returns: undefined
