@@ -76,7 +76,7 @@ export default function Clients() {
     queryFn: async () => {
       let q = supabase
         .from("clients")
-        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name), payment_method:payment_methods(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*), client_sub_brands(*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name))")
+        .select("*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name), payment_method:payment_methods(id,name), executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), client_executive_commission(*), client_billing_entities(*), client_sub_brands(*, country:countries(*), province:provinces(id,name), city:cities(id,name), food_category:food_categories(id,name))")
         .order("created_at", { ascending: false });
       if (countryId) q = q.eq("country_id", countryId);
       const { data, error } = await q;
@@ -147,7 +147,10 @@ export default function Clients() {
   );
 
   const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
+  const activeBillingEntities = (c: any) => (c.client_billing_entities ?? []).filter((be: any) => be.active !== false);
   const normalizedClientFee = (c: any) => {
+    const entities = activeBillingEntities(c);
+    if (entities.length) return entities.reduce((s: number, be: any) => s + Number(be.amount || 0), 0);
     const branches = c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1));
     return Number(c.monthly_fee || 0) * branches * billingMultiplier(c.billing_frequency);
   };
@@ -399,6 +402,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
   const [newFoodCategory, setNewFoodCategory] = useState("");
   const [newPaymentMethod, setNewPaymentMethod] = useState("");
   const [subBrands, setSubBrands] = useState<any[]>([]);
+  const [billingEntities, setBillingEntities] = useState<any[]>([]);
 
   const { data: provinces = [] } = useProvinces(form.country_id);
   const { data: cities = [] } = useCities(form.province_id);
@@ -464,6 +468,40 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
     setSubBrands(subBrands.filter((_, i) => i !== index));
   };
 
+  const addBillingEntity = () => {
+    setBillingEntities([
+      ...billingEntities,
+      { legal_name: "", tax_id: "", amount: 0, currency: defaultCurrency, payment_channel: null, active: true },
+    ]);
+  };
+  const updateBillingEntity = (index: number, patch: Record<string, any>) => {
+    setBillingEntities(billingEntities.map((be, i) => (i === index ? { ...be, ...patch } : be)));
+  };
+  const removeBillingEntity = (index: number) => {
+    setBillingEntities(billingEntities.filter((_, i) => i !== index));
+  };
+  const billingEntitiesTotal = billingEntities
+    .filter((be) => be.active !== false)
+    .reduce((s, be) => s + Number(be.amount || 0), 0);
+  // Dividir el fee total del cliente en partes iguales entre las razones sociales activas
+  const splitEntitiesEqually = () => {
+    const total = Number(form.monthly_fee || 0);
+    const idxs = billingEntities.map((be, i) => ({ be, i })).filter((x) => x.be.active !== false).map((x) => x.i);
+    const n = idxs.length;
+    if (!n) return;
+    const per = Math.round((total / n) * 100) / 100;
+    const next = billingEntities.map((be) => ({ ...be }));
+    let acc = 0;
+    idxs.forEach((idx, k) => {
+      const val = k === n - 1 ? Math.round((total - acc) * 100) / 100 : per;
+      next[idx].amount = val;
+      acc += val;
+    });
+    setBillingEntities(next);
+  };
+  const feeTarget = Number(form.monthly_fee || 0);
+  const entitiesMatchTarget = Math.abs(billingEntitiesTotal - feeTarget) < 0.01;
+
   // Initialize form when dialog opens or client changes
   useEffect(() => {
     if (!open) return;
@@ -507,6 +545,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         churned_at: client.churned_at ?? null,
       });
       setSubBrands(client.client_sub_brands ?? []);
+      setBillingEntities((client.client_billing_entities ?? []).slice().sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       const sp: any = {};
       client.client_platforms?.forEach((cp: any) => { sp[cp.platform_id] = { commission_rate: cp.commission_rate, selected: true }; });
       setSelectedPlatforms(sp);
@@ -556,6 +595,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
       setSelectedPlatforms({});
       setCommissions({});
       setSubBrands([]);
+      setBillingEntities([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, client?.id]);
@@ -704,6 +744,22 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
           notes: brand.notes || null,
         }));
       if (subBrandRows.length) await (supabase as any).from("client_sub_brands").insert(subBrandRows);
+
+      // Razones sociales de facturación (suman el fee del cliente)
+      await (supabase as any).from("client_billing_entities").delete().eq("client_id", clientId);
+      const entityRows = billingEntities
+        .filter((be) => be.legal_name?.trim())
+        .map((be, i) => ({
+          client_id: clientId!,
+          legal_name: be.legal_name.trim(),
+          tax_id: be.tax_id || null,
+          amount: Number(be.amount) || 0,
+          currency: be.currency || defaultCurrency,
+          payment_channel: be.payment_channel || null,
+          active: be.active !== false,
+          sort_order: i,
+        }));
+      if (entityRows.length) await (supabase as any).from("client_billing_entities").insert(entityRows);
     },
     onSuccess: () => {
       toast.success(client ? "Cliente actualizado" : "Cliente creado");
@@ -719,6 +775,7 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
       setNewFoodCategory("");
       setNewPaymentMethod("");
       setSubBrands([]);
+      setBillingEntities([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -1046,6 +1103,79 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
             </div>
           </section>
 
+          {/* Razones sociales de facturación */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Razones sociales de facturación</h3>
+                <p className="text-xs text-muted-foreground">Si esta marca se factura a varias razones sociales, cargá cada una con su monto. La suma debe dar el fee total del cliente y cada una genera su factura.</p>
+              </div>
+              <div className="flex gap-2">
+                {billingEntities.length > 0 && (
+                  <Button type="button" variant="outline" size="sm" onClick={splitEntitiesEqually} title="Reparte el fee total en partes iguales">Dividir en partes iguales</Button>
+                )}
+                <Button type="button" variant="outline" size="sm" onClick={addBillingEntity}><Plus className="h-4 w-4" />Agregar razón social</Button>
+              </div>
+            </div>
+            {billingEntities.length > 0 && (
+              <div className="space-y-3">
+                {billingEntities.map((be, index) => (
+                  <div key={be.id ?? index} className="rounded-md border border-border bg-card/40 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <Checkbox checked={be.active !== false} onCheckedChange={(v) => updateBillingEntity(index, { active: v === true })} />
+                        Activa
+                      </label>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeBillingEntity(index)}><X className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label>Razón social *</Label><Input value={be.legal_name ?? ""} onChange={(e) => updateBillingEntity(index, { legal_name: e.target.value })} /></div>
+                      <div><Label>CUIT</Label><Input value={be.tax_id ?? ""} onChange={(e) => updateBillingEntity(index, { tax_id: e.target.value })} placeholder="20-12345678-9" /></div>
+                      <div>
+                        <Label>Monto</Label>
+                        <div className="flex gap-2">
+                          <Input type="number" step="0.01" min={0} value={be.amount ?? 0} onChange={(e) => updateBillingEntity(index, { amount: e.target.value })} />
+                          <Select value={be.currency ?? defaultCurrency} onValueChange={(v) => updateBillingEntity(index, { currency: v })}>
+                            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {(() => {
+                                const opts: { code: string; label: string }[] = [];
+                                const push = (code: string, label: string) => { if (code && !opts.find((o) => o.code === code)) opts.push({ code, label }); };
+                                if (currentCountry?.currency_code) push(currentCountry.currency_code, `${currentCountry.currency_code} (local)`);
+                                push("USD", "USD"); push("EUR", "EUR");
+                                if (be.currency) push(be.currency, be.currency);
+                                return opts.map((o) => <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>);
+                              })()}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Canal de cobro</Label>
+                        <Select value={be.payment_channel ?? "__inherit__"} onValueChange={(v) => updateBillingEntity(index, { payment_channel: v === "__inherit__" ? null : v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__inherit__">Igual que la marca</SelectItem>
+                            {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">Fee total del cliente: <span className="font-mono text-foreground">{formatMoney(feeTarget, billingEntities[0]?.currency ?? defaultCurrency)}</span></span>
+                  <span>Suma razones sociales: <span className={`font-mono font-semibold ${entitiesMatchTarget ? "text-success" : "text-destructive"}`}>{formatMoney(billingEntitiesTotal, billingEntities[0]?.currency ?? defaultCurrency)}</span></span>
+                </div>
+                {!entitiesMatchTarget && (
+                  <p className="text-right text-xs text-destructive">
+                    La suma no coincide con el fee total ({formatMoney(feeTarget, billingEntities[0]?.currency ?? defaultCurrency)}). Ajustá los montos o usá "Dividir en partes iguales".
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+
           {/* Sub-marcas */}
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -1362,7 +1492,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
             disabled={
               save.isPending ||
               !form.company_name ||
-              (!form.country_id && !(newCountry && newCountry.name && newCountry.currency_code && newCountry.currency_symbol))
+              (!form.country_id && !(newCountry && newCountry.name && newCountry.currency_code && newCountry.currency_symbol)) ||
+              (billingEntities.some((be) => be.active !== false && be.legal_name?.trim()) && !entitiesMatchTarget)
             }
           >
             {save.isPending ? "Guardando..." : "Guardar"}

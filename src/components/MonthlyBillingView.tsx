@@ -233,7 +233,7 @@ export function MonthlyBillingView() {
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={exportCSV}><Download className="h-4 w-4 mr-1" />CSV</Button>
-          {isAdmin && <Button size="sm" onClick={() => generate.mutate()}>Generar facturas del mes</Button>}
+          {canEditAdminFinance && <Button size="sm" onClick={() => generate.mutate()}>Generar facturas del mes</Button>}
         </div>
       </Card>
 
@@ -281,6 +281,7 @@ export function MonthlyBillingView() {
                   <TableCell className="font-medium">
                     {r.client?.company_name ?? "—"}
                     {r.sub_brand && <span className="ml-1 text-xs text-muted-foreground">· submarca</span>}
+                    {r.billing_entity_id && <span className="ml-1 text-xs text-muted-foreground">· razón social</span>}
                   </TableCell>
                   <TableCell className="text-sm">{entityLabel(r)}</TableCell>
                   <TableCell>{r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] : <span className="text-muted-foreground">—</span>}</TableCell>
