@@ -756,6 +756,9 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
           amount: Number(be.amount) || 0,
           currency: be.currency || defaultCurrency,
           payment_channel: be.payment_channel || null,
+          contact_name: be.contact_name || null,
+          contact_phone: be.contact_phone || null,
+          contact_email: be.contact_email || null,
           active: be.active !== false,
           sort_order: i,
         }));
@@ -1159,6 +1162,18 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                             {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div>
+                        <Label>Persona de contacto</Label>
+                        <Input value={be.contact_name ?? ""} onChange={(e) => updateBillingEntity(index, { contact_name: e.target.value })} placeholder={form.contact_name || "Igual que la marca"} />
+                      </div>
+                      <div>
+                        <Label>Celular</Label>
+                        <Input value={be.contact_phone ?? ""} onChange={(e) => updateBillingEntity(index, { contact_phone: e.target.value })} placeholder={form.contact_phone || "Igual que la marca"} />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Mail de envío de factura</Label>
+                        <Input type="email" value={be.contact_email ?? ""} onChange={(e) => updateBillingEntity(index, { contact_email: e.target.value })} placeholder={form.contact_email || "Igual que la marca"} />
                       </div>
                     </div>
                   </div>

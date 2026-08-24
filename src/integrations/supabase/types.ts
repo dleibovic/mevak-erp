@@ -189,6 +189,8 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           currency: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           legal_name: string
           payment_channel: Database["public"]["Enums"]["payment_channel"] | null
@@ -205,6 +207,8 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           legal_name: string
           payment_channel?:
@@ -223,6 +227,8 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           legal_name?: string
           payment_channel?:
@@ -467,6 +473,8 @@ export type Database = {
           contact_phone: string | null
           country_id: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           fee_billing_mode: string
           fee_currency: string
           food_category_id: string | null
@@ -496,6 +504,8 @@ export type Database = {
           contact_phone?: string | null
           country_id: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
@@ -527,6 +537,8 @@ export type Database = {
           contact_phone?: string | null
           country_id?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
