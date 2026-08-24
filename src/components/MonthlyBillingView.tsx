@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, FileCheck2, Download, FileText, Search } from "lucide-react";
+import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2 } from "lucide-react";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
@@ -53,14 +53,14 @@ export function MonthlyBillingView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_invoices")
-        .select("*, client:clients(id, company_name, payment_channel, billing_user_id), billing_user:profiles!monthly_invoices_billing_user_id_fkey(full_name, email)")
+        .select("*, client:clients(id, company_name, legal_name, payment_channel, billing_user_id), sub_brand:client_sub_brands(id, name, legal_name), billing_user:profiles!monthly_invoices_billing_user_id_fkey(full_name, email)")
         .eq("period_month", period)
         .order("created_at", { ascending: true });
       // FK alias may not exist; fallback without join
       if (error) {
         const { data: d2, error: e2 } = await supabase
           .from("monthly_invoices")
-          .select("*, client:clients(id, company_name, payment_channel, billing_user_id)")
+          .select("*, client:clients(id, company_name, legal_name, payment_channel, billing_user_id), sub_brand:client_sub_brands(id, name, legal_name)")
           .eq("period_month", period);
         if (e2) throw e2;
         return d2 ?? [];
@@ -105,11 +105,38 @@ export function MonthlyBillingView() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const setVoid = useMutation({
+    mutationFn: async ({ id, voided }: { id: string; voided: boolean }) => {
+      const patch = voided
+        ? { voided_at: new Date().toISOString(), voided_by: user?.id }
+        : { voided_at: null, voided_by: null };
+      const { error } = await supabase.from("monthly_invoices").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => { toast.success(v.voided ? "Factura anulada" : "Anulación revertida"); qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removeInvoice = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("monthly_invoices").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Factura eliminada"); qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const profileName = (id: string | null | undefined) => {
     if (!id) return "—";
     const p = profiles.find((x: any) => x.id === id);
     return p?.full_name ?? p?.email ?? "—";
   };
+
+  // Razón social / submarca que se factura en esta fila
+  const entityLabel = (r: any) =>
+    r.sub_brand
+      ? (r.legal_name || r.sub_brand.legal_name || r.sub_brand.name)
+      : (r.legal_name || r.client?.legal_name || r.client?.company_name || "—");
 
 
 
@@ -129,6 +156,7 @@ export function MonthlyBillingView() {
   const stats = useMemo(() => {
     const totalsByCcy: Record<string, { total: number; pending: number; paid: number; invoiced: number }> = {};
     filtered.forEach((r: any) => {
+      if (r.voided_at) return; // las anuladas no suman
       const c = r.currency || "ARS";
       totalsByCcy[c] ||= { total: 0, pending: 0, paid: 0, invoiced: 0 };
       const a = Number(r.amount) || 0;
@@ -152,11 +180,12 @@ export function MonthlyBillingView() {
   }, [filtered, groupBy]);
 
   function exportCSV() {
-    const header = ["Cliente", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado por", "Fecha de pago", "Registrado"];
+    const header = ["Cliente", "Razón social / Submarca", "Canal", "Monto", "Moneda", "Estado", "Facturado", "Cobrado por", "Fecha de pago", "Registrado"];
     const lines = filtered.map((r: any) => [
       r.client?.company_name ?? "",
+      entityLabel(r),
       r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] ?? r.payment_channel : "",
-      r.amount, r.currency, r.status,
+      r.amount, r.currency, r.voided_at ? "anulada" : r.status,
       r.invoiced_at ? fmtDate(r.invoiced_at) : "",
       r.paid_by ? profileName(r.paid_by) : "",
       r.paid_at ? fmtDate(r.paid_at) : "",
@@ -232,6 +261,7 @@ export function MonthlyBillingView() {
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Razón social / Submarca</TableHead>
                 <TableHead>Canal</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Fecha factura</TableHead>
@@ -247,8 +277,12 @@ export function MonthlyBillingView() {
             </TableHeader>
             <TableBody>
               {g.items.map((r: any) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.client?.company_name ?? "—"}</TableCell>
+                <TableRow key={r.id} className={r.voided_at ? "line-through opacity-60" : ""}>
+                  <TableCell className="font-medium">
+                    {r.client?.company_name ?? "—"}
+                    {r.sub_brand && <span className="ml-1 text-xs text-muted-foreground">· submarca</span>}
+                  </TableCell>
+                  <TableCell className="text-sm">{entityLabel(r)}</TableCell>
                   <TableCell>{r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] : <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell className="font-mono">{formatMoney(r.amount, r.currency)}</TableCell>
                   <TableCell>
@@ -267,11 +301,12 @@ export function MonthlyBillingView() {
                     {r.due_date ? fmtDate(r.due_date) : "—"}
                   </TableCell>
                   <TableCell>
-
+                    {r.voided_at ? <Badge variant="outline" className="border-destructive text-destructive">Anulada</Badge> : (<>
                     {r.status === "paid" && <Badge className="bg-success text-success-foreground hover:bg-success">Cobrada</Badge>}
                     {r.status === "invoiced" && <Badge className="bg-primary text-primary-foreground">Facturada</Badge>}
                     {r.status === "pending" && <Badge className="bg-warning text-warning-foreground hover:bg-warning">Pendiente</Badge>}
                     {r.status === "overdue" && <Badge variant="destructive">Vencida</Badge>}
+                    </>)}
                   </TableCell>
                   <TableCell className="text-sm">{r.invoiced_at ? fmtDate(r.invoiced_at) : "—"}</TableCell>
                   <TableCell className="text-sm">{r.paid_by ? profileName(r.paid_by) : "—"}</TableCell>
@@ -324,16 +359,33 @@ export function MonthlyBillingView() {
                         <FileCheck2 className="h-4 w-4 mr-1" />Facturada
                       </Button>
                     )}
-                    {r.status !== "paid" && (
+                    {r.status !== "paid" && !r.voided_at && (
                       <Button size="sm" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "paid" } })}>
                         <CheckCircle2 className="h-4 w-4 mr-1" />Cobrada
+                      </Button>
+                    )}
+                    {canEditAdminFinance && (
+                      r.voided_at ? (
+                        <Button size="sm" variant="ghost" onClick={() => setVoid.mutate({ id: r.id, voided: false })}>
+                          <RotateCcw className="h-4 w-4 mr-1" />Restaurar
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setVoid.mutate({ id: r.id, voided: true })}>
+                          <Ban className="h-4 w-4 mr-1" />Anular
+                        </Button>
+                      )
+                    )}
+                    {isAdmin && (
+                      <Button size="icon" variant="ghost" title="Eliminar definitivamente"
+                        onClick={() => { if (window.confirm("¿Eliminar definitivamente esta factura? Esta acción no se puede deshacer.")) removeInvoice.mutate(r.id); }}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     )}
                   </TableCell>
                 </TableRow>
               ))}
               {g.items.length === 0 && (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-6">Sin registros</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

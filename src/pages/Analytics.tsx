@@ -82,7 +82,7 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
   const { data: invoices = [] } = useQuery({
     queryKey: ["an-invoices", countryId, month],
     queryFn: async () => {
-      let q = supabase.from("invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency)");
+      let q = supabase.from("invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency)").is("voided_at", null);
       if (mRange) q = q.gte("due_date", mRange.start).lt("due_date", mRange.end);
       return (await q).data ?? [];
     },
