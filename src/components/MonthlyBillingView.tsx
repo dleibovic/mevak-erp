@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2 } from "lucide-react";
+import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2, Pencil, Receipt, History } from "lucide-react";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
@@ -20,7 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 function periodList() {
   const now = new Date();
   const items: { value: string; label: string }[] = [];
-  for (let i = -3; i <= 1; i++) {
+  for (let i = -15; i <= 1; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     items.push({
       value: d.toISOString().slice(0, 10),
@@ -42,6 +45,13 @@ export function MonthlyBillingView() {
   const [search, setSearch] = useState("");
   const [groupBy, setGroupBy] = useState<"none" | "channel">("channel");
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
+  // Ajustes / notas de crédito
+  const [adjusting, setAdjusting] = useState<any>(null);
+  const [adjKind, setAdjKind] = useState<"amount_change" | "credit_note">("amount_change");
+  const [adjValue, setAdjValue] = useState<string>("");
+  const [adjReason, setAdjReason] = useState<string>("");
+  const [adjDate, setAdjDate] = useState<string>("");
+  const [historyFor, setHistoryFor] = useState<any>(null);
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-billing"],
@@ -56,7 +66,6 @@ export function MonthlyBillingView() {
         .select("*, client:clients(id, company_name, legal_name, payment_channel, billing_user_id), sub_brand:client_sub_brands(id, name, legal_name), billing_user:profiles!monthly_invoices_billing_user_id_fkey(full_name, email)")
         .eq("period_month", period)
         .order("created_at", { ascending: true });
-      // FK alias may not exist; fallback without join
       if (error) {
         const { data: d2, error: e2 } = await supabase
           .from("monthly_invoices")
@@ -68,6 +77,63 @@ export function MonthlyBillingView() {
       return data ?? [];
     },
   });
+
+  // Ajustes (editar monto / nota de crédito) de las facturas del período — para badge + registro
+  const { data: adjustments = [] } = useQuery({
+    queryKey: ["monthly_invoice_adjustments", period],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("monthly_invoice_adjustments")
+        .select("*, mi:monthly_invoices!inner(period_month)")
+        .eq("mi.period_month", period)
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return data ?? [];
+    },
+  });
+  const adjustmentsByInvoice = useMemo(() => {
+    const m = new Map<string, any[]>();
+    (adjustments as any[]).forEach((a) => {
+      if (!m.has(a.monthly_invoice_id)) m.set(a.monthly_invoice_id, []);
+      m.get(a.monthly_invoice_id)!.push(a);
+    });
+    return m;
+  }, [adjustments]);
+
+  const applyAdjustment = useMutation({
+    mutationFn: async () => {
+      if (!adjusting) return;
+      const current = Number(adjusting.amount || 0);
+      const v = Number(adjValue);
+      if (!adjReason.trim()) throw new Error("Indicá el motivo del ajuste");
+      if (isNaN(v) || v < 0) throw new Error("Monto inválido");
+      const newAmount = adjKind === "credit_note" ? Math.round((current - v) * 100) / 100 : v;
+      if (newAmount < 0) throw new Error("La nota de crédito no puede superar el monto de la factura");
+      const { error } = await supabase.rpc("apply_invoice_adjustment", {
+        _invoice_id: adjusting.id,
+        _new_amount: newAmount,
+        _kind: adjKind,
+        _reason: adjReason.trim(),
+        _effective_date: adjDate || todayISO,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Ajuste aplicado");
+      setAdjusting(null);
+      qc.invalidateQueries({ queryKey: ["monthly_invoices"] });
+      qc.invalidateQueries({ queryKey: ["monthly_invoice_adjustments"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const openAdjust = (r: any) => {
+    setAdjusting(r);
+    setAdjKind("amount_change");
+    setAdjValue(String(r.amount ?? 0));
+    setAdjReason("");
+    setAdjDate(todayISO);
+  };
 
   const generate = useMutation({
     mutationFn: async () => {
@@ -138,8 +204,6 @@ export function MonthlyBillingView() {
       ? (r.legal_name || r.sub_brand.legal_name || r.sub_brand.name)
       : (r.legal_name || r.client?.legal_name || r.client?.company_name || "—");
 
-
-
   const filtered = useMemo(() => {
     let r = rows as any[];
     const s = search.trim().toLowerCase();
@@ -156,7 +220,7 @@ export function MonthlyBillingView() {
   const stats = useMemo(() => {
     const totalsByCcy: Record<string, { total: number; pending: number; paid: number; invoiced: number }> = {};
     filtered.forEach((r: any) => {
-      if (r.voided_at) return; // las anuladas no suman
+      if (r.voided_at) return;
       const c = r.currency || "ARS";
       totalsByCcy[c] ||= { total: 0, pending: 0, paid: 0, invoiced: 0 };
       const a = Number(r.amount) || 0;
@@ -273,7 +337,6 @@ export function MonthlyBillingView() {
                 <TableHead>Registrado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
-
             </TableHeader>
             <TableBody>
               {g.items.map((r: any) => (
@@ -285,7 +348,16 @@ export function MonthlyBillingView() {
                   </TableCell>
                   <TableCell className="text-sm">{entityLabel(r)}</TableCell>
                   <TableCell>{r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] : <span className="text-muted-foreground">—</span>}</TableCell>
-                  <TableCell className="font-mono">{formatMoney(r.amount, r.currency)}</TableCell>
+                  <TableCell className="font-mono">
+                    {formatMoney(r.amount, r.currency)}
+                    {adjustmentsByInvoice.has(r.id) && (
+                      <button type="button" onClick={() => setHistoryFor(r)} title="Ver registro de ajustes"
+                        className="ml-1 inline-flex items-center align-middle text-primary hover:underline">
+                        <History className="h-3.5 w-3.5" />
+                        <span className="text-[10px] ml-0.5">{adjustmentsByInvoice.get(r.id)!.length}</span>
+                      </button>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {canEditAdminFinance ? (
                       <Input
@@ -329,7 +401,6 @@ export function MonthlyBillingView() {
                   </TableCell>
                   <TableCell className="text-sm">{r.payment_assigned_at ? fmtDate(r.payment_assigned_at) : "—"}</TableCell>
 
-
                   <TableCell className="text-right space-x-1">
                     <Button
                       size="sm"
@@ -365,6 +436,11 @@ export function MonthlyBillingView() {
                         <CheckCircle2 className="h-4 w-4 mr-1" />Cobrada
                       </Button>
                     )}
+                    {canEditAdminFinance && !r.voided_at && (
+                      <Button size="sm" variant="ghost" onClick={() => openAdjust(r)} title="Editar monto o nota de crédito">
+                        <Receipt className="h-4 w-4 mr-1" />Ajustar
+                      </Button>
+                    )}
                     {canEditAdminFinance && (
                       r.voided_at ? (
                         <Button size="sm" variant="ghost" onClick={() => setVoid.mutate({ id: r.id, voided: false })}>
@@ -393,6 +469,79 @@ export function MonthlyBillingView() {
         </Card>
       ))}
       {isLoading && <div className="text-center text-muted-foreground py-6">Cargando…</div>}
+
+      {/* Dialogo: ajustar monto / nota de crédito */}
+      <Dialog open={!!adjusting} onOpenChange={(v) => !v && setAdjusting(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Ajustar factura {adjusting?.client?.company_name ? `· ${adjusting.client.company_name}` : ""}</DialogTitle></DialogHeader>
+          {adjusting && (
+            <div className="grid gap-3">
+              <div className="text-sm text-muted-foreground">
+                Razón social: <span className="text-foreground">{entityLabel(adjusting)}</span> · Monto actual:{" "}
+                <span className="font-mono text-foreground">{formatMoney(adjusting.amount, adjusting.currency)}</span>
+              </div>
+              <div>
+                <Label>Tipo de ajuste</Label>
+                <Select value={adjKind} onValueChange={(v: any) => { setAdjKind(v); setAdjValue(v === "credit_note" ? "" : String(adjusting.amount ?? 0)); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="amount_change">Editar monto (corrección / baja)</SelectItem>
+                    <SelectItem value="credit_note">Nota de crédito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>{adjKind === "credit_note" ? "Monto a acreditar" : "Nuevo monto"}</Label>
+                <Input type="number" step="0.01" min={0} value={adjValue} onChange={(e) => setAdjValue(e.target.value)} />
+                {adjKind === "credit_note" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Neto resultante:{" "}
+                    <span className="font-mono">{formatMoney(Math.max(Number(adjusting.amount || 0) - (Number(adjValue) || 0), 0), adjusting.currency)}</span>
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label>Fecha</Label>
+                <Input type="date" value={adjDate} onChange={(e) => setAdjDate(e.target.value)} />
+              </div>
+              <div>
+                <Label>Motivo *</Label>
+                <Textarea rows={2} value={adjReason} onChange={(e) => setAdjReason(e.target.value)} placeholder="Ej: nota de crédito por descuento acordado / corrección de monto" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjusting(null)}>Cancelar</Button>
+            <Button onClick={() => applyAdjustment.mutate()} disabled={applyAdjustment.isPending || !adjReason.trim() || adjValue === ""}>Aplicar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialogo: registro de ajustes de una factura */}
+      <Dialog open={!!historyFor} onOpenChange={(v) => !v && setHistoryFor(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Registro de ajustes</DialogTitle></DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-auto">
+            {historyFor && (adjustmentsByInvoice.get(historyFor.id) ?? []).map((a: any) => (
+              <div key={a.id} className="rounded-md border border-border p-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline">{a.kind === "credit_note" ? "Nota de crédito" : "Ajuste de monto"}</Badge>
+                  <span className="text-xs text-muted-foreground">{a.effective_date ? fmtDate(a.effective_date) : fmtDate(a.created_at)}</span>
+                </div>
+                <div className="mt-1 font-mono text-xs">
+                  {formatMoney(a.previous_amount ?? 0, historyFor.currency)} → {formatMoney(a.new_amount ?? 0, historyFor.currency)}
+                  {a.credit_amount ? <span className="ml-1 text-destructive">(NC {formatMoney(a.credit_amount, historyFor.currency)})</span> : null}
+                </div>
+                {a.reason && <div className="mt-1 text-muted-foreground">{a.reason}</div>}
+                <div className="mt-1 text-[11px] text-muted-foreground">Por: {profileName(a.created_by)}</div>
+              </div>
+            ))}
+            {historyFor && (adjustmentsByInvoice.get(historyFor.id) ?? []).length === 0 && (
+              <div className="text-sm text-muted-foreground">Sin ajustes.</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
