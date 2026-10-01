@@ -38,11 +38,11 @@ type Snapshot = {
 type EmployeeOption = { key: string; id: string | null; name: string };
 type Grouping = "quarter" | "year";
 
-const effectiveValue = (i: { commission_override: number | null; commission_value: number }) =>
+const effectiveValue = (i: { commission_override?: number | null; commission_value: number }) =>
   i.commission_override ?? i.commission_value;
 
 function totalsByCurrency(
-  items?: { commission_override: number | null; commission_value: number; commission_currency: string }[] | null,
+  items?: { commission_override?: number | null; commission_value: number; commission_currency: string }[] | null,
 ) {
   const list = Array.isArray(items) ? items : [];
   const map = new Map<string, number>();
