@@ -212,7 +212,46 @@ function PeriodGroupCard({ label, items }: { label: string; items: Snapshot[] })
 }
 
 function DetailTable({ items, showMonth = false }: { items: Snapshot[]; showMonth?: boolean }) {
+  const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const [saving, setSaving] = useState(false);
   const list = Array.isArray(items) ? items : [];
+
+  const save = async (row: Snapshot, value: string, note: string) => {
+    if (value.trim() === "" || Number.isNaN(Number(value))) {
+      toast.error("Ingresá un valor válido");
+      return false;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("commission_snapshots")
+      .update({ commission_override: Number(value), override_note: note.trim() || null })
+      .eq("id", row.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    toast.success("Comisión ajustada");
+    qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+    return true;
+  };
+
+  const clear = async (row: Snapshot) => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("commission_snapshots")
+      .update({ commission_override: null, override_note: null })
+      .eq("id", row.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Ajuste eliminado");
+    qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -221,6 +260,7 @@ function DetailTable({ items, showMonth = false }: { items: Snapshot[]; showMont
           <TableHead>Cliente</TableHead>
           <TableHead className="text-right">Facturado</TableHead>
           <TableHead className="text-right">Comisión</TableHead>
+          {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -233,13 +273,106 @@ function DetailTable({ items, showMonth = false }: { items: Snapshot[]; showMont
                 ? formatMoney(i.billed_amount, i.billed_currency ?? i.commission_currency)
                 : "Sin factura"}
             </TableCell>
-            <TableCell className="text-right font-mono">
-              {formatMoney(i.commission_value, i.commission_currency)}
+            <TableCell className="text-right">
+              {i.commission_override != null ? (
+                <div>
+                  <div className="font-mono font-semibold text-primary">
+                    {formatMoney(effectiveValue(i), i.commission_currency)}
+                  </div>
+                  <div className="text-xs text-muted-foreground line-through">
+                    {formatMoney(i.commission_value, i.commission_currency)}
+                  </div>
+                  <Badge variant="outline" className="mt-1 text-xs">
+                    ajustada
+                  </Badge>
+                  {i.override_note && <div className="text-xs text-muted-foreground mt-1">{i.override_note}</div>}
+                </div>
+              ) : (
+                <div className="font-mono">{formatMoney(i.commission_value, i.commission_currency)}</div>
+              )}
             </TableCell>
+            {isAdmin && (
+              <TableCell className="text-right">
+                <AdjustPopover row={i} saving={saving} onSave={save} onClear={clear} />
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function AdjustPopover({
+  row,
+  saving,
+  onSave,
+  onClear,
+}: {
+  row: Snapshot;
+  saving: boolean;
+  onSave: (row: Snapshot, value: string, note: string) => Promise<boolean>;
+  onClear: (row: Snapshot) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasOverride = row.commission_override != null;
+  const [value, setValue] = useState<string>(() => String(effectiveValue(row)));
+  const [note, setNote] = useState<string>(row.override_note ?? "");
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setValue(String(effectiveValue(row)));
+          setNote(row.override_note ?? "");
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          Ajustar
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64" align="end">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Comisión ajustada</Label>
+            <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Nota (ej: proporcional 10 días)</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              disabled={saving}
+              onClick={async () => {
+                const ok = await onSave(row, value, note);
+                if (ok) setOpen(false);
+              }}
+            >
+              Guardar
+            </Button>
+            {hasOverride && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={saving}
+                onClick={async () => {
+                  await onClear(row);
+                  setOpen(false);
+                }}
+              >
+                Quitar ajuste
+              </Button>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
