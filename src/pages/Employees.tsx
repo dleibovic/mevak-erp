@@ -142,8 +142,11 @@ function EmployeeDialog({ open, onOpenChange, employee }: any) {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { ...form };
+      const payload: any = { ...form };
       delete payload.country; delete payload.commissions;
+      // Fechas vacías -> null (Postgres no acepta "" en columnas date)
+      ["birth_date", "start_date", "end_date"].forEach((k) => { if (!payload[k]) payload[k] = null; });
+      if (!payload.country_id) payload.country_id = null;
       if (employee?.id) {
         const { error } = await supabase.from("employees").update(payload).eq("id", employee.id);
         if (error) throw error;
