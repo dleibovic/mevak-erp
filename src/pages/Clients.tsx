@@ -59,6 +59,7 @@ export default function Clients() {
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filterChannel, setFilterChannel] = useState<string>("all");
   const [filterBillingUser, setFilterBillingUser] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkUserId, setBulkUserId] = useState<string>("");
 
@@ -134,12 +135,13 @@ export default function Clients() {
       const name = (c?.company_name ?? "").toString().toLowerCase();
       if (normalizedSearch && !name.includes(normalizedSearch)) return false;
       if (filterChannel !== "all" && c.payment_channel !== filterChannel) return false;
+      if (filterStatus !== "all" && c.status !== filterStatus) return false;
       if (filterBillingUser !== "all") {
         if (filterBillingUser === "__none__" ? c.billing_user_id : c.billing_user_id !== filterBillingUser) return false;
       }
       return true;
     });
-  }, [clients, search, filterChannel, filterBillingUser]);
+  }, [clients, search, filterChannel, filterBillingUser, filterStatus]);
 
   const incompleteCount = useMemo(
     () => clients.filter((c: any) => !c.payment_channel || !c.billing_user_id).length,
@@ -201,6 +203,16 @@ export default function Clients() {
           <Input className="pl-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <CountryFilterSelect className="w-[200px]" />
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[170px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Activos</SelectItem>
+            <SelectItem value="onboarding">Onboarding</SelectItem>
+            <SelectItem value="paused">Suspendidos</SelectItem>
+            <SelectItem value="churned">Inactivos</SelectItem>
+            <SelectItem value="all">Todos los estados</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={filterChannel} onValueChange={setFilterChannel}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Quién cobra" /></SelectTrigger>
           <SelectContent>
