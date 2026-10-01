@@ -783,12 +783,15 @@ export type Database = {
           client_id: string | null
           client_name: string
           commission_currency: string
+          commission_override: number | null
           commission_value: number
           created_at: string
           employee_id: string | null
           employee_name: string
           id: string
+          override_note: string | null
           period_month: string
+          source_commission_id: string | null
           was_billed: boolean
         }
         Insert: {
@@ -797,12 +800,15 @@ export type Database = {
           client_id?: string | null
           client_name: string
           commission_currency: string
+          commission_override?: number | null
           commission_value?: number
           created_at?: string
           employee_id?: string | null
           employee_name: string
           id?: string
+          override_note?: string | null
           period_month: string
+          source_commission_id?: string | null
           was_billed?: boolean
         }
         Update: {
@@ -811,12 +817,15 @@ export type Database = {
           client_id?: string | null
           client_name?: string
           commission_currency?: string
+          commission_override?: number | null
           commission_value?: number
           created_at?: string
           employee_id?: string | null
           employee_name?: string
           id?: string
+          override_note?: string | null
           period_month?: string
+          source_commission_id?: string | null
           was_billed?: boolean
         }
         Relationships: [
