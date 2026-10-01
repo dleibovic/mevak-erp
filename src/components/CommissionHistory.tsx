@@ -3,8 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/PageShell";
@@ -23,6 +27,9 @@ type Snapshot = {
   client_name: string;
   commission_value: number;
   commission_currency: string;
+  commission_override: number | null;
+  override_note: string | null;
+  source_commission_id: string | null;
   billed_amount: number | null;
   billed_currency: string | null;
   was_billed: boolean;
@@ -31,12 +38,17 @@ type Snapshot = {
 type EmployeeOption = { key: string; id: string | null; name: string };
 type Grouping = "quarter" | "year";
 
-function totalsByCurrency(items?: { commission_value: number; commission_currency: string }[] | null) {
+const effectiveValue = (i: { commission_override: number | null; commission_value: number }) =>
+  i.commission_override ?? i.commission_value;
+
+function totalsByCurrency(
+  items?: { commission_override: number | null; commission_value: number; commission_currency: string }[] | null,
+) {
   const list = Array.isArray(items) ? items : [];
   const map = new Map<string, number>();
   for (const i of list) {
     const cur = i.commission_currency || "ARS";
-    map.set(cur, (map.get(cur) ?? 0) + Number(i.commission_value || 0));
+    map.set(cur, (map.get(cur) ?? 0) + effectiveValue(i));
   }
   return Array.from(map.entries());
 }
