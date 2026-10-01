@@ -3,8 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/PageShell";
@@ -23,6 +27,9 @@ type Snapshot = {
   client_name: string;
   commission_value: number;
   commission_currency: string;
+  commission_override: number | null;
+  override_note: string | null;
+  source_commission_id: string | null;
   billed_amount: number | null;
   billed_currency: string | null;
   was_billed: boolean;
@@ -31,12 +38,17 @@ type Snapshot = {
 type EmployeeOption = { key: string; id: string | null; name: string };
 type Grouping = "quarter" | "year";
 
-function totalsByCurrency(items?: { commission_value: number; commission_currency: string }[] | null) {
+const effectiveValue = (i: { commission_override?: number | null; commission_value: number }) =>
+  i.commission_override ?? i.commission_value;
+
+function totalsByCurrency(
+  items?: { commission_override?: number | null; commission_value: number; commission_currency: string }[] | null,
+) {
   const list = Array.isArray(items) ? items : [];
   const map = new Map<string, number>();
   for (const i of list) {
     const cur = i.commission_currency || "ARS";
-    map.set(cur, (map.get(cur) ?? 0) + Number(i.commission_value || 0));
+    map.set(cur, (map.get(cur) ?? 0) + effectiveValue(i));
   }
   return Array.from(map.entries());
 }
@@ -200,7 +212,46 @@ function PeriodGroupCard({ label, items }: { label: string; items: Snapshot[] })
 }
 
 function DetailTable({ items, showMonth = false }: { items: Snapshot[]; showMonth?: boolean }) {
+  const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const [saving, setSaving] = useState(false);
   const list = Array.isArray(items) ? items : [];
+
+  const save = async (row: Snapshot, value: string, note: string) => {
+    if (value.trim() === "" || Number.isNaN(Number(value))) {
+      toast.error("Ingresá un valor válido");
+      return false;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("commission_snapshots")
+      .update({ commission_override: Number(value), override_note: note.trim() || null })
+      .eq("id", row.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    toast.success("Comisión ajustada");
+    qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+    return true;
+  };
+
+  const clear = async (row: Snapshot) => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("commission_snapshots")
+      .update({ commission_override: null, override_note: null })
+      .eq("id", row.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Ajuste eliminado");
+    qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -209,6 +260,7 @@ function DetailTable({ items, showMonth = false }: { items: Snapshot[]; showMont
           <TableHead>Cliente</TableHead>
           <TableHead className="text-right">Facturado</TableHead>
           <TableHead className="text-right">Comisión</TableHead>
+          {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -221,13 +273,106 @@ function DetailTable({ items, showMonth = false }: { items: Snapshot[]; showMont
                 ? formatMoney(i.billed_amount, i.billed_currency ?? i.commission_currency)
                 : "Sin factura"}
             </TableCell>
-            <TableCell className="text-right font-mono">
-              {formatMoney(i.commission_value, i.commission_currency)}
+            <TableCell className="text-right">
+              {i.commission_override != null ? (
+                <div>
+                  <div className="font-mono font-semibold text-primary">
+                    {formatMoney(effectiveValue(i), i.commission_currency)}
+                  </div>
+                  <div className="text-xs text-muted-foreground line-through">
+                    {formatMoney(i.commission_value, i.commission_currency)}
+                  </div>
+                  <Badge variant="outline" className="mt-1 text-xs">
+                    ajustada
+                  </Badge>
+                  {i.override_note && <div className="text-xs text-muted-foreground mt-1">{i.override_note}</div>}
+                </div>
+              ) : (
+                <div className="font-mono">{formatMoney(i.commission_value, i.commission_currency)}</div>
+              )}
             </TableCell>
+            {isAdmin && (
+              <TableCell className="text-right">
+                <AdjustPopover row={i} saving={saving} onSave={save} onClear={clear} />
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function AdjustPopover({
+  row,
+  saving,
+  onSave,
+  onClear,
+}: {
+  row: Snapshot;
+  saving: boolean;
+  onSave: (row: Snapshot, value: string, note: string) => Promise<boolean>;
+  onClear: (row: Snapshot) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasOverride = row.commission_override != null;
+  const [value, setValue] = useState<string>(() => String(effectiveValue(row)));
+  const [note, setNote] = useState<string>(row.override_note ?? "");
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setValue(String(effectiveValue(row)));
+          setNote(row.override_note ?? "");
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          Ajustar
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64" align="end">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Comisión ajustada</Label>
+            <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Nota (ej: proporcional 10 días)</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              disabled={saving}
+              onClick={async () => {
+                const ok = await onSave(row, value, note);
+                if (ok) setOpen(false);
+              }}
+            >
+              Guardar
+            </Button>
+            {hasOverride && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={saving}
+                onClick={async () => {
+                  await onClear(row);
+                  setOpen(false);
+                }}
+              >
+                Quitar ajuste
+              </Button>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
