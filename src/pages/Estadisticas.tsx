@@ -29,7 +29,7 @@ const SUELDOS = ["sueldos", "sueldos extra"];
 const bucketOf = (cat: string) => {
   const c = cat.trim().toLowerCase();
   if (SUELDOS.includes(c)) return "Sueldos";
-  if (c === "comisiones") return "Comisiones";
+  if (c === "comisiones") return "Comisiones a ejecutivos";
   return "Gastos";
 };
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2, 160 60% 45%))", "hsl(var(--chart-3, 30 80% 55%))"];
@@ -132,7 +132,7 @@ function EstadisticasInner() {
 
   const compute = (inc: Inc[], exp: Exp[]) => {
     const ingresos = inc.reduce((s, i) => s + conv(i.amount, i.currency), 0);
-    const buckets: Record<string, number> = { Sueldos: 0, Comisiones: 0, Gastos: 0 };
+    const buckets: Record<string, number> = { Sueldos: 0, "Comisiones a ejecutivos": 0, Gastos: 0 };
     const cats: Record<string, number> = {};
     exp.forEach((e) => {
       const v = conv(e.amount, e.currency);
