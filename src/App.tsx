@@ -17,6 +17,7 @@ const Billing = lazyWithRetry(() => import("./pages/Billing"));
 const Employees = lazyWithRetry(() => import("./pages/Employees"));
 const Expenses = lazyWithRetry(() => import("./pages/Expenses"));
 const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
+const Estadisticas = lazyWithRetry(() => import("./pages/Estadisticas"));
 const Alerts = lazyWithRetry(() => import("./pages/Alerts"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const Prospecting = lazyWithRetry(() => import("./pages/Prospecting"));
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/empleados" element={<Employees />} />
               <Route path="/gastos" element={<Expenses />} />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/estadisticas" element={<Estadisticas />} />
               <Route path="/alertas" element={<Alerts />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/usuarios" element={<Usuarios />} />
