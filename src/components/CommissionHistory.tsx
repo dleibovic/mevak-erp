@@ -210,6 +210,23 @@ function PeriodGroupCard({
         <div className="flex flex-wrap justify-between items-center gap-3">
           <div>
             <h5 className="font-semibold">{label}</h5>
+            {paymentsByKey && months.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {months
+                  .map((m) => {
+                    const pays = list.filter(
+                      (i) => i.period_month === m && paymentsByKey.has(paymentKey(i.period_month, i.commission_currency || "ARS")),
+                    );
+                    const pay = pays.length
+                      ? paymentsByKey.get(paymentKey(pays[0].period_month, pays[0].commission_currency || "ARS"))
+                      : undefined;
+                    return pay
+                      ? `${monthLabel(m)}: Pagado (${paidByLabel(pay.paid_by)})`
+                      : `${monthLabel(m)}: Pendiente`;
+                  })
+                  .join(" · ")}
+              </p>
+            )}
             {sinFacturar > 0 && <p className="text-xs text-destructive">{sinFacturar} cliente(s) sin factura</p>}
           </div>
           <div className="flex items-center gap-4">
