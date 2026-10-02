@@ -585,6 +585,72 @@ function EstadisticasInner() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ajustes de cuenta corriente</CardTitle>
+              <CardDescription>Los montos van en ARS. "A favor de Darío" suma al saldo de Darío; "a favor de Meri" lo resta.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(adjustments as any[]).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Todavía no hay ajustes cargados.</p>
+              ) : (
+                <div className="max-h-64 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>A favor de</TableHead>
+                        <TableHead className="text-right">Monto (ARS)</TableHead>
+                        <TableHead />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(adjustments as any[]).map((a) => (
+                        <TableRow key={a.id}>
+                          <TableCell>{dateFmt(a.adjustment_date)}</TableCell>
+                          <TableCell>{a.concepto}</TableCell>
+                          <TableCell><Badge variant="outline">{a.in_favor_of === "dario" ? "Darío" : "Meri"}</Badge></TableCell>
+                          <TableCell className="text-right">{fmt(Number(a.amount), "ARS")}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => deleteAdjustment(a.id)} aria-label="Borrar ajuste">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 items-end">
+                <div className="space-y-1">
+                  <Label htmlFor="adj-fecha">Fecha</Label>
+                  <Input id="adj-fecha" type="date" value={adjDate} onChange={(e) => setAdjDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="adj-monto">Monto (ARS)</Label>
+                  <Input id="adj-monto" type="number" min="0" step="0.01" value={adjAmount} onChange={(e) => setAdjAmount(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>A favor de</Label>
+                  <Select value={adjFavor} onValueChange={(v) => setAdjFavor(v as Partner)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dario">Darío</SelectItem>
+                      <SelectItem value="maria">Meri</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="adj-concepto">Concepto</Label>
+                  <Input id="adj-concepto" value={adjConcepto} onChange={(e) => setAdjConcepto(e.target.value)} placeholder="Ej: Saldo inicial" />
+                </div>
+                <Button onClick={addAdjustment} disabled={adjSaving}>Agregar</Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="proy" className="space-y-4">
