@@ -579,7 +579,7 @@ function EstadisticasInner() {
                   <div className="text-2xl font-bold">{fmt(saldoTotal)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
                   <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
-                  <p className="text-xs text-muted-foreground">Incluye el saldo inicial (provisorio, a validar con Meri). El movimiento del período es transaccional; los ajustes se acumulan hasta el fin del período elegido.</p>
+                  <p className="text-xs text-muted-foreground">Incluye el saldo inicial (provisorio, a validar con Meri). El movimiento es transaccional dentro del rango elegido; los ajustes se acumulan hasta la fecha "Hasta".</p>
                 </div>
               </CardContent>
             </Card>
