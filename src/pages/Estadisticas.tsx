@@ -39,7 +39,14 @@ interface Exp { amount: number; currency: string; date: string; paid_by: string 
 const ym = (d: string) => d.slice(0, 7);
 
 export default function Estadisticas() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading, roleLoading } = useAuth();
+  if (loading || roleLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
   if (!isAdmin) return <Navigate to="/" replace />;
 
   const now = new Date();
