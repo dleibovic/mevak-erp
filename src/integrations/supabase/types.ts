@@ -619,12 +619,14 @@ export type Database = {
           country_id: string
           created_at: string
           discount_active: boolean
+          discount_amount: number | null
           discount_duration:
             | Database["public"]["Enums"]["discount_duration"]
             | null
           discount_ends_at: string | null
           discount_percentage: number | null
           discount_starts_at: string | null
+          discount_type: string
           fee_billing_mode: string
           fee_currency: string
           food_category_id: string | null
@@ -661,12 +663,14 @@ export type Database = {
           country_id: string
           created_at?: string
           discount_active?: boolean
+          discount_amount?: number | null
           discount_duration?:
             | Database["public"]["Enums"]["discount_duration"]
             | null
           discount_ends_at?: string | null
           discount_percentage?: number | null
           discount_starts_at?: string | null
+          discount_type?: string
           fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
@@ -705,12 +709,14 @@ export type Database = {
           country_id?: string
           created_at?: string
           discount_active?: boolean
+          discount_amount?: number | null
           discount_duration?:
             | Database["public"]["Enums"]["discount_duration"]
             | null
           discount_ends_at?: string | null
           discount_percentage?: number | null
           discount_starts_at?: string | null
+          discount_type?: string
           fee_billing_mode?: string
           fee_currency?: string
           food_category_id?: string | null
