@@ -25,6 +25,7 @@ export default function Employees() {
   const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("active");
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees", countryId],
@@ -39,6 +40,12 @@ export default function Employees() {
       return data;
     },
   });
+
+  const visibleEmployees = useMemo(
+    () => (employees as any[]).filter((e) =>
+      filterStatus === "all" ? true : filterStatus === "active" ? !!e.is_active : !e.is_active),
+    [employees, filterStatus],
+  );
 
   const del = useMutation({
     mutationFn: async (id: string) => {
