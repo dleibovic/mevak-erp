@@ -3654,6 +3654,7 @@ export type Database = {
       monthly_invoices: {
         Row: {
           amount: number
+          amount_paid: number
           billing_entity_id: string | null
           billing_user_id: string | null
           client_id: string
@@ -3680,6 +3681,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          amount_paid?: number
           billing_entity_id?: string | null
           billing_user_id?: string | null
           client_id: string
@@ -3708,6 +3710,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_paid?: number
           billing_entity_id?: string | null
           billing_user_id?: string | null
           client_id?: string
