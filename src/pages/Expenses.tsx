@@ -34,6 +34,10 @@ export default function Expenses() {
   const [tplEditing, setTplEditing] = useState<any>(null);
   const [localCountry, setLocalCountry] = useState<string | null>(null);
   const [month, setMonth] = useState<string>(currentMonthValue());
+  const [fFrom, setFFrom] = useState("");
+  const [fTo, setFTo] = useState("");
+  const [fCategory, setFCategory] = useState<string>("all");
+  const [fPaidBy, setFPaidBy] = useState<string>("all");
   const effectiveCountry = localCountry ?? countryId;
 
   const { data: expenses = [], isLoading } = useQuery({
