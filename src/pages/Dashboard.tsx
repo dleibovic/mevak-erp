@@ -9,6 +9,7 @@ import { TrendingUp, TrendingDown, Wallet, Users, ReceiptText, AlertTriangle } f
 import { format, parseISO, startOfMonth } from "date-fns";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 
+const invBalance = (i: any) => (Number(i.amount) || 0) - (Number(i.amount_paid) || 0);
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 70% 50%)"];
 
 export default function Dashboard() {
@@ -65,11 +66,11 @@ export default function Dashboard() {
       return Number(c.monthly_fee || 0) * branches * billingMultiplier(c.billing_frequency);
     };
     const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency && c.status === "active").reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
-    const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
+    const isOverdue = (i: any) => (i.status === "overdue" || ((i.status === "pending" || i.status === "invoiced") && i.due_date && new Date(i.due_date) < new Date())) && invBalance(i) > 0;
     if (activeCurrency) {
       const c = activeCurrency;
-      const income = sumByCurr(invoices.filter((i: any) => i.status === "paid" && i.currency === c))[c] ?? 0;
-      const overdue = sumByCurr(invoices.filter((i: any) => isOverdue(i) && i.currency === c))[c] ?? 0;
+      const income = sumByCurr(invoices.filter((i: any) => Number(i.amount_paid) > 0 && i.currency === c), "amount_paid")[c] ?? 0;
+      const overdue = invoices.filter((i: any) => isOverdue(i) && i.currency === c).reduce((a: number, i: any) => a + invBalance(i), 0) ?? 0;
       const totalBilling = sumClientFees(c);
       const exp = sumByCurr(expenses.filter((e: any) => e.currency === c))[c] ?? 0;
       const payroll = employees.reduce((acc: number, e: any) => {
@@ -85,8 +86,8 @@ export default function Dashboard() {
       ...expenses.map((e: any) => e.currency),
       ...employees.map((e: any) => e.salary_currency),
     ].filter(Boolean))).sort();
-    const paidByCurrency = sumByCurr(invoices.filter((i: any) => i.status === "paid"));
-    const overdueByCurrency = sumByCurr(invoices.filter(isOverdue));
+    const paidByCurrency = sumByCurr(invoices.filter((i: any) => Number(i.amount_paid) > 0), "amount_paid");
+    const overdueByCurrency = invoices.filter(isOverdue).reduce((acc: any, i: any) => { acc[i.currency] = (acc[i.currency] ?? 0) + invBalance(i); return acc; }, {});
     const expensesByCurrency = sumByCurr(expenses);
     const rows = currencies.map((currency) => {
       const payroll = employees.reduce((acc: number, e: any) => {
@@ -110,7 +111,7 @@ export default function Dashboard() {
       ...employees.map((e: any) => e.country_id),
       ...invoices.map((i: any) => i.client?.country_id),
     ].filter(Boolean))).sort((a: any, b: any) => countryName(a).localeCompare(countryName(b)));
-    const isOverdue = (i: any) => i.status === "overdue" || (i.status === "pending" && i.due_date && new Date(i.due_date) < new Date());
+    const isOverdue = (i: any) => (i.status === "overdue" || ((i.status === "pending" || i.status === "invoiced") && i.due_date && new Date(i.due_date) < new Date())) && invBalance(i) > 0;
 
     return countryIds.map((countryId: string) => {
       const countryClients = clients.filter((c: any) => c.country_id === countryId);
@@ -128,11 +129,11 @@ export default function Dashboard() {
           .filter((c: any) => c.fee_currency === currency && c.status === "active")
           .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * (c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1))) * billingMultiplier(c.billing_frequency), 0);
         const income = countryInvoices
-          .filter((i: any) => i.status === "paid" && i.currency === currency)
-          .reduce((acc: number, i: any) => acc + Number(i.amount || 0), 0);
+          .filter((i: any) => i.currency === currency)
+          .reduce((acc: number, i: any) => acc + Number(i.amount_paid || 0), 0);
         const overdue = countryInvoices
           .filter((i: any) => isOverdue(i) && i.currency === currency)
-          .reduce((acc: number, i: any) => acc + Number(i.amount || 0), 0);
+          .reduce((acc: number, i: any) => acc + invBalance(i), 0);
         const exp = countryExpenses
           .filter((e: any) => e.currency === currency)
           .reduce((acc: number, e: any) => acc + Number(e.amount || 0), 0);
@@ -151,10 +152,10 @@ export default function Dashboard() {
   const series = useMemo(() => {
     const map: Record<string, any> = {};
     const okCurr = (r: any) => !activeCurrency || r.currency === activeCurrency;
-    invoices.filter((i: any) => i.status === "paid" && i.paid_at && okCurr(i)).forEach((i: any) => {
+    invoices.filter((i: any) => Number(i.amount_paid) > 0 && i.paid_at && okCurr(i)).forEach((i: any) => {
       const k = format(startOfMonth(parseISO(i.paid_at)), "yyyy-MM");
       map[k] = map[k] ?? { month: k, ingresos: 0, gastos: 0 };
-      map[k].ingresos += Number(i.amount);
+      map[k].ingresos += Number(i.amount_paid);
     });
     expenses.filter(okCurr).forEach((e: any) => {
       const k = format(startOfMonth(parseISO(e.date)), "yyyy-MM");
@@ -175,9 +176,9 @@ export default function Dashboard() {
 
   const byClient = useMemo(() => {
     const map: Record<string, number> = {};
-    invoices.filter((i: any) => i.status === "paid" && (!activeCurrency || i.currency === activeCurrency)).forEach((i: any) => {
+    invoices.filter((i: any) => Number(i.amount_paid) > 0 && (!activeCurrency || i.currency === activeCurrency)).forEach((i: any) => {
       const k = i.client?.company_name ?? "—";
-      map[k] = (map[k] ?? 0) + Number(i.amount);
+      map[k] = (map[k] ?? 0) + Number(i.amount_paid);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
   }, [invoices, activeCurrency]);
