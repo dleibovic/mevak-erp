@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
@@ -52,6 +52,25 @@ export default function Expenses() {
       return data;
     },
   });
+
+  const { data: categories = [] } = useExpenseCategories();
+
+  const filtersActive = !!fFrom || !!fTo || fCategory !== "all" || fPaidBy !== "all";
+  const filteredExpenses = useMemo(() => {
+    return (expenses as any[]).filter((e) => {
+      if (fFrom && e.date < fFrom) return false;
+      if (fTo && e.date > fTo) return false;
+      if (fCategory !== "all" && e.category_id !== fCategory) return false;
+      if (fPaidBy !== "all" && e.paid_by !== fPaidBy) return false;
+      return true;
+    });
+  }, [expenses, fFrom, fTo, fCategory, fPaidBy]);
+
+  const filteredTotals = useMemo(() => {
+    const byCur: Record<string, number> = {};
+    filteredExpenses.forEach((e) => { byCur[e.currency] = (byCur[e.currency] ?? 0) + Number(e.amount ?? 0); });
+    return byCur;
+  }, [filteredExpenses]);
 
   const { data: templates = [], isLoading: loadingTpl } = useQuery({
     queryKey: ["expense_templates"],
