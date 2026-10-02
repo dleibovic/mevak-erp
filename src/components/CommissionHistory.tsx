@@ -38,6 +38,23 @@ type Snapshot = {
 type EmployeeOption = { key: string; id: string | null; name: string };
 type Grouping = "quarter" | "year";
 
+type CommissionPayment = {
+  id: string;
+  employee_id: string | null;
+  employee_name: string;
+  period_month: string;
+  amount: number;
+  currency: string;
+  paid_by: string;
+  paid_at: string;
+  expense_id: string | null;
+  note: string | null;
+};
+
+const paidByLabel = (v: string) => (v === "dario" ? "Darío" : v === "maria" ? "Meri" : v);
+
+const paymentKey = (period: string, currency: string) => `${period}|${currency}`;
+
 const effectiveValue = (i: { commission_override?: number | null; commission_value: number }) =>
   i.commission_override ?? i.commission_value;
 
@@ -175,9 +192,18 @@ export function CommissionHistory() {
 }
 
 /** Detalle por período de un grupo (trimestre/año), colapsable individualmente. */
-function PeriodGroupCard({ label, items }: { label: string; items: Snapshot[] }) {
+function PeriodGroupCard({
+  label,
+  items,
+  paymentsByKey,
+}: {
+  label: string;
+  items: Snapshot[];
+  paymentsByKey?: Map<string, CommissionPayment>;
+}) {
   const list = Array.isArray(items) ? items : [];
   const sinFacturar = list.filter((i) => !i.was_billed).length;
+  const months = Array.from(new Set(list.map((i) => i.period_month))).sort();
   return (
     <Collapsible>
       <Card className="p-4 bg-gradient-card border-border/60">
