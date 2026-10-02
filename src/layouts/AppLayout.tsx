@@ -15,7 +15,7 @@ const NAV = [
   { to: "/empleados", label: "Empleados", icon: UserCog, adminOnly: true },
   { to: "/gastos", label: "Gastos", icon: Wallet, financeOnly: true },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/estadisticas", label: "Estadísticas", icon: LineChartIcon, financeOnly: true },
+  { to: "/estadisticas", label: "Estadísticas", icon: LineChartIcon, adminOnly: true },
   { to: "/metricas-saas", label: "Métricas SaaS", icon: Activity },
   { to: "/churn", label: "Churn", icon: TrendingDown },
   { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
@@ -44,7 +44,7 @@ export default function AppLayout() {
       <aside className="hidden md:flex w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex-col">
         <div className="px-5 py-6">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-gradient-primary shadow-elevated" />
+            <img src="/logo-mevak.png" alt="Mevak" className="h-8 w-8 object-contain" />
             <div>
               <div className="font-semibold tracking-tight">Mevak</div>
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">ERP suite</div>

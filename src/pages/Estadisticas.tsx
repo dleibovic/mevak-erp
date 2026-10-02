@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,6 +39,9 @@ interface Exp { amount: number; currency: string; date: string; paid_by: string 
 const ym = (d: string) => d.slice(0, 7);
 
 export default function Estadisticas() {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/" replace />;
+
   const now = new Date();
   const [usdArs, setUsdArs] = useState(1545);
   const [eurUsd, setEurUsd] = useState(1.165);
