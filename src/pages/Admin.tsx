@@ -40,6 +40,7 @@ export default function Admin() {
           <TabsTrigger value="price_history">Historial de precios</TabsTrigger>
           <TabsTrigger value="users">Usuarios y roles</TabsTrigger>
           <TabsTrigger value="saas_metrics">Métricas SaaS</TabsTrigger>
+          <TabsTrigger value="notifications">Centro de notificaciones</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platforms"><PlatformsManager /></TabsContent>
@@ -49,6 +50,7 @@ export default function Admin() {
         <TabsContent value="price_history"><GlobalPriceHistory /></TabsContent>
         <TabsContent value="users"><UsersManager /></TabsContent>
         <TabsContent value="saas_metrics"><SaasMetricsConfig /></TabsContent>
+        <TabsContent value="notifications"><NotificationSettings /></TabsContent>
       </Tabs>
     </PageContainer>
   );
