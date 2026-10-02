@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { CountryFilterSelect } from "@/components/CountryFilterSelect";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -44,9 +45,11 @@ export default function AppLayout() {
       <aside className="hidden md:flex w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex-col">
         <div className="px-5 py-6">
           <div className="flex items-center gap-2">
-            <img src="/logo-mevak.png" alt="Mevak" className="h-8 w-8 object-contain" />
+            <span className="flex h-9 w-20 shrink-0 items-center justify-center rounded-md bg-primary px-2">
+              <img src="/logo-mevak.png" alt="Mevak" className="max-h-7 w-full object-contain" />
+            </span>
             <div>
-              <div className="font-semibold tracking-tight">Mevak</div>
+              <div className="font-semibold text-primary">Mevak</div>
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">ERP suite</div>
             </div>
           </div>
@@ -60,8 +63,8 @@ export default function AppLayout() {
               end={it.end}
               className={({ isActive }) => cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                 isActive
+                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
               )}
             >
@@ -89,6 +92,7 @@ export default function AppLayout() {
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Vista por país</span>
           <CountryFilterSelect />
           <NotificationsBell />
+          <ThemeToggle />
         </header>
         <div className="relative">
           <RouteErrorBoundary key={location.pathname}>

@@ -2,86 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mevak ERP — Minimal dark with warm amber accent */
+/* Mevak brand palette — semantic roles shared by every screen. */
 @layer base {
   :root {
-    /* Dark by default for the app */
-    --background: 220 14% 6%;
-    --foreground: 40 20% 96%;
-
-    --card: 220 14% 8%;
-    --card-foreground: 40 20% 96%;
-
-    --popover: 220 14% 8%;
-    --popover-foreground: 40 20% 96%;
-
-    --primary: 35 95% 60%;
-    --primary-foreground: 220 25% 8%;
-
-    --secondary: 220 12% 12%;
-    --secondary-foreground: 40 15% 92%;
-
-    --muted: 220 12% 11%;
-    --muted-foreground: 220 8% 60%;
-
-    --accent: 35 80% 55%;
-    --accent-foreground: 220 25% 8%;
-
-    --destructive: 0 75% 60%;
+    --background: 45 27% 94%;
+    --foreground: 256 12% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 256 12% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 256 12% 18%;
+    --primary: 243 61% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 245 32% 95%;
+    --secondary-foreground: 243 50% 35%;
+    --muted: 45 22% 91%;
+    --muted-foreground: 257 6% 43%;
+    --accent: 12 97% 44%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 75% 40%;
     --destructive-foreground: 0 0% 100%;
-
-    --success: 145 60% 48%;
+    --success: 152 56% 32%;
     --success-foreground: 0 0% 100%;
+    --warning: 37 82% 40%;
+    --warning-foreground: 0 0% 100%;
+    --border: 45 18% 87%;
+    --input: 45 18% 87%;
+    --ring: 243 61% 59%;
+    --radius: 0.875rem;
 
-    --warning: 42 95% 58%;
-    --warning-foreground: 220 25% 8%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 256 12% 18%;
+    --sidebar-primary: 243 61% 59%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 245 57% 94%;
+    --sidebar-accent-foreground: 243 50% 35%;
+    --sidebar-border: 45 18% 87%;
+    --sidebar-ring: 243 61% 59%;
 
-    --border: 220 12% 16%;
-    --input: 220 12% 14%;
-    --ring: 35 95% 60%;
+    --gradient-primary: linear-gradient(135deg, hsl(243 61% 59%), hsl(250 54% 49%));
+    --gradient-card: linear-gradient(180deg, hsl(var(--card)), hsl(245 30% 99%));
+    --gradient-glow: radial-gradient(60% 80% at 50% 0%, hsl(var(--primary) / 0.055), transparent 70%);
+    --shadow-elevated: 0 18px 44px -24px hsl(var(--primary) / 0.22);
+    --shadow-card: 0 1px 3px hsl(var(--foreground) / 0.04), 0 12px 32px -20px hsl(var(--foreground) / 0.11);
+  }
 
-    --radius: 0.6rem;
+  .dark {
+    --background: 248 17% 9%;
+    --foreground: 252 31% 94%;
+    --card: 250 18% 13%;
+    --card-foreground: 252 31% 94%;
+    --popover: 250 18% 13%;
+    --popover-foreground: 252 31% 94%;
+    --primary: 244 71% 69%;
+    --primary-foreground: 249 25% 10%;
+    --secondary: 250 19% 20%;
+    --secondary-foreground: 252 31% 94%;
+    --muted: 250 16% 19%;
+    --muted-foreground: 252 12% 67%;
+    --accent: 12 90% 56%;
+    --accent-foreground: 249 25% 10%;
+    --destructive: 5 78% 62%;
+    --destructive-foreground: 249 25% 10%;
+    --success: 152 52% 54%;
+    --success-foreground: 249 25% 10%;
+    --warning: 38 88% 61%;
+    --warning-foreground: 249 25% 10%;
+    --border: 251 16% 20%;
+    --input: 251 16% 20%;
+    --ring: 244 71% 69%;
 
-    --sidebar-background: 220 16% 5%;
-    --sidebar-foreground: 40 15% 88%;
-    --sidebar-primary: 35 95% 60%;
-    --sidebar-primary-foreground: 220 25% 8%;
-    --sidebar-accent: 220 12% 11%;
-    --sidebar-accent-foreground: 40 20% 96%;
-    --sidebar-border: 220 12% 12%;
-    --sidebar-ring: 35 95% 60%;
+    --sidebar-background: 250 18% 13%;
+    --sidebar-foreground: 252 31% 94%;
+    --sidebar-primary: 244 71% 69%;
+    --sidebar-primary-foreground: 249 25% 10%;
+    --sidebar-accent: 246 27% 25%;
+    --sidebar-accent-foreground: 250 74% 84%;
+    --sidebar-border: 251 16% 20%;
+    --sidebar-ring: 244 71% 69%;
 
-    /* Custom tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(35 95% 60%), hsl(20 90% 55%));
-    --gradient-card: linear-gradient(180deg, hsl(220 14% 9%), hsl(220 14% 7%));
-    --gradient-glow: radial-gradient(60% 80% at 50% 0%, hsl(35 95% 60% / 0.15), transparent 70%);
-    --shadow-elevated: 0 20px 50px -20px hsl(35 95% 50% / 0.25);
-    --shadow-card: 0 1px 0 hsl(220 12% 18%) inset, 0 8px 24px -12px hsl(0 0% 0% / 0.6);
+    --gradient-primary: linear-gradient(135deg, hsl(244 71% 69%), hsl(250 60% 56%));
+    --gradient-card: linear-gradient(180deg, hsl(var(--card)), hsl(250 18% 12%));
+    --gradient-glow: radial-gradient(60% 80% at 50% 0%, hsl(var(--primary) / 0.09), transparent 70%);
+    --shadow-elevated: 0 18px 44px -24px hsl(var(--primary) / 0.23);
+    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.12), 0 12px 32px -20px hsl(0 0% 0% / 0.45);
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  html, body, #root {
-    @apply h-full;
-  }
-  html {
-    -webkit-text-size-adjust: 100%;
-  }
+  * { @apply border-border; }
+  html, body, #root { @apply h-full; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "cv11", "ss01", "ss03";
+    @apply bg-background text-foreground font-sans antialiased;
     overflow-x: hidden;
     padding-bottom: env(safe-area-inset-bottom);
   }
-  input,
-  select,
-  textarea,
-  button {
-    font-size: 16px;
-  }
+  h1, h2, h3 { @apply font-display text-primary; }
+  input, select, textarea, button { font-size: 16px; }
 }
 
 @layer utilities {
@@ -97,14 +114,9 @@
   @media (max-width: 640px) {
     [role="dialog"] .grid-cols-2,
     [role="dialog"] .grid-cols-3,
-    [role="dialog"] .grid-cols-4 {
-      grid-template-columns: minmax(0, 1fr) !important;
-    }
-
+    [role="dialog"] .grid-cols-4 { grid-template-columns: minmax(0, 1fr) !important; }
     [role="dialog"] .col-span-2,
     [role="dialog"] .col-span-3,
-    [role="dialog"] .col-span-4 {
-      grid-column: auto !important;
-    }
+    [role="dialog"] .col-span-4 { grid-column: auto !important; }
   }
 }

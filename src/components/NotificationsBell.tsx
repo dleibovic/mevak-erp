@@ -84,7 +84,7 @@ export function NotificationsBell() {
                 if (!n.is_read) markRead.mutate(n.id);
                 if (n.link) { setOpen(false); navigate(n.link); }
               }}
-              className={`w-full text-left p-3 border-b last:border-0 hover:bg-accent transition-colors ${!n.is_read ? "bg-primary/5" : ""}`}
+              className={`w-full text-left p-3 border-b last:border-0 hover:bg-secondary transition-colors ${!n.is_read ? "bg-primary/5" : ""}`}
             >
               <div className="flex items-start gap-2">
                 {!n.is_read && <span className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />}
