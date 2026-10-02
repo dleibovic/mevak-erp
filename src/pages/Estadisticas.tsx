@@ -210,27 +210,24 @@ function EstadisticasInner() {
   // Cuenta corriente
   const cc = useMemo(() => {
     const r = { dario: { cobro: 0, aporto: 0 }, maria: { cobro: 0, aporto: 0 }, sinAsignar: 0 };
-    fInc.forEach((i) => {
+    ccInc.forEach((i) => {
       const p = partnerOfChannel(i.payment_channel);
       const v = conv(i.amount, i.currency);
       if (p) r[p].cobro += v; else r.sinAsignar += v;
     });
-    fExp.forEach((e) => {
+    ccExp.forEach((e) => {
       if (e.paid_by === "dario" || e.paid_by === "maria") r[e.paid_by].aporto += conv(e.amount, e.currency);
     });
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fInc, fExp, cur, usdArs, eurUsd, countryId]);
+  }, [ccInc, ccExp, cur, usdArs, eurUsd, countryId, ccFrom, ccTo]);
   const posD = cc.dario.aporto - cc.dario.cobro;
   const posM = cc.maria.aporto - cc.maria.cobro;
   const saldoD = (posD - posM) / 2;
 
-  // Saldo inicial y ajustes de cuenta corriente (acumulados hasta fin del período)
-  const endOfPeriod = month === "all"
-    ? `${year}-12-31`
-    : `${year}-${String(Number(month)).padStart(2, "0")}-${String(new Date(Number(year), Number(month), 0).getDate()).padStart(2, "0")}`;
+  // Saldo inicial y ajustes de cuenta corriente (acumulados hasta la fecha "Hasta" de la CC)
   const adjSigned = (a: any) => (a.in_favor_of === "dario" ? 1 : -1) * conv(Number(a.amount), "ARS");
-  const ajustesAplicables = (adjustments as any[]).filter((a) => a.adjustment_date <= endOfPeriod);
+  const ajustesAplicables = (adjustments as any[]).filter((a) => !ccTo || a.adjustment_date <= ccTo);
   const ajusteTotal = ajustesAplicables.reduce((s, a) => s + adjSigned(a), 0);
   const saldoTotal = saldoD + ajusteTotal;
 
