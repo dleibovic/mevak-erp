@@ -38,6 +38,23 @@ type Snapshot = {
 type EmployeeOption = { key: string; id: string | null; name: string };
 type Grouping = "quarter" | "year";
 
+type CommissionPayment = {
+  id: string;
+  employee_id: string | null;
+  employee_name: string;
+  period_month: string;
+  amount: number;
+  currency: string;
+  paid_by: string;
+  paid_at: string;
+  expense_id: string | null;
+  note: string | null;
+};
+
+const paidByLabel = (v: string) => (v === "dario" ? "Darío" : v === "maria" ? "Meri" : v);
+
+const paymentKey = (period: string, currency: string) => `${period}|${currency}`;
+
 const effectiveValue = (i: { commission_override?: number | null; commission_value: number }) =>
   i.commission_override ?? i.commission_value;
 
@@ -175,15 +192,41 @@ export function CommissionHistory() {
 }
 
 /** Detalle por período de un grupo (trimestre/año), colapsable individualmente. */
-function PeriodGroupCard({ label, items }: { label: string; items: Snapshot[] }) {
+function PeriodGroupCard({
+  label,
+  items,
+  paymentsByKey,
+}: {
+  label: string;
+  items: Snapshot[];
+  paymentsByKey?: Map<string, CommissionPayment>;
+}) {
   const list = Array.isArray(items) ? items : [];
   const sinFacturar = list.filter((i) => !i.was_billed).length;
+  const months = Array.from(new Set(list.map((i) => i.period_month))).sort();
   return (
     <Collapsible>
       <Card className="p-4 bg-gradient-card border-border/60">
         <div className="flex flex-wrap justify-between items-center gap-3">
           <div>
             <h5 className="font-semibold">{label}</h5>
+            {paymentsByKey && months.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {months
+                  .map((m) => {
+                    const pays = list.filter(
+                      (i) => i.period_month === m && paymentsByKey.has(paymentKey(i.period_month, i.commission_currency || "ARS")),
+                    );
+                    const pay = pays.length
+                      ? paymentsByKey.get(paymentKey(pays[0].period_month, pays[0].commission_currency || "ARS"))
+                      : undefined;
+                    return pay
+                      ? `${monthLabel(m)}: Pagado (${paidByLabel(pay.paid_by)})`
+                      : `${monthLabel(m)}: Pendiente`;
+                  })
+                  .join(" · ")}
+              </p>
+            )}
             {sinFacturar > 0 && <p className="text-xs text-destructive">{sinFacturar} cliente(s) sin factura</p>}
           </div>
           <div className="flex items-center gap-4">
@@ -389,7 +432,7 @@ function EmployeeCommissionDetail({
   onBack: () => void;
 }) {
   const qc = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canEditAdminFinance } = useAuth();
   const [month, setMonth] = useState<string>(ALL_MONTHS);
   const [grouping, setGrouping] = useState<Grouping>("quarter");
   const thisMonth = currentMonthValue();
@@ -407,6 +450,22 @@ function EmployeeCommissionDetail({
       return (Array.isArray(data) ? data : []) as unknown as Snapshot[];
     },
   });
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ["commission-payments", employee.key],
+    enabled: !!employee.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("commission_payments").select("*").eq("employee_id", employee.id);
+      if (error) throw error;
+      return (data ?? []) as CommissionPayment[];
+    },
+  });
+
+  const paymentsByKey = useMemo(() => {
+    const map = new Map<string, CommissionPayment>();
+    for (const p of payments) map.set(paymentKey(p.period_month, p.currency || "ARS"), p);
+    return map;
+  }, [payments]);
 
   const rows: Snapshot[] = Array.isArray(historyRows) ? historyRows : [];
 
@@ -510,15 +569,165 @@ function EmployeeCommissionDetail({
       ) : month !== ALL_MONTHS ? (
         <Card className="p-5 bg-gradient-card border-border/60">
           <h4 className="font-semibold capitalize mb-3">{monthLabel(month)}</h4>
+          {canEditAdminFinance && employee.id && (
+            <MonthPayments
+              month={month}
+              rows={rows}
+              employee={employee}
+              paymentsByKey={paymentsByKey}
+            />
+          )}
           <DetailTable items={rows} />
         </Card>
       ) : (
         <div className="space-y-3">
           {periodGroups.map((g) => (
-            <PeriodGroupCard key={g.label} label={g.label} items={g.items} />
+            <PeriodGroupCard key={g.label} label={g.label} items={g.items} paymentsByKey={paymentsByKey} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/** Estado de pago de comisiones del mes, por moneda (solo vista de un mes). */
+function MonthPayments({
+  month,
+  rows,
+  employee,
+  paymentsByKey,
+}: {
+  month: string;
+  rows: Snapshot[];
+  employee: EmployeeOption;
+  paymentsByKey: Map<string, CommissionPayment>;
+}) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const billed = rows.filter((r) => r.was_billed);
+  const totals = totalsByCurrency(billed);
+  if (totals.length === 0) return null;
+
+  const undo = async (paymentId: string) => {
+    setBusy(true);
+    const { error } = await supabase.rpc("undo_commission_payment", { _payment_id: paymentId });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Pago deshecho");
+    qc.invalidateQueries({ queryKey: ["commission-payments"] });
+    qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+  };
+
+  return (
+    <div className="mb-4 space-y-2 rounded-md border border-border/60 p-3">
+      {totals.map(([cur, total]) => {
+        const payment = paymentsByKey.get(paymentKey(month, cur));
+        return (
+          <div key={cur} className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm">
+              A pagar: <span className="font-mono font-semibold text-primary">{formatMoney(total, cur)}</span>
+            </div>
+            {payment ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  Pagado por {paidByLabel(payment.paid_by)} · {new Date(payment.paid_at).toLocaleDateString("es-AR")}
+                </Badge>
+                <Button variant="ghost" size="sm" disabled={busy} onClick={() => undo(payment.id)}>
+                  Deshacer
+                </Button>
+              </div>
+            ) : (
+              <PayPopover
+                disabled={busy}
+                onConfirm={async (paidBy, note) => {
+                  setBusy(true);
+                  const { error } = await supabase.rpc("pay_commission_for_employee_month", {
+                    _employee_id: employee.id,
+                    _period: month,
+                    _currency: cur,
+                    _paid_by: paidBy,
+                    _note: note || null,
+                  });
+                  setBusy(false);
+                  if (error) {
+                    toast.error(error.message);
+                    return false;
+                  }
+                  toast.success("Comisión marcada como pagada");
+                  qc.invalidateQueries({ queryKey: ["commission-payments"] });
+                  qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+                  return true;
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PayPopover({
+  disabled,
+  onConfirm,
+}: {
+  disabled: boolean;
+  onConfirm: (paidBy: "dario" | "maria", note: string) => Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [paidBy, setPaidBy] = useState<string>("");
+  const [note, setNote] = useState("");
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setPaidBy("");
+          setNote("");
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" disabled={disabled}>
+          Marcar como pagado
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64" align="end">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Pagado por</Label>
+            <Select value={paidBy} onValueChange={setPaidBy}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Elegí quién pagó" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dario">Darío</SelectItem>
+                <SelectItem value="maria">Meri</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Nota (opcional)</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <Button
+            size="sm"
+            disabled={disabled || !paidBy}
+            onClick={async () => {
+              const ok = await onConfirm(paidBy as "dario" | "maria", note.trim());
+              if (ok) setOpen(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
