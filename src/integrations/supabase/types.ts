@@ -776,6 +776,59 @@ export type Database = {
           },
         ]
       }
+      commission_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          employee_id: string
+          employee_name: string
+          expense_id: string | null
+          id: string
+          note: string | null
+          paid_at: string
+          paid_by: Database["public"]["Enums"]["collector"]
+          period_month: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency: string
+          employee_id: string
+          employee_name: string
+          expense_id?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string
+          paid_by: Database["public"]["Enums"]["collector"]
+          period_month: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          employee_id?: string
+          employee_name?: string
+          expense_id?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string
+          paid_by?: Database["public"]["Enums"]["collector"]
+          period_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_payments_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_snapshots: {
         Row: {
           billed_amount: number | null
@@ -5495,6 +5548,16 @@ export type Database = {
         }
         Returns: string
       }
+      pay_commission_for_employee_month: {
+        Args: {
+          _currency: string
+          _employee_id: string
+          _note?: string
+          _paid_by: Database["public"]["Enums"]["collector"]
+          _period: string
+        }
+        Returns: string
+      }
       prorated_mrr: {
         Args: {
           _activated_at: string
@@ -5514,6 +5577,10 @@ export type Database = {
       to_usd: {
         Args: { _amount: number; _currency: string; _period_month: string }
         Returns: number
+      }
+      undo_commission_payment: {
+        Args: { _payment_id: string }
+        Returns: undefined
       }
       upsert_exchange_rate_override: {
         Args: {
