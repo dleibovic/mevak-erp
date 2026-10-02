@@ -25,6 +25,7 @@ export default function Employees() {
   const { countryId } = useCountryFilter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("active");
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees", countryId],
@@ -39,6 +40,12 @@ export default function Employees() {
       return data;
     },
   });
+
+  const visibleEmployees = useMemo(
+    () => (employees as any[]).filter((e) =>
+      filterStatus === "all" ? true : filterStatus === "active" ? !!e.is_active : !e.is_active),
+    [employees, filterStatus],
+  );
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -60,11 +67,21 @@ export default function Employees() {
         </TabsList>
 
         <TabsContent value="equipo">
+          <div className="mb-4 flex items-center gap-2">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
       <div className="grid md:grid-cols-2 gap-4">
 
         {isLoading ? <p className="text-muted-foreground">Cargando...</p> :
-          employees.length === 0 ? <EmptyState title="Sin empleados" /> :
-          employees.map((emp: any) => {
+          visibleEmployees.length === 0 ? <EmptyState title="Sin empleados" /> :
+          visibleEmployees.map((emp: any) => {
             const totalComm = emp.commissions.reduce((acc: number, c: any) => acc + Number(c.commission_value), 0);
             const total = Number(emp.base_salary || 0) + totalComm;
             return (
