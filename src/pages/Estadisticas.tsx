@@ -529,11 +529,11 @@ function EstadisticasInner() {
                   </TableBody>
                 </Table>
                 <div className="mt-4 rounded-md border p-4 space-y-1">
-                  <div className="text-sm text-muted-foreground">Saldo del período a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
+                  <div className="text-sm text-muted-foreground">Saldo acumulado a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
                   <div className="text-2xl font-bold">{fmt(saldoD)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoD, other), other)}</div>
                   <p className="text-sm">
-                    {Math.abs(saldoD) < 0.5 ? "Están a mano en este período."
+                    {Math.abs(saldoD) < 0.5 ? "Están a mano en este acumulado."
                       : saldoD > 0 ? `Positivo: Meri le debe ${fmt(saldoD)} a Darío.`
                       : `Negativo: Darío le debe ${fmt(-saldoD)} a Meri.`}
                   </p>
