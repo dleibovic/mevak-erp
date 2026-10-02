@@ -55,6 +55,8 @@ export default function Estadisticas() {
 }
 
 function EstadisticasInner() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const now = new Date();
   const [usdArs, setUsdArs] = useState(1545);
   const [eurUsd, setEurUsd] = useState(1.165);
@@ -127,6 +129,15 @@ function EstadisticasInner() {
     },
   });
   const [detail, setDetail] = useState<null | "ingresos" | "egresos" | "deudaPeriodo" | "deudaAcum">(null);
+  const { data: adjustments = [] } = useQuery({
+    queryKey: ["cc-adjustments"],
+    queryFn: async () => (await supabase.from("cc_adjustments").select("*").order("adjustment_date")).data ?? [],
+  });
+  const [adjDate, setAdjDate] = useState("");
+  const [adjAmount, setAdjAmount] = useState("");
+  const [adjFavor, setAdjFavor] = useState<Partner>("dario");
+  const [adjConcepto, setAdjConcepto] = useState("");
+  const [adjSaving, setAdjSaving] = useState(false);
   const cName = (id: string | null) => (id ? countryNames[id] ?? "—" : "—");
   const perFmt = (d: string | null) => {
     if (!d) return "—";
