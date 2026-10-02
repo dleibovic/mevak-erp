@@ -138,6 +138,9 @@ function EstadisticasInner() {
   const [adjFavor, setAdjFavor] = useState<Partner>("dario");
   const [adjConcepto, setAdjConcepto] = useState("");
   const [adjSaving, setAdjSaving] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [ccFrom, setCcFrom] = useState("");   // vacío = desde el inicio
+  const [ccTo, setCcTo] = useState(todayStr);
   const cName = (id: string | null) => (id ? countryNames[id] ?? "—" : "—");
   const perFmt = (d: string | null) => {
     if (!d) return "—";
@@ -189,6 +192,9 @@ function EstadisticasInner() {
   const matchCountry = (id: string | null) => !countryId || id === countryId;
   const fInc = incomes.filter((i) => inPeriod(i.period_month, year, month) && matchCountry(i.country_id));
   const fExp = expenses.filter((e) => inPeriod(e.date, year, month) && matchCountry(e.country_id));
+  const inCcRange = (d: string | null) => !!d && (!ccFrom || d >= ccFrom) && (!ccTo || d <= ccTo);
+  const ccInc = incomes.filter((i) => matchCountry(i.country_id) && inCcRange(i.period_month));
+  const ccExp = expenses.filter((e) => matchCountry(e.country_id) && inCcRange(e.date));
   const sum = compute(fInc, fExp);
   const mInc = incomes.filter((i) => ym(i.period_month ?? "") === curYm && matchCountry(i.country_id));
   const mExp = expenses.filter((e) => ym(e.date ?? "") === curYm && matchCountry(e.country_id));
