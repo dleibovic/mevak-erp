@@ -569,12 +569,20 @@ function EmployeeCommissionDetail({
       ) : month !== ALL_MONTHS ? (
         <Card className="p-5 bg-gradient-card border-border/60">
           <h4 className="font-semibold capitalize mb-3">{monthLabel(month)}</h4>
+          {canEditAdminFinance && employee.id && (
+            <MonthPayments
+              month={month}
+              rows={rows}
+              employee={employee}
+              paymentsByKey={paymentsByKey}
+            />
+          )}
           <DetailTable items={rows} />
         </Card>
       ) : (
         <div className="space-y-3">
           {periodGroups.map((g) => (
-            <PeriodGroupCard key={g.label} label={g.label} items={g.items} />
+            <PeriodGroupCard key={g.label} label={g.label} items={g.items} paymentsByKey={paymentsByKey} />
           ))}
         </div>
       )}
