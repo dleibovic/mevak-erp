@@ -91,6 +91,21 @@ function EstadisticasInner() {
       })) as Exp[];
     },
   });
+  const { data: unpaid = [] } = useQuery({
+    queryKey: ["estadisticas-unpaid"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("monthly_invoices")
+        .select("amount, currency, period_month, status, clients(country_id)")
+        .neq("status", "paid")
+        .is("voided_at", null);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        amount: Number(r.amount) || 0, currency: r.currency ?? "ARS",
+        period_month: r.period_month, country_id: r.clients?.country_id ?? null,
+      }));
+    },
+  });
 
   const toUsd = (a: number, c: string) => (c === "USD" ? a : c === "EUR" ? a * eurUsd : a / (usdArs || 1));
   const conv = (a: number, c: string, target: Cur = cur) => {
@@ -136,6 +151,13 @@ function EstadisticasInner() {
   const mInc = incomes.filter((i) => ym(i.period_month ?? "") === curYm && matchCountry(i.country_id));
   const mExp = expenses.filter((e) => ym(e.date ?? "") === curYm && matchCountry(e.country_id));
   const mSum = compute(mInc, mExp);
+
+  const deudaPeriodo = unpaid
+    .filter((u: any) => inPeriod(u.period_month, year, month) && matchCountry(u.country_id))
+    .reduce((s: number, u: any) => s + conv(u.amount, u.currency), 0);
+  const deudaAcum = unpaid
+    .filter((u: any) => matchCountry(u.country_id))
+    .reduce((s: number, u: any) => s + conv(u.amount, u.currency), 0);
 
   // Cuenta corriente
   const cc = useMemo(() => {
@@ -294,6 +316,10 @@ function EstadisticasInner() {
 
         <TabsContent value="resumen" className="space-y-4">
           <KpiGrid s={sum} />
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <Kpi title="Deuda del período (a cobrar)" value={deudaPeriodo} />
+            <Kpi title="Deuda acumulada (a cobrar)" value={deudaAcum} />
+          </div>
           <Card>
             <CardContent className="pt-6 text-sm">
               En <b>{periodLabel(year, month)}</b> cobraste <b>{fmt(sum.ingresos)}</b>, gastaste <b>{fmt(sum.egresos)}</b>, ganancia neta{" "}
