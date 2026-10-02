@@ -1,4 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CountryFilterSelect } from "@/components/CountryFilterSelect";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/PageShell";
@@ -17,10 +20,27 @@ export default function Alerts() {
   const { isAdmin, isAdministracion } = useAuth();
   const canSeeUnbilled = isAdmin || isAdministracion;
   const period = periodMonth();
+  const { countryId } = useCountryFilter();
+  const [execId, setExecId] = useState<string>("all");
+  const today = new Date().toISOString().slice(0, 10);
+  const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  const { data: execOpts = [] } = useQuery({
+    queryKey: ["alerts-exec-opts"],
+    queryFn: async () => (await supabase.from("employees").select("id, full_name").order("full_name")).data ?? [],
+  });
+  const clientOk = (c: any) =>
+    !!c && (!countryId || c.country_id === countryId) && (execId === "all" || c.assigned_executive_id === execId);
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ["alerts-invoices"],
-    queryFn: async () => (await supabase.from("invoices").select("*, client:clients(company_name)").neq("status", "paid").order("due_date")).data ?? [],
+    queryKey: ["alerts-monthly-invoices-open"],
+    queryFn: async () =>
+      (await supabase
+        .from("monthly_invoices")
+        .select("*, client:clients(company_name, country_id, assigned_executive_id, status)")
+        .neq("status", "paid")
+        .is("voided_at", null)
+        .order("due_date")).data ?? [],
   });
   const { data: expenses = [] } = useQuery({
     queryKey: ["alerts-expenses"],
@@ -33,7 +53,7 @@ export default function Alerts() {
     queryFn: async () =>
       (await supabase
         .from("client_executive_commission")
-        .select("client_id, client:clients(company_name, status), employee:employees(full_name)")).data ?? [],
+        .select("client_id, employee_id, client:clients(company_name, status, country_id, assigned_executive_id), employee:employees(full_name)")).data ?? [],
   });
 
   const { data: periodInvoices = [] } = useQuery({
@@ -47,19 +67,36 @@ export default function Alerts() {
     if (!canSeeUnbilled) return [];
     const billed = new Set(periodInvoices.map((i: any) => i.client_id));
     return assignments
-      .filter((a: any) => a.client && a.client.status !== "churned" && !billed.has(a.client_id))
+      .filter((a: any) => a.client && a.client.status !== "churned" && !billed.has(a.client_id)
+        && (!countryId || a.client.country_id === countryId)
+        && (execId === "all" || a.employee_id === execId || a.client.assigned_executive_id === execId))
       .sort((a: any, b: any) =>
         (a.employee?.full_name ?? "").localeCompare(b.employee?.full_name ?? "") ||
         (a.client?.company_name ?? "").localeCompare(b.client?.company_name ?? ""));
-  }, [assignments, periodInvoices, canSeeUnbilled]);
+  }, [assignments, periodInvoices, canSeeUnbilled, countryId, execId]);
 
-  const overdue = useMemo(() => invoices.filter((i: any) => i.status === "overdue"), [invoices]);
-  const upcoming = useMemo(() => invoices.filter((i: any) => i.status === "pending" && daysOverdue(i.due_date) >= -7), [invoices]);
+  // Vencidas = overdue OR (pending y due_date < hoy)
+  const overdue = useMemo(() => invoices.filter((i: any) => clientOk(i.client) &&
+    (i.status === "overdue" || (i.status === "pending" && i.due_date && i.due_date < today))), [invoices, countryId, execId, today]);
+  // Próximos = pending/invoiced con due_date entre hoy y hoy+7
+  const upcoming = useMemo(() => invoices.filter((i: any) => clientOk(i.client) &&
+    (i.status === "pending" || i.status === "invoiced") && i.due_date && i.due_date >= today && i.due_date <= in7), [invoices, countryId, execId, today, in7]);
 
 
   return (
     <PageContainer>
       <PageHeader title="Centro de alertas" description="Vencimientos, recordatorios y avisos clave" />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <CountryFilterSelect />
+        <Select value={execId} onValueChange={setExecId}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los ejecutivos</SelectItem>
+            {(execOpts as any[]).map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card className="p-5 bg-gradient-card border-border/60">
@@ -76,7 +113,7 @@ export default function Alerts() {
                     <div className="text-xs text-muted-foreground">Vence: {fmtDate(i.due_date)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono">{formatMoney(i.amount, i.currency)}</div>
+                    <div className="font-mono">{formatMoney(i.amount, i.currency)} <span className="text-xs text-muted-foreground">{i.currency}</span></div>
                     <Badge variant="destructive" className="mt-1">{daysOverdue(i.due_date)} días</Badge>
                   </div>
                 </div>
@@ -98,7 +135,7 @@ export default function Alerts() {
                     <div className="font-medium">{i.client?.company_name}</div>
                     <div className="text-xs text-muted-foreground">{fmtDate(i.due_date)}</div>
                   </div>
-                  <div className="font-mono">{formatMoney(i.amount, i.currency)}</div>
+                  <div className="font-mono">{formatMoney(i.amount, i.currency)} <span className="text-xs text-muted-foreground">{i.currency}</span></div>
                 </div>
               ))}
             </div>

@@ -13,7 +13,32 @@ import {
 import { formatMoney } from "@/lib/format";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { MonthFilter, currentMonthValue, monthLabel, monthRange } from "@/components/MonthFilter";
-import { buildRateIndex, rateForMonth, toUsd as toUsdRate, monthsList, type RateRow } from "@/lib/monthlyRates";
+import { buildRateIndex, rateForMonth, monthsList, type RateRow, type RateIndex } from "@/lib/monthlyRates";
+
+/**
+ * Convierte a USD según la moneda PROPIA del monto, con la cotización del mes
+ * (fallback a la cotización anterior más cercana; nunca descarta el monto).
+ * - ARS (y otras locales): rate = moneda local por 1 USD → usd = amount / rate
+ * - EUR: rate = EUR→USD (~1.165) → usd = amount * rate
+ * - USD: usd = amount
+ */
+function toUsdByCurrency(index: RateIndex, amount: number, currency: string | null | undefined, dateOrMonth: string | Date): number {
+  const cur = (currency || "ARS").toUpperCase();
+  const a = Number(amount) || 0;
+  if (cur === "USD") return a;
+  const month = (typeof dateOrMonth === "string" ? dateOrMonth : dateOrMonth.toISOString()).slice(0, 7);
+  const { rate } = rateForMonth(index, cur, month);
+  if (!rate) return 0;
+  return cur === "EUR" ? a * rate : a / rate;
+}
+
+function useRateIndex() {
+  const { data: rates = [] } = useQuery({
+    queryKey: ["an-rates"],
+    queryFn: async () => ((await supabase.from("exchange_rates").select("base_currency, rate, rate_date").eq("quote_currency", "USD")).data ?? []) as RateRow[],
+  });
+  return useMemo(() => buildRateIndex(rates as RateRow[]), [rates]);
+}
 
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 60% 45%)", "hsl(310 65% 60%)", "hsl(220 70% 60%)"];
 
@@ -39,6 +64,23 @@ const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep"
 export default function Analytics() {
   const { countryId, current } = useCountryFilter();
   const [month, setMonth] = useState<string>(currentMonthValue());
+  const [execId, setExecId] = useState<string>("all");
+  const [clientId, setClientId] = useState<string>("all");
+
+  const { data: execOpts = [] } = useQuery({
+    queryKey: ["an-exec-opts"],
+    queryFn: async () => (await supabase.from("employees").select("id, full_name").order("full_name")).data ?? [],
+  });
+  const { data: clientOpts = [] } = useQuery({
+    queryKey: ["an-client-opts", countryId, execId],
+    queryFn: async () => {
+      let q = supabase.from("clients").select("id, company_name, country_id, assigned_executive_id").order("company_name");
+      if (countryId) q = q.eq("country_id", countryId);
+      if (execId !== "all") q = q.eq("assigned_executive_id", execId);
+      return (await q).data ?? [];
+    },
+  });
+  const filters = { execId: execId === "all" ? null : execId, clientId: clientId === "all" ? null : clientId };
 
   return (
     <PageContainer>
@@ -48,14 +90,34 @@ export default function Analytics() {
         actions={<MonthFilter value={month} onChange={setMonth} />}
       />
 
+      <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-2">
+        <Select value={execId} onValueChange={(v) => { setExecId(v); setClientId("all"); }}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los ejecutivos</SelectItem>
+            {(execOpts as any[]).map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={clientId} onValueChange={setClientId}>
+          <SelectTrigger className="w-[220px]"><SelectValue placeholder="Cliente" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los clientes</SelectItem>
+            {(clientOpts as any[]).map((c) => <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {(filters.execId || filters.clientId) && (
+          <span className="text-xs text-muted-foreground">Ejecutivo/cliente filtran ingresos y clientes; egresos son de la empresa y no se filtran.</span>
+        )}
+      </Card>
+
       <Tabs defaultValue="admin" className="w-full">
         <TabsList>
           <TabsTrigger value="admin">Administración</TabsTrigger>
           <TabsTrigger value="ops">Plataformas y ejecutivos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="admin"><AdminDashboard countryId={countryId} month={month} /></TabsContent>
-        <TabsContent value="ops"><OpsDashboard countryId={countryId} /></TabsContent>
+        <TabsContent value="admin"><AdminDashboard countryId={countryId} month={month} execId={filters.execId} clientId={filters.clientId} /></TabsContent>
+        <TabsContent value="ops"><OpsDashboard countryId={countryId} execId={filters.execId} clientId={filters.clientId} /></TabsContent>
       </Tabs>
     </PageContainer>
   );
@@ -63,7 +125,9 @@ export default function Analytics() {
 
 /* ---------- Administración (todo consolidado en USD por cotización mensual) ---------- */
 
-function AdminDashboard({ countryId, month }: { countryId: string | null; month: string }) {
+type DashProps = { countryId: string | null; execId: string | null; clientId: string | null };
+
+function AdminDashboard({ countryId, month, execId, clientId }: DashProps & { month: string }) {
   const now = new Date();
   const [period, setPeriod] = useState<Period>("year");
   const [year, setYear] = useState<number>(now.getFullYear());
@@ -80,10 +144,10 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
 
   // Data
   const { data: invoices = [] } = useQuery({
-    queryKey: ["an-invoices", countryId, month],
+    queryKey: ["an-monthly-invoices", countryId, month],
     queryFn: async () => {
-      let q = supabase.from("invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency)").is("voided_at", null);
-      if (mRange) q = q.gte("due_date", mRange.start).lt("due_date", mRange.end);
+      let q = supabase.from("monthly_invoices").select("*, client:clients(id, company_name, country_id, assigned_executive_id, monthly_fee, fee_currency, status)").is("voided_at", null);
+      if (mRange) q = q.gte("period_month", mRange.start).lt("period_month", mRange.end);
       return (await q).data ?? [];
     },
   });
@@ -109,17 +173,25 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
   });
   const { data: clients = [] } = useQuery({
     queryKey: ["an-clients", countryId],
-    queryFn: async () => (await supabase.from("clients").select("id, company_name, country_id, monthly_fee, fee_currency, status")).data ?? [],
+    queryFn: async () => (await supabase.from("clients").select("id, company_name, country_id, monthly_fee, fee_currency, status, assigned_executive_id")).data ?? [],
   });
-  const { data: rates = [] } = useQuery({
-    queryKey: ["an-rates"],
-    queryFn: async () => ((await supabase.from("exchange_rates").select("base_currency, rate, rate_date")).data ?? []) as RateRow[],
-  });
+  const rateIndex = useRateIndex();
+  const usd = (amount: number, currency: string, dateOrMonth: string | Date) => toUsdByCurrency(rateIndex, amount, currency, dateOrMonth);
+  // Fecha para valuar/ubicar una factura: su mes de facturación (period_month).
+  // "Ingresos" = criterio DEVENGADO: suma de facturas no anuladas en estado paid + pending + invoiced + overdue
+  // del período (por period_month), cada una convertida a USD según su propia moneda.
+  const invValDate = (i: any) => i.period_month;
+  const invInFilters = (i: any) =>
+    (!execId || i.client?.assigned_executive_id === execId) && (!clientId || i.client_id === clientId);
 
-  const rateIndex = useMemo(() => buildRateIndex(rates as RateRow[]), [rates]);
-  const usd = (amount: number, currency: string, dateOrMonth: string | Date) => toUsdRate(rateIndex, amount, currency, dateOrMonth);
-  // Fecha para valuar una factura: la de PAGO (collected_at) si ya se cobró; si no, el vencimiento.
-  const invValDate = (i: any) => i.collected_at ?? i.due_date;
+  // Transacciones: no tienen país propio → se filtran vía la referencia (cliente o factura).
+  const countryByClient = useMemo(() => new Map((clients as any[]).map((c) => [c.id, c.country_id])), [clients]);
+  const countryByInvoice = useMemo(() => new Map((invoices as any[]).map((i) => [i.id, i.client?.country_id])), [invoices]);
+  const txInCountry = (t: any) => {
+    if (!countryId) return true;
+    const cid = countryByClient.get(t.reference_id) ?? countryByInvoice.get(t.reference_id);
+    return cid === countryId;
+  };
 
   const inCountry = (cid?: string | null) => !countryId || cid === countryId;
   const inRange = (d: string | Date) => { const x = new Date(d); return x >= start && x < end; };
@@ -128,7 +200,7 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
   const totals = useMemo(() => {
     let inc = 0, incPaid = 0, incPending = 0, incOverdue = 0, exp = 0, txIn = 0, txOut = 0;
     invoices.forEach((i: any) => {
-      if (!inCountry(i.client?.country_id) || !inRange(i.due_date)) return;
+      if (!inCountry(i.client?.country_id) || !invInFilters(i) || !inRange(i.period_month + "T00:00:00")) return;
       const v = usd(Number(i.amount) || 0, i.currency, invValDate(i));
       inc += v;
       if (i.status === "paid") incPaid += v;
@@ -144,12 +216,12 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
       mArr.forEach((mo) => { exp += usd(Number(e.base_salary) || 0, e.salary_currency || "ARS", mo); });
     });
     transactions.forEach((t: any) => {
-      if (!inRange(t.date)) return;
+      if (!inRange(t.date) || !txInCountry(t)) return;
       const v = usd(Number(t.amount) || 0, t.currency || "ARS", t.date);
       if (t.type === "income") txIn += v; else txOut += v;
     });
     return { inc, incPaid, incPending, incOverdue, exp, profit: inc - exp, txIn, txOut };
-  }, [invoices, expenses, employees, transactions, countryId, start, end, mArr, rateIndex]);
+  }, [invoices, expenses, employees, transactions, countryId, execId, clientId, start, end, mArr, rateIndex, countryByClient, countryByInvoice]);
 
   /* Egresos por categoría (USD) */
   const expByCategory = useMemo(() => {
@@ -177,8 +249,8 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
     const byKey = new Map(months.map((m) => [m.key, m]));
     const keyOf = (d: string | Date) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`; };
     invoices.forEach((i: any) => {
-      if (!inCountry(i.client?.country_id)) return;
-      const m = byKey.get(keyOf(invValDate(i)));
+      if (!inCountry(i.client?.country_id) || !invInFilters(i)) return;
+      const m = byKey.get(String(i.period_month).slice(0, 7));
       if (m) m.ingresos += usd(Number(i.amount) || 0, i.currency, invValDate(i));
     });
     expenses.forEach((e: any) => {
@@ -192,22 +264,23 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
     });
     months.forEach((m) => { m.ganancia = m.ingresos - m.egresos; });
     return months;
-  }, [invoices, expenses, employees, countryId, mArr, rateIndex]);
+  }, [invoices, expenses, employees, countryId, execId, clientId, mArr, rateIndex]);
 
   /* Top 10 clientes por fee (en su moneda original) */
   const topClients = useMemo(() => {
     return clients
-      .filter((c: any) => inCountry(c.country_id) && c.status !== "inactive")
+      .filter((c: any) => inCountry(c.country_id) && c.status === "active"
+        && (!execId || c.assigned_executive_id === execId) && (!clientId || c.id === clientId))
       .map((c: any) => ({ id: c.id, name: c.company_name, fee: Number(c.monthly_fee) || 0, currency: c.fee_currency || "ARS" }))
       .sort((a, b) => b.fee - a.fee)
       .slice(0, 10);
-  }, [clients, countryId]);
+  }, [clients, countryId, execId, clientId]);
 
   /* Pareto clientes (ingresos en USD) */
   const paretoClients = useMemo(() => {
     const m: Record<string, { name: string; value: number }> = {};
     invoices.forEach((i: any) => {
-      if (!inCountry(i.client?.country_id) || !inRange(i.due_date)) return;
+      if (!inCountry(i.client?.country_id) || !invInFilters(i) || !inRange(i.period_month + "T00:00:00")) return;
       const id = i.client?.id ?? "—";
       const name = i.client?.company_name ?? "—";
       m[id] = m[id] ?? { name, value: 0 };
@@ -217,7 +290,7 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
     const total = arr.reduce((s, x) => s + x.value, 0) || 1;
     let acc = 0;
     return arr.slice(0, 20).map((x) => { acc += x.value; return { ...x, pct: (x.value / total) * 100, cum: (acc / total) * 100 }; });
-  }, [invoices, countryId, start, end, rateIndex]);
+  }, [invoices, countryId, execId, clientId, start, end, rateIndex]);
 
   /* Pareto gastos por categoría (USD) */
   const paretoExpenses = useMemo(() => {
@@ -230,10 +303,10 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
   /* Tipos de cambio usados (para transparencia) */
   const dataCurrencies = useMemo(() => {
     const s = new Set<string>();
-    invoices.forEach((i: any) => { if (inCountry(i.client?.country_id) && inRange(i.due_date)) s.add(i.currency); });
+    invoices.forEach((i: any) => { if (inCountry(i.client?.country_id) && invInFilters(i) && inRange(i.period_month + "T00:00:00")) s.add(i.currency); });
     expenses.forEach((e: any) => { if (inCountry(e.country_id) && inRange(e.date)) s.add(e.currency); });
     employees.forEach((e: any) => { if (e.is_active && inCountry(e.country_id)) s.add(e.salary_currency || "ARS"); });
-    transactions.forEach((t: any) => { if (inRange(t.date)) s.add(t.currency || "ARS"); });
+    transactions.forEach((t: any) => { if (inRange(t.date) && txInCountry(t)) s.add(t.currency || "ARS"); });
     s.delete("USD");
     return [...s];
   }, [invoices, expenses, employees, transactions, countryId, start, end]);
@@ -314,7 +387,7 @@ function AdminDashboard({ countryId, month }: { countryId: string | null; month:
       {ratesUsed.length > 0 && (
         <Card className="bg-gradient-card border-border/60 overflow-hidden">
           <div className="px-5 py-4 border-b border-border">
-            <h3 className="font-semibold">Tipos de cambio aplicados (cotización mensual, moneda local por 1 USD)</h3>
+            <h3 className="font-semibold">Tipos de cambio aplicados (cotización mensual: local por 1 USD; EUR = USD por 1 EUR)</h3>
           </div>
           <div className="max-h-64 overflow-auto">
             <Table>
@@ -478,15 +551,27 @@ function ParetoCard({ title, data }: { title: string; data: { name: string; valu
 
 /* ---------- Operacional (sin cambios) ---------- */
 
-function OpsDashboard({ countryId }: { countryId: string | null }) {
+function OpsDashboard({ countryId, execId, clientId }: DashProps) {
+  const rateIndex = useRateIndex();
   const { data: clients = [] } = useQuery({
-    queryKey: ["analytics-clients", countryId],
+    queryKey: ["analytics-clients", countryId, execId, clientId],
     queryFn: async () => {
-      let q = supabase.from("clients").select("*, executive:employees(id, full_name), client_platforms(*, platform:platforms(*)), invoices(*)");
+      let q = supabase.from("clients").select("*, executive:employees(id, full_name), client_platforms(*, platform:platforms(*))");
       if (countryId) q = q.eq("country_id", countryId);
+      if (execId) q = q.eq("assigned_executive_id", execId);
+      if (clientId) q = q.eq("id", clientId);
       return (await q).data ?? [];
     },
   });
+  const { data: mInvoices = [] } = useQuery({
+    queryKey: ["analytics-monthly-invoices"],
+    queryFn: async () => (await supabase.from("monthly_invoices").select("id, client_id, amount, currency, status, period_month, paid_at").is("voided_at", null)).data ?? [],
+  });
+  const invByClient = useMemo(() => {
+    const m = new Map<string, any[]>();
+    (mInvoices as any[]).forEach((i) => { if (!m.has(i.client_id)) m.set(i.client_id, []); m.get(i.client_id)!.push(i); });
+    return m;
+  }, [mInvoices]);
 
   const platformBreakdown = useMemo(() => {
     const m: Record<string, { contracts: number; cmv: number }> = {};
@@ -506,13 +591,16 @@ function OpsDashboard({ countryId }: { countryId: string | null }) {
       const name = c.executive?.full_name ?? "Sin asignar";
       m[id] = m[id] ?? { name, clients: 0, revenue: 0, overdue: 0, paid: 0 };
       m[id].clients += 1;
-      c.invoices?.forEach((i: any) => {
-        if (i.status === "paid") { m[id].paid += 1; m[id].revenue += Number(i.amount); }
+      (invByClient.get(c.id) ?? []).forEach((i: any) => {
+        if (i.status === "paid") {
+          m[id].paid += 1;
+          m[id].revenue += toUsdByCurrency(rateIndex, Number(i.amount), i.currency, i.paid_at ?? i.period_month);
+        }
         if (i.status === "overdue") m[id].overdue += 1;
       });
     });
     return Object.values(m);
-  }, [clients]);
+  }, [clients, invByClient, rateIndex]);
 
   return (
     <div className="space-y-4">
@@ -558,7 +646,7 @@ function OpsDashboard({ countryId }: { countryId: string | null }) {
               <TableHead>Cobradas</TableHead>
               <TableHead>Vencidas</TableHead>
               <TableHead>Tasa cobro</TableHead>
-              <TableHead className="text-right">Revenue cobrado</TableHead>
+              <TableHead className="text-right">Revenue cobrado (USD)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -572,7 +660,7 @@ function OpsDashboard({ countryId }: { countryId: string | null }) {
                   <TableCell className="text-success">{e.paid}</TableCell>
                   <TableCell className="text-destructive">{e.overdue}</TableCell>
                   <TableCell>{rate.toFixed(0)}%</TableCell>
-                  <TableCell className="text-right font-mono">{formatMoney(e.revenue, "ARS")}</TableCell>
+                  <TableCell className="text-right font-mono">{formatMoney(e.revenue, "USD")}</TableCell>
                 </TableRow>
               );
             })}
