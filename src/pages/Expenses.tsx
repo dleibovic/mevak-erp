@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader, EmptyState } from "@/components/PageShell";
@@ -34,6 +34,10 @@ export default function Expenses() {
   const [tplEditing, setTplEditing] = useState<any>(null);
   const [localCountry, setLocalCountry] = useState<string | null>(null);
   const [month, setMonth] = useState<string>(currentMonthValue());
+  const [fFrom, setFFrom] = useState("");
+  const [fTo, setFTo] = useState("");
+  const [fCategory, setFCategory] = useState<string>("all");
+  const [fPaidBy, setFPaidBy] = useState<string>("all");
   const effectiveCountry = localCountry ?? countryId;
 
   const { data: expenses = [], isLoading } = useQuery({
@@ -48,6 +52,25 @@ export default function Expenses() {
       return data;
     },
   });
+
+  const { data: categories = [] } = useExpenseCategories();
+
+  const filtersActive = !!fFrom || !!fTo || fCategory !== "all" || fPaidBy !== "all";
+  const filteredExpenses = useMemo(() => {
+    return (expenses as any[]).filter((e) => {
+      if (fFrom && e.date < fFrom) return false;
+      if (fTo && e.date > fTo) return false;
+      if (fCategory !== "all" && e.category_id !== fCategory) return false;
+      if (fPaidBy !== "all" && e.paid_by !== fPaidBy) return false;
+      return true;
+    });
+  }, [expenses, fFrom, fTo, fCategory, fPaidBy]);
+
+  const filteredTotals = useMemo(() => {
+    const byCur: Record<string, number> = {};
+    filteredExpenses.forEach((e) => { byCur[e.currency] = (byCur[e.currency] ?? 0) + Number(e.amount ?? 0); });
+    return byCur;
+  }, [filteredExpenses]);
 
   const { data: templates = [], isLoading: loadingTpl } = useQuery({
     queryKey: ["expense_templates"],
@@ -117,9 +140,46 @@ export default function Expenses() {
             <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nuevo gasto</Button>
           </Card>
 
+          <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-end gap-2">
+            <div className="grid gap-1">
+              <Label className="text-xs text-muted-foreground">Desde</Label>
+              <Input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className="w-[150px] h-9" />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs text-muted-foreground">Hasta</Label>
+              <Input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className="w-[150px] h-9" />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs text-muted-foreground">Tipo de gasto</Label>
+              <Select value={fCategory} onValueChange={setFCategory}>
+                <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs text-muted-foreground">Quién pagó</Label>
+              <Select value={fPaidBy} onValueChange={setFPaidBy}>
+                <SelectTrigger className="w-[130px] h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="dario">Darío</SelectItem>
+                  <SelectItem value="maria">Meri</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {filtersActive && (
+              <Button variant="ghost" size="sm" className="h-9" onClick={() => { setFFrom(""); setFTo(""); setFCategory("all"); setFPaidBy("all"); }}>
+                Limpiar
+              </Button>
+            )}
+          </Card>
+
           <Card className="bg-gradient-card border-border/60 overflow-hidden">
             {isLoading ? <div className="p-10 text-center text-muted-foreground">Cargando...</div> :
-              expenses.length === 0 ? <EmptyState title="Sin gastos cargados" /> :
+              filteredExpenses.length === 0 ? <EmptyState title={filtersActive ? "Sin gastos con esos filtros" : "Sin gastos cargados"} /> :
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -135,7 +195,7 @@ export default function Expenses() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expenses.map((e: any) => (
+                  {filteredExpenses.map((e: any) => (
                     <TableRow key={e.id}>
                       <TableCell className="font-medium">{e.description}</TableCell>
                       <TableCell className="text-muted-foreground">{e.category?.name ?? "—"}</TableCell>
@@ -160,6 +220,16 @@ export default function Expenses() {
                 </TableBody>
               </Table>
             }
+            {filtersActive && filteredExpenses.length > 0 && (
+              <div className="p-3 border-t border-border/60 text-sm text-muted-foreground">
+                Total filtrado:{" "}
+                {Object.entries(filteredTotals).map(([cur, tot], i) => (
+                  <span key={cur} className="font-mono">
+                    {i > 0 && " · "}{formatMoney(tot, cur)}
+                  </span>
+                ))}
+              </div>
+            )}
           </Card>
         </TabsContent>
 
