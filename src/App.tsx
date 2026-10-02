@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "./layouts/AppLayout";
 import { CountryFilterProvider } from "./hooks/useCountryFilter";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { ThemeProvider } from "next-themes";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const AppLoading = forwardRef<HTMLDivElement>((_, ref) => {
 AppLoading.displayName = "AppLoading";
 
 const App = () => (
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="mevak-theme">
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -70,6 +72,7 @@ const App = () => (
       </CountryFilterProvider>
     </TooltipProvider>
   </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;
