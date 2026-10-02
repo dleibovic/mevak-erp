@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -33,8 +34,8 @@ const bucketOf = (cat: string) => {
 };
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2, 160 60% 45%))", "hsl(var(--chart-3, 30 80% 55%))"];
 
-interface Inc { amount: number; currency: string; period_month: string; payment_channel: string | null; client_name: string }
-interface Exp { amount: number; currency: string; date: string; paid_by: string | null; description: string | null; category: string }
+interface Inc { amount: number; currency: string; period_month: string; payment_channel: string | null; client_name: string; country_id: string | null }
+interface Exp { amount: number; currency: string; date: string; paid_by: string | null; description: string | null; category: string; country_id: string | null }
 
 const ym = (d: string) => d.slice(0, 7);
 
@@ -59,17 +60,20 @@ function EstadisticasInner() {
   const [year, setYear] = useState(String(now.getFullYear()));
   const [month, setMonth] = useState<string>(String(now.getMonth() + 1));
 
+  const { countryId } = useCountryFilter();
+
   const { data: incomes = [] } = useQuery({
     queryKey: ["estadisticas-incomes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_invoices")
-        .select("amount, currency, period_month, payment_channel, status, clients(company_name)")
+        .select("amount, currency, period_month, payment_channel, status, clients(company_name, country_id)")
         .eq("status", "paid");
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
         amount: Number(r.amount) || 0, currency: r.currency ?? "ARS", period_month: r.period_month,
         payment_channel: r.payment_channel, client_name: r.clients?.company_name ?? "—",
+        country_id: r.clients?.country_id ?? null,
       })) as Inc[];
     },
   });
@@ -78,11 +82,12 @@ function EstadisticasInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
-        .select("amount, currency, date, paid_by, description, expense_categories(name)");
+        .select("amount, currency, date, paid_by, description, country_id, expense_categories(name)");
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
         amount: Number(r.amount) || 0, currency: r.currency ?? "ARS", date: r.date, paid_by: r.paid_by,
         description: r.description, category: r.expense_categories?.name ?? "Otros",
+        country_id: r.country_id ?? null,
       })) as Exp[];
     },
   });
@@ -124,11 +129,12 @@ function EstadisticasInner() {
     return { ingresos, egresos, neta: ingresos - egresos, buckets, cats };
   };
 
-  const fInc = incomes.filter((i) => inPeriod(i.period_month, year, month));
-  const fExp = expenses.filter((e) => inPeriod(e.date, year, month));
+  const matchCountry = (id: string | null) => !countryId || id === countryId;
+  const fInc = incomes.filter((i) => inPeriod(i.period_month, year, month) && matchCountry(i.country_id));
+  const fExp = expenses.filter((e) => inPeriod(e.date, year, month) && matchCountry(e.country_id));
   const sum = compute(fInc, fExp);
-  const mInc = incomes.filter((i) => ym(i.period_month ?? "") === curYm);
-  const mExp = expenses.filter((e) => ym(e.date ?? "") === curYm);
+  const mInc = incomes.filter((i) => ym(i.period_month ?? "") === curYm && matchCountry(i.country_id));
+  const mExp = expenses.filter((e) => ym(e.date ?? "") === curYm && matchCountry(e.country_id));
   const mSum = compute(mInc, mExp);
 
   // Cuenta corriente
@@ -144,7 +150,7 @@ function EstadisticasInner() {
     });
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fInc, fExp, cur, usdArs, eurUsd]);
+  }, [fInc, fExp, cur, usdArs, eurUsd, countryId]);
   const posD = cc.dario.aporto - cc.dario.cobro;
   const posM = cc.maria.aporto - cc.maria.cobro;
   const saldoD = (posD - posM) / 2;
@@ -159,8 +165,8 @@ function EstadisticasInner() {
     return keys;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const baseIngUsd = incomes.filter((i) => last3.includes(ym(i.period_month ?? ""))).reduce((s, i) => s + toUsd(i.amount, i.currency), 0) / 3;
-  const baseEgrUsd = expenses.filter((e) => last3.includes(ym(e.date ?? ""))).reduce((s, e) => s + toUsd(e.amount, e.currency), 0) / 3;
+  const baseIngUsd = incomes.filter((i) => last3.includes(ym(i.period_month ?? "")) && matchCountry(i.country_id)).reduce((s, i) => s + toUsd(i.amount, i.currency), 0) / 3;
+  const baseEgrUsd = expenses.filter((e) => last3.includes(ym(e.date ?? "")) && matchCountry(e.country_id)).reduce((s, e) => s + toUsd(e.amount, e.currency), 0) / 3;
   const [ingOverride, setIngOverride] = useState<number | null>(null);
   const [egrOverride, setEgrOverride] = useState<number | null>(null);
   const [horizon, setHorizon] = useState(3);
@@ -228,7 +234,7 @@ function EstadisticasInner() {
     Object.entries(s.buckets).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-bold">Estadísticas</h1>
         <p className="text-sm text-muted-foreground">Situación financiera, cuenta entre socios y proyección.</p>
@@ -272,6 +278,8 @@ function EstadisticasInner() {
           </div>
           <div className="col-span-full text-xs text-muted-foreground">
             TC usado: 1 USD = $ {usdArs.toLocaleString("es-AR")} · 1 EUR = US$ {eurUsd} (= $ {(eurUsd * usdArs).toLocaleString("es-AR", { maximumFractionDigits: 0 })})
+            <br />
+            Respeta el selector &laquo;Vista por país&raquo; del encabezado.
           </div>
         </CardContent>
       </Card>
