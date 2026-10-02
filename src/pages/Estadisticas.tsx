@@ -29,7 +29,7 @@ const SUELDOS = ["sueldos", "sueldos extra"];
 const bucketOf = (cat: string) => {
   const c = cat.trim().toLowerCase();
   if (SUELDOS.includes(c)) return "Sueldos";
-  if (c === "comisiones") return "Comisiones";
+  if (c === "comisiones") return "Comisiones a ejecutivos";
   return "Gastos";
 };
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2, 160 60% 45%))", "hsl(var(--chart-3, 30 80% 55%))"];
@@ -132,7 +132,7 @@ function EstadisticasInner() {
 
   const compute = (inc: Inc[], exp: Exp[]) => {
     const ingresos = inc.reduce((s, i) => s + conv(i.amount, i.currency), 0);
-    const buckets: Record<string, number> = { Sueldos: 0, Comisiones: 0, Gastos: 0 };
+    const buckets: Record<string, number> = { Sueldos: 0, "Comisiones a ejecutivos": 0, Gastos: 0 };
     const cats: Record<string, number> = {};
     exp.forEach((e) => {
       const v = conv(e.amount, e.currency);
@@ -140,7 +140,7 @@ function EstadisticasInner() {
       buckets[b] += v;
       if (b === "Gastos") cats[e.category] = (cats[e.category] ?? 0) + v;
     });
-    const egresos = buckets.Sueldos + buckets.Comisiones + buckets.Gastos;
+    const egresos = buckets.Sueldos + buckets["Comisiones a ejecutivos"] + buckets.Gastos;
     return { ingresos, egresos, neta: ingresos - egresos, buckets, cats };
   };
 
@@ -230,7 +230,7 @@ function EstadisticasInner() {
       <Card>
         <CardHeader><CardTitle className="text-base">Desglose de egresos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          {(["Sueldos", "Comisiones"] as const).map((b) => (
+          {(["Sueldos", "Comisiones a ejecutivos"] as const).map((b) => (
             <div key={b} className="flex justify-between border-b pb-2"><span>{b}</span><span className="font-medium">{fmt(s.buckets[b])}</span></div>
           ))}
           <button className="flex w-full justify-between border-b pb-2 text-left" onClick={() => setOpen(!open)}>
