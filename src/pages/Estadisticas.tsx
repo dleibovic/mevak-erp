@@ -523,6 +523,46 @@ function EstadisticasInner() {
                     <p className="text-xs text-muted-foreground">Hay {fmt(cc.sinAsignar)} cobrados sin canal de pago asignado (no se atribuyen a ningún socio).</p>
                   )}
                 </div>
+
+                <div className="mt-4 space-y-2">
+                  <div className="text-sm font-medium">Saldo inicial y ajustes (hasta fin del período)</div>
+                  {ajustesAplicables.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sin ajustes.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead>A favor de</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {ajustesAplicables.map((a) => (
+                          <TableRow key={a.id}>
+                            <TableCell>{dateFmt(a.adjustment_date)}</TableCell>
+                            <TableCell>{a.concepto}</TableCell>
+                            <TableCell><Badge variant="outline">{a.in_favor_of === "dario" ? "Darío" : "Meri"}</Badge></TableCell>
+                            <TableCell className={`text-right ${adjSigned(a) >= 0 ? "text-primary" : "text-accent"}`}>{fmt(adjSigned(a))}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="font-semibold">
+                          <TableCell colSpan={3}>Subtotal de ajustes</TableCell>
+                          <TableCell className="text-right">{fmt(ajusteTotal)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1">
+                  <div className="text-sm text-muted-foreground">SALDO TOTAL a favor de Darío = movimiento del período + ajustes</div>
+                  <div className="text-2xl font-bold">{fmt(saldoTotal)}</div>
+                  <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
+                  <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
+                  <p className="text-xs text-muted-foreground">Incluye el saldo inicial (provisorio, a validar con Meri). El movimiento del período es transaccional; los ajustes se acumulan hasta el fin del período elegido.</p>
+                </div>
               </CardContent>
             </Card>
             <Card>
