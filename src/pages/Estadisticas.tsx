@@ -219,6 +219,42 @@ function EstadisticasInner() {
   const posM = cc.maria.aporto - cc.maria.cobro;
   const saldoD = (posD - posM) / 2;
 
+  // Saldo inicial y ajustes de cuenta corriente (acumulados hasta fin del período)
+  const endOfPeriod = month === "all"
+    ? `${year}-12-31`
+    : `${year}-${String(Number(month)).padStart(2, "0")}-${String(new Date(Number(year), Number(month), 0).getDate()).padStart(2, "0")}`;
+  const adjSigned = (a: any) => (a.in_favor_of === "dario" ? 1 : -1) * conv(Number(a.amount), "ARS");
+  const ajustesAplicables = (adjustments as any[]).filter((a) => a.adjustment_date <= endOfPeriod);
+  const ajusteTotal = ajustesAplicables.reduce((s, a) => s + adjSigned(a), 0);
+  const saldoTotal = saldoD + ajusteTotal;
+
+  const addAdjustment = async () => {
+    if (!adjDate || !adjConcepto.trim() || !(Number(adjAmount) > 0)) {
+      toast.error("Completá fecha, monto mayor a 0 y concepto.");
+      return;
+    }
+    setAdjSaving(true);
+    const { error } = await supabase.from("cc_adjustments").insert({
+      adjustment_date: adjDate,
+      amount: Number(adjAmount),
+      in_favor_of: adjFavor,
+      concepto: adjConcepto.trim(),
+      created_by: user?.id,
+    });
+    setAdjSaving(false);
+    if (error) { toast.error("No se pudo guardar el ajuste."); return; }
+    toast.success("Ajuste agregado.");
+    setAdjDate(""); setAdjAmount(""); setAdjConcepto(""); setAdjFavor("dario");
+    queryClient.invalidateQueries({ queryKey: ["cc-adjustments"] });
+  };
+
+  const deleteAdjustment = async (id: string) => {
+    const { error } = await supabase.from("cc_adjustments").delete().eq("id", id);
+    if (error) { toast.error("No se pudo borrar el ajuste."); return; }
+    toast.success("Ajuste borrado.");
+    queryClient.invalidateQueries({ queryKey: ["cc-adjustments"] });
+  };
+
   // Proyección: últimos 3 meses completos
   const last3 = useMemo(() => {
     const keys: string[] = [];
