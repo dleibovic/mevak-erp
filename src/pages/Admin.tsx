@@ -16,6 +16,7 @@ import { COUNTRY_OPTIONS, flagForCountry } from "@/lib/countries";
 import { toast } from "sonner";
 import { GlobalPriceHistory } from "@/components/GlobalPriceHistory";
 import { SaasMetricsConfig } from "@/components/SaasMetricsConfig";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 const REGIONAL_PLATFORM_CATALOG = {
   USA: ["DoorDash", "Grubhub", "Uber Eats", "Postmates", "Caviar", "Seamless", "ChowNow", "Toast TakeOut"],
@@ -39,6 +40,7 @@ export default function Admin() {
           <TabsTrigger value="price_history">Historial de precios</TabsTrigger>
           <TabsTrigger value="users">Usuarios y roles</TabsTrigger>
           <TabsTrigger value="saas_metrics">Métricas SaaS</TabsTrigger>
+          <TabsTrigger value="notifications">Centro de notificaciones</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platforms"><PlatformsManager /></TabsContent>
@@ -48,6 +50,7 @@ export default function Admin() {
         <TabsContent value="price_history"><GlobalPriceHistory /></TabsContent>
         <TabsContent value="users"><UsersManager /></TabsContent>
         <TabsContent value="saas_metrics"><SaasMetricsConfig /></TabsContent>
+        <TabsContent value="notifications"><NotificationSettings /></TabsContent>
       </Tabs>
     </PageContainer>
   );
