@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
@@ -12,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area,
@@ -54,6 +55,8 @@ export default function Estadisticas() {
 }
 
 function EstadisticasInner() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const now = new Date();
   const [usdArs, setUsdArs] = useState(1545);
   const [eurUsd, setEurUsd] = useState(1.165);
@@ -126,6 +129,15 @@ function EstadisticasInner() {
     },
   });
   const [detail, setDetail] = useState<null | "ingresos" | "egresos" | "deudaPeriodo" | "deudaAcum">(null);
+  const { data: adjustments = [] } = useQuery({
+    queryKey: ["cc-adjustments"],
+    queryFn: async () => (await supabase.from("cc_adjustments").select("*").order("adjustment_date")).data ?? [],
+  });
+  const [adjDate, setAdjDate] = useState("");
+  const [adjAmount, setAdjAmount] = useState("");
+  const [adjFavor, setAdjFavor] = useState<Partner>("dario");
+  const [adjConcepto, setAdjConcepto] = useState("");
+  const [adjSaving, setAdjSaving] = useState(false);
   const cName = (id: string | null) => (id ? countryNames[id] ?? "—" : "—");
   const perFmt = (d: string | null) => {
     if (!d) return "—";
@@ -206,6 +218,42 @@ function EstadisticasInner() {
   const posD = cc.dario.aporto - cc.dario.cobro;
   const posM = cc.maria.aporto - cc.maria.cobro;
   const saldoD = (posD - posM) / 2;
+
+  // Saldo inicial y ajustes de cuenta corriente (acumulados hasta fin del período)
+  const endOfPeriod = month === "all"
+    ? `${year}-12-31`
+    : `${year}-${String(Number(month)).padStart(2, "0")}-${String(new Date(Number(year), Number(month), 0).getDate()).padStart(2, "0")}`;
+  const adjSigned = (a: any) => (a.in_favor_of === "dario" ? 1 : -1) * conv(Number(a.amount), "ARS");
+  const ajustesAplicables = (adjustments as any[]).filter((a) => a.adjustment_date <= endOfPeriod);
+  const ajusteTotal = ajustesAplicables.reduce((s, a) => s + adjSigned(a), 0);
+  const saldoTotal = saldoD + ajusteTotal;
+
+  const addAdjustment = async () => {
+    if (!adjDate || !adjConcepto.trim() || !(Number(adjAmount) > 0)) {
+      toast.error("Completá fecha, monto mayor a 0 y concepto.");
+      return;
+    }
+    setAdjSaving(true);
+    const { error } = await supabase.from("cc_adjustments").insert({
+      adjustment_date: adjDate,
+      amount: Number(adjAmount),
+      in_favor_of: adjFavor,
+      concepto: adjConcepto.trim(),
+      created_by: user?.id,
+    });
+    setAdjSaving(false);
+    if (error) { toast.error("No se pudo guardar el ajuste."); return; }
+    toast.success("Ajuste agregado.");
+    setAdjDate(""); setAdjAmount(""); setAdjConcepto(""); setAdjFavor("dario");
+    queryClient.invalidateQueries({ queryKey: ["cc-adjustments"] });
+  };
+
+  const deleteAdjustment = async (id: string) => {
+    const { error } = await supabase.from("cc_adjustments").delete().eq("id", id);
+    if (error) { toast.error("No se pudo borrar el ajuste."); return; }
+    toast.success("Ajuste borrado.");
+    queryClient.invalidateQueries({ queryKey: ["cc-adjustments"] });
+  };
 
   // Proyección: últimos 3 meses completos
   const last3 = useMemo(() => {
@@ -475,6 +523,46 @@ function EstadisticasInner() {
                     <p className="text-xs text-muted-foreground">Hay {fmt(cc.sinAsignar)} cobrados sin canal de pago asignado (no se atribuyen a ningún socio).</p>
                   )}
                 </div>
+
+                <div className="mt-4 space-y-2">
+                  <div className="text-sm font-medium">Saldo inicial y ajustes (hasta fin del período)</div>
+                  {ajustesAplicables.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sin ajustes.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead>A favor de</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {ajustesAplicables.map((a) => (
+                          <TableRow key={a.id}>
+                            <TableCell>{dateFmt(a.adjustment_date)}</TableCell>
+                            <TableCell>{a.concepto}</TableCell>
+                            <TableCell><Badge variant="outline">{a.in_favor_of === "dario" ? "Darío" : "Meri"}</Badge></TableCell>
+                            <TableCell className={`text-right ${adjSigned(a) >= 0 ? "text-primary" : "text-accent"}`}>{fmt(adjSigned(a))}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="font-semibold">
+                          <TableCell colSpan={3}>Subtotal de ajustes</TableCell>
+                          <TableCell className="text-right">{fmt(ajusteTotal)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1">
+                  <div className="text-sm text-muted-foreground">SALDO TOTAL a favor de Darío = movimiento del período + ajustes</div>
+                  <div className="text-2xl font-bold">{fmt(saldoTotal)}</div>
+                  <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
+                  <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
+                  <p className="text-xs text-muted-foreground">Incluye el saldo inicial (provisorio, a validar con Meri). El movimiento del período es transaccional; los ajustes se acumulan hasta el fin del período elegido.</p>
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -497,6 +585,72 @@ function EstadisticasInner() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ajustes de cuenta corriente</CardTitle>
+              <CardDescription>Los montos van en ARS. "A favor de Darío" suma al saldo de Darío; "a favor de Meri" lo resta.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(adjustments as any[]).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Todavía no hay ajustes cargados.</p>
+              ) : (
+                <div className="max-h-64 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>A favor de</TableHead>
+                        <TableHead className="text-right">Monto (ARS)</TableHead>
+                        <TableHead />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(adjustments as any[]).map((a) => (
+                        <TableRow key={a.id}>
+                          <TableCell>{dateFmt(a.adjustment_date)}</TableCell>
+                          <TableCell>{a.concepto}</TableCell>
+                          <TableCell><Badge variant="outline">{a.in_favor_of === "dario" ? "Darío" : "Meri"}</Badge></TableCell>
+                          <TableCell className="text-right">{fmt(Number(a.amount), "ARS")}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => deleteAdjustment(a.id)} aria-label="Borrar ajuste">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 items-end">
+                <div className="space-y-1">
+                  <Label htmlFor="adj-fecha">Fecha</Label>
+                  <Input id="adj-fecha" type="date" value={adjDate} onChange={(e) => setAdjDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="adj-monto">Monto (ARS)</Label>
+                  <Input id="adj-monto" type="number" min="0" step="0.01" value={adjAmount} onChange={(e) => setAdjAmount(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>A favor de</Label>
+                  <Select value={adjFavor} onValueChange={(v) => setAdjFavor(v as Partner)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dario">Darío</SelectItem>
+                      <SelectItem value="maria">Meri</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="adj-concepto">Concepto</Label>
+                  <Input id="adj-concepto" value={adjConcepto} onChange={(e) => setAdjConcepto(e.target.value)} placeholder="Ej: Saldo inicial" />
+                </div>
+                <Button onClick={addAdjustment} disabled={adjSaving}>Agregar</Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="proy" className="space-y-4">

@@ -110,6 +110,39 @@ export type Database = {
         }
         Relationships: []
       }
+      cc_adjustments: {
+        Row: {
+          adjustment_date: string
+          amount: number
+          concepto: string
+          created_at: string
+          created_by: string | null
+          id: string
+          in_favor_of: string
+          notes: string | null
+        }
+        Insert: {
+          adjustment_date: string
+          amount: number
+          concepto: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          in_favor_of: string
+          notes?: string | null
+        }
+        Update: {
+          adjustment_date?: string
+          amount?: number
+          concepto?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          in_favor_of?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
       churn_events: {
         Row: {
           churned_at: string
