@@ -48,7 +48,10 @@ export default function Estadisticas() {
     );
   }
   if (!isAdmin) return <Navigate to="/" replace />;
+  return <EstadisticasInner />;
+}
 
+function EstadisticasInner() {
   const now = new Date();
   const [usdArs, setUsdArs] = useState(1545);
   const [eurUsd, setEurUsd] = useState(1.165);
