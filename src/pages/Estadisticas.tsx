@@ -140,7 +140,7 @@ function EstadisticasInner() {
       buckets[b] += v;
       if (b === "Gastos") cats[e.category] = (cats[e.category] ?? 0) + v;
     });
-    const egresos = buckets.Sueldos + buckets.Comisiones + buckets.Gastos;
+    const egresos = buckets.Sueldos + buckets["Comisiones a ejecutivos"] + buckets.Gastos;
     return { ingresos, egresos, neta: ingresos - egresos, buckets, cats };
   };
 
@@ -230,7 +230,7 @@ function EstadisticasInner() {
       <Card>
         <CardHeader><CardTitle className="text-base">Desglose de egresos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          {(["Sueldos", "Comisiones"] as const).map((b) => (
+          {(["Sueldos", "Comisiones a ejecutivos"] as const).map((b) => (
             <div key={b} className="flex justify-between border-b pb-2"><span>{b}</span><span className="font-medium">{fmt(s.buckets[b])}</span></div>
           ))}
           <button className="flex w-full justify-between border-b pb-2 text-left" onClick={() => setOpen(!open)}>
