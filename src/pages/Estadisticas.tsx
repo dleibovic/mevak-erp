@@ -543,7 +543,7 @@ function EstadisticasInner() {
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <div className="text-sm font-medium">Saldo inicial y ajustes (hasta fin del período)</div>
+                  <div className="text-sm font-medium">Saldo inicial y ajustes (hasta {ccTo || "hoy"})</div>
                   {ajustesAplicables.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Sin ajustes.</p>
                   ) : (
@@ -575,7 +575,7 @@ function EstadisticasInner() {
                 </div>
 
                 <div className="mt-4 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1">
-                  <div className="text-sm text-muted-foreground">SALDO TOTAL a favor de Darío = movimiento del período + ajustes</div>
+                  <div className="text-sm text-muted-foreground">SALDO TOTAL a favor de Darío = movimiento acumulado + ajustes</div>
                   <div className="text-2xl font-bold">{fmt(saldoTotal)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
                   <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
