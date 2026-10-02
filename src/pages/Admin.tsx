@@ -16,6 +16,7 @@ import { COUNTRY_OPTIONS, flagForCountry } from "@/lib/countries";
 import { toast } from "sonner";
 import { GlobalPriceHistory } from "@/components/GlobalPriceHistory";
 import { SaasMetricsConfig } from "@/components/SaasMetricsConfig";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 const REGIONAL_PLATFORM_CATALOG = {
   USA: ["DoorDash", "Grubhub", "Uber Eats", "Postmates", "Caviar", "Seamless", "ChowNow", "Toast TakeOut"],
