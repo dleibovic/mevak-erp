@@ -589,3 +589,145 @@ function EmployeeCommissionDetail({
     </div>
   );
 }
+
+/** Estado de pago de comisiones del mes, por moneda (solo vista de un mes). */
+function MonthPayments({
+  month,
+  rows,
+  employee,
+  paymentsByKey,
+}: {
+  month: string;
+  rows: Snapshot[];
+  employee: EmployeeOption;
+  paymentsByKey: Map<string, CommissionPayment>;
+}) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const billed = rows.filter((r) => r.was_billed);
+  const totals = totalsByCurrency(billed);
+  if (totals.length === 0) return null;
+
+  const undo = async (paymentId: string) => {
+    setBusy(true);
+    const { error } = await supabase.rpc("undo_commission_payment", { _payment_id: paymentId });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Pago deshecho");
+    qc.invalidateQueries({ queryKey: ["commission-payments"] });
+    qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+  };
+
+  return (
+    <div className="mb-4 space-y-2 rounded-md border border-border/60 p-3">
+      {totals.map(([cur, total]) => {
+        const payment = paymentsByKey.get(paymentKey(month, cur));
+        return (
+          <div key={cur} className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm">
+              A pagar: <span className="font-mono font-semibold text-primary">{formatMoney(total, cur)}</span>
+            </div>
+            {payment ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  Pagado por {paidByLabel(payment.paid_by)} · {new Date(payment.paid_at).toLocaleDateString("es-AR")}
+                </Badge>
+                <Button variant="ghost" size="sm" disabled={busy} onClick={() => undo(payment.id)}>
+                  Deshacer
+                </Button>
+              </div>
+            ) : (
+              <PayPopover
+                disabled={busy}
+                onConfirm={async (paidBy, note) => {
+                  setBusy(true);
+                  const { error } = await supabase.rpc("pay_commission_for_employee_month", {
+                    _employee_id: employee.id,
+                    _period: month,
+                    _currency: cur,
+                    _paid_by: paidBy,
+                    _note: note || null,
+                  });
+                  setBusy(false);
+                  if (error) {
+                    toast.error(error.message);
+                    return false;
+                  }
+                  toast.success("Comisión marcada como pagada");
+                  qc.invalidateQueries({ queryKey: ["commission-payments"] });
+                  qc.invalidateQueries({ queryKey: ["commission-snapshots"] });
+                  return true;
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PayPopover({
+  disabled,
+  onConfirm,
+}: {
+  disabled: boolean;
+  onConfirm: (paidBy: "dario" | "maria", note: string) => Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [paidBy, setPaidBy] = useState<string>("");
+  const [note, setNote] = useState("");
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setPaidBy("");
+          setNote("");
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" disabled={disabled}>
+          Marcar como pagado
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64" align="end">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Pagado por</Label>
+            <Select value={paidBy} onValueChange={setPaidBy}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Elegí quién pagó" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dario">Darío</SelectItem>
+                <SelectItem value="maria">Meri</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Nota (opcional)</Label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <Button
+            size="sm"
+            disabled={disabled || !paidBy}
+            onClick={async () => {
+              const ok = await onConfirm(paidBy as "dario" | "maria", note.trim());
+              if (ok) setOpen(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
