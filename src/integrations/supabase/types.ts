@@ -1190,6 +1190,7 @@ export type Database = {
         Row: {
           active: boolean
           amount: number
+          amount_effective_from: string | null
           assigned_to: Database["public"]["Enums"]["expense_assignee"]
           category_id: string | null
           country_id: string | null
@@ -1197,12 +1198,14 @@ export type Database = {
           currency: string
           description: string
           id: string
+          paid_by: Database["public"]["Enums"]["collector"] | null
           recurrence_frequency: Database["public"]["Enums"]["recurrence_frequency"]
           start_month: string
         }
         Insert: {
           active?: boolean
           amount?: number
+          amount_effective_from?: string | null
           assigned_to?: Database["public"]["Enums"]["expense_assignee"]
           category_id?: string | null
           country_id?: string | null
@@ -1210,12 +1213,14 @@ export type Database = {
           currency?: string
           description: string
           id?: string
+          paid_by?: Database["public"]["Enums"]["collector"] | null
           recurrence_frequency?: Database["public"]["Enums"]["recurrence_frequency"]
           start_month?: string
         }
         Update: {
           active?: boolean
           amount?: number
+          amount_effective_from?: string | null
           assigned_to?: Database["public"]["Enums"]["expense_assignee"]
           category_id?: string | null
           country_id?: string | null
@@ -1223,6 +1228,7 @@ export type Database = {
           currency?: string
           description?: string
           id?: string
+          paid_by?: Database["public"]["Enums"]["collector"] | null
           recurrence_frequency?: Database["public"]["Enums"]["recurrence_frequency"]
           start_month?: string
         }

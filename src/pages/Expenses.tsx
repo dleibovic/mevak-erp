@@ -178,6 +178,7 @@ export default function Expenses() {
                     <TableHead>Descripción</TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Monto</TableHead>
+                    <TableHead>Paga</TableHead>
                     <TableHead>Frecuencia</TableHead>
                     <TableHead>País</TableHead>
                     <TableHead>Desde</TableHead>
@@ -190,7 +191,11 @@ export default function Expenses() {
                     <TableRow key={t.id}>
                       <TableCell className="font-medium">{t.description}</TableCell>
                       <TableCell className="text-muted-foreground">{t.category?.name ?? "—"}</TableCell>
-                      <TableCell className="font-mono">{formatMoney(t.amount, t.currency)}</TableCell>
+                      <TableCell className="font-mono">
+                        {formatMoney(t.amount, t.currency)}
+                        {t.amount_effective_from && <div className="text-xs text-muted-foreground font-sans">desde {fmtMonthShort(t.amount_effective_from)}</div>}
+                      </TableCell>
+                      <TableCell>{t.paid_by === "dario" ? "Darío" : t.paid_by === "maria" ? "Meri" : "—"}</TableCell>
                       <TableCell>{FREQ_LABEL[t.recurrence_frequency] ?? t.recurrence_frequency}</TableCell>
                       <TableCell className="text-muted-foreground">{t.country?.name ?? "—"}</TableCell>
                       <TableCell>{fmtDate(t.start_month)}</TableCell>
@@ -331,6 +336,17 @@ function ExpenseDialog({ open, onOpenChange, expense }: any) {
   );
 }
 
+function firstOfMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+function fmtMonthShort(s: string) {
+  const M = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const [y, m] = s.slice(0, 7).split("-");
+  return `${M[Number(m) - 1]}-${y}`;
+}
+
 function TemplateDialog({ open, onOpenChange, template }: any) {
   const qc = useQueryClient();
   const { data: categories = [] } = useExpenseCategories();
@@ -341,7 +357,7 @@ function TemplateDialog({ open, onOpenChange, template }: any) {
   useEffect(() => {
     if (!open) return;
     if (template) {
-      setForm({ ...template });
+      setForm({ ...template, effective_from: firstOfMonth() });
     } else {
       const defC = countries.find((c: any) => c.id === globalCountry) ?? countries[0];
       setForm({
@@ -370,9 +386,18 @@ function TemplateDialog({ open, onOpenChange, template }: any) {
         recurrence_frequency: form.recurrence_frequency ?? "monthly",
         start_month: form.start_month,
         active: !!form.active,
+        paid_by: form.paid_by,
       };
       if (template?.id) {
+        const amountChanged = Number(template.amount) !== payload.amount;
+        const from = form.effective_from || firstOfMonth();
+        if (amountChanged) payload.amount_effective_from = from;
         const { error } = await supabase.from("expense_templates").update(payload).eq("id", template.id); if (error) throw error;
+        if (amountChanged) {
+          const { error: e2 } = await supabase.from("expenses").update({ amount: payload.amount }).eq("template_id", template.id).gte("period_month", from);
+          if (e2) throw e2;
+          qc.invalidateQueries({ queryKey: ["expenses"] });
+        }
       } else {
         const { error } = await supabase.from("expense_templates").insert(payload); if (error) throw error;
       }
@@ -387,7 +412,7 @@ function TemplateDialog({ open, onOpenChange, template }: any) {
         <DialogHeader><DialogTitle>{template ? "Editar plantilla" : "Nueva plantilla recurrente"}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
           <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/40 p-2">
-            Cambiar el monto solo afecta los meses futuros que se generen; los meses ya generados conservan su monto.
+            Al cambiar el monto, se actualizan también los gastos ya generados desde la fecha "Aplica desde"; los meses anteriores conservan su monto.
           </p>
           <div><Label>Descripción</Label><Input value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
           <div className="grid grid-cols-2 gap-3">
@@ -423,6 +448,16 @@ function TemplateDialog({ open, onOpenChange, template }: any) {
               </Select>
             </div>
             <div><Label>Monto</Label><Input type="number" step="0.01" value={form.amount ?? 0} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} /></div>
+            {template?.id && (
+              <div><Label>Aplica desde</Label><Input type="date" value={form.effective_from ?? ""} onChange={(e) => setForm({ ...form, effective_from: e.target.value })} /></div>
+            )}
+            <div>
+              <Label>Quién paga *</Label>
+              <Select value={form.paid_by ?? ""} onValueChange={(v) => setForm({ ...form, paid_by: v })}>
+                <SelectTrigger><SelectValue placeholder="Elegir…" /></SelectTrigger>
+                <SelectContent><SelectItem value="dario">Darío</SelectItem><SelectItem value="maria">Meri</SelectItem></SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Asignado a</Label>
               <Select value={form.assigned_to ?? "company"} onValueChange={(v) => setForm({ ...form, assigned_to: v })}>
@@ -449,7 +484,7 @@ function TemplateDialog({ open, onOpenChange, template }: any) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || !form.description || !form.amount}>Guardar</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || !form.description || !form.amount || !form.paid_by}>Guardar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
