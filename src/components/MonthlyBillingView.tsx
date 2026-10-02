@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2, Pencil, Receipt, History } from "lucide-react";
+import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2, Pencil, Receipt, History, HandCoins } from "lucide-react";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
@@ -144,6 +144,32 @@ export function MonthlyBillingView() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const [paying, setPaying] = useState<any>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payDate, setPayDate] = useState("");
+  const [payChannel, setPayChannel] = useState("");
+  const openPay = (r: any) => {
+    setPaying(r);
+    setPayAmount(String(Math.max(0, Number(r.amount) - (Number(r.amount_paid) || 0))));
+    setPayDate(new Date().toISOString().slice(0, 10));
+    setPayChannel(r.payment_channel ?? "");
+  };
+  const registrarPago = useMutation({
+    mutationFn: async () => {
+      const r = paying;
+      const amt = Number(r.amount);
+      const nuevoPagado = Math.min(amt, Number(r.amount_paid || 0) + Number(payAmount));
+      const patch: any = {
+        amount_paid: nuevoPagado, payment_channel: payChannel, paid_at: payDate, paid_by: user?.id,
+        status: nuevoPagado >= amt ? "paid" : (r.status === "overdue" ? "overdue" : r.status),
+      };
+      const { error } = await supabase.from("monthly_invoices").update(patch).eq("id", r.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Pago registrado"); setPaying(null); qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, patch }: any) => {
       const { error } = await supabase.from("monthly_invoices").update(patch).eq("id", id);
@@ -224,10 +250,12 @@ export function MonthlyBillingView() {
       const c = r.currency || "ARS";
       totalsByCcy[c] ||= { total: 0, pending: 0, paid: 0, invoiced: 0 };
       const a = Number(r.amount) || 0;
+      const p = Number(r.amount_paid) || 0;
+      const bal = Math.max(0, a - p);
       totalsByCcy[c].total += a;
-      if (r.status === "pending") totalsByCcy[c].pending += a;
-      if (r.status === "paid") totalsByCcy[c].paid += a;
-      if (r.status === "invoiced") totalsByCcy[c].invoiced += a;
+      totalsByCcy[c].paid += p;
+      if (r.status !== "paid" && bal > 0) totalsByCcy[c].pending += bal;
+      if (r.status === "invoiced") totalsByCcy[c].invoiced += bal;
     });
     return totalsByCcy;
   }, [filtered]);
@@ -350,6 +378,11 @@ export function MonthlyBillingView() {
                   <TableCell>{r.payment_channel ? PAYMENT_CHANNEL_LABEL[r.payment_channel] : <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell className="font-mono">
                     {formatMoney(r.amount, r.currency)}
+                    {Number(r.amount_paid) > 0 && Number(r.amount_paid) < Number(r.amount) && (
+                      <div className="text-xs text-muted-foreground font-sans">
+                        Cobrado {formatMoney(Number(r.amount_paid), r.currency)} · Saldo {formatMoney(Number(r.amount) - Number(r.amount_paid), r.currency)}
+                      </div>
+                    )}
                     {adjustmentsByInvoice.has(r.id) && (
                       <button type="button" onClick={() => setHistoryFor(r)} title="Ver registro de ajustes"
                         className="ml-1 inline-flex items-center align-middle text-primary hover:underline">
@@ -431,8 +464,13 @@ export function MonthlyBillingView() {
                         <FileCheck2 className="h-4 w-4 mr-1" />Facturada
                       </Button>
                     )}
+                    {!r.voided_at && Number(r.amount) - (Number(r.amount_paid) || 0) > 0 && (
+                      <Button size="sm" variant="outline" onClick={() => openPay(r)}>
+                        <HandCoins className="h-4 w-4 mr-1" />Pago
+                      </Button>
+                    )}
                     {r.status !== "paid" && !r.voided_at && (
-                      <Button size="sm" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "paid" } })}>
+                      <Button size="sm" onClick={() => updateStatus.mutate({ id: r.id, patch: { status: "paid", amount_paid: Number(r.amount), paid_at: r.paid_at ?? new Date().toISOString(), paid_by: user?.id } })}>
                         <CheckCircle2 className="h-4 w-4 mr-1" />Cobrada
                       </Button>
                     )}
@@ -469,6 +507,47 @@ export function MonthlyBillingView() {
         </Card>
       ))}
       {isLoading && <div className="text-center text-muted-foreground py-6">Cargando…</div>}
+
+      {/* Dialogo: registrar pago */}
+      <Dialog open={!!paying} onOpenChange={(v) => !v && setPaying(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Registrar pago {paying?.client?.company_name ? `· ${paying.client.company_name}` : ""}</DialogTitle></DialogHeader>
+          {paying && (() => {
+            const amt = Number(paying.amount) || 0;
+            const paid = Number(paying.amount_paid) || 0;
+            const bal = amt - paid;
+            const v = Number(payAmount);
+            const valid = v > 0 && v <= bal + 1e-9 && !!payChannel && !!payDate;
+            return (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div><div className="text-xs text-muted-foreground">Facturado</div><div className="font-mono">{formatMoney(amt, paying.currency)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Ya cobrado</div><div className="font-mono">{formatMoney(paid, paying.currency)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Saldo</div><div className="font-mono">{formatMoney(bal, paying.currency)}</div></div>
+                </div>
+                <div><Label>Monto cobrado</Label><Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+                  {payAmount !== "" && !(v > 0 && v <= bal + 1e-9) && <p className="text-xs text-destructive mt-1">Debe ser mayor a 0 y no superar el saldo.</p>}
+                </div>
+                <div><Label>Fecha de pago</Label><Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} /></div>
+                <div><Label>Quién cobró / canal</Label>
+                  <Select value={payChannel} onValueChange={setPayChannel}>
+                    <SelectTrigger><SelectValue placeholder="Elegí canal" /></SelectTrigger>
+                    <SelectContent>
+                      {["stripe_dario", "us_dario", "dario_transferencia", "dario_efectivo", "maria_transferencia", "maria_efectivo"].map((k) => (
+                        <SelectItem key={k} value={k}>{(PAYMENT_CHANNEL_LABEL as any)[k] ?? k}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setPaying(null)}>Cancelar</Button>
+                  <Button disabled={!valid || registrarPago.isPending} onClick={() => registrarPago.mutate()}>Registrar</Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialogo: ajustar monto / nota de crédito */}
       <Dialog open={!!adjusting} onOpenChange={(v) => !v && setAdjusting(null)}>
