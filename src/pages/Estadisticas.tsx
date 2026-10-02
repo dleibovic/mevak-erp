@@ -501,9 +501,24 @@ function EstadisticasInner() {
         </TabsContent>
 
         <TabsContent value="cc" className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Desde</Label>
+              <Input type="date" value={ccFrom} onChange={(e) => setCcFrom(e.target.value)} className="w-40" />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setCcFrom("")}>Desde el inicio</Button>
+            <div className="space-y-1">
+              <Label className="text-xs">Hasta</Label>
+              <Input type="date" value={ccTo} onChange={(e) => setCcTo(e.target.value)} className="w-40" />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setCcTo(todayStr)}>Hoy</Button>
+            <p className="text-xs text-muted-foreground max-w-md">
+              Acumulado entre las fechas elegidas. "Desde el inicio" = toda la historia cargada. El saldo total incluye el saldo inicial y los ajustes hasta la fecha "Hasta".
+            </p>
+          </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="text-base">Cuenta corriente · {periodLabel(year, month)}</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">Cuenta corriente · {ccFrom || "inicio"} → {ccTo || "hoy"}</CardTitle></CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader><TableRow><TableHead /><TableHead className="text-right">Darío</TableHead><TableHead className="text-right">Meri</TableHead></TableRow></TableHeader>
