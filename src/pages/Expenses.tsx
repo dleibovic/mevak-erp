@@ -195,7 +195,7 @@ export default function Expenses() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expenses.map((e: any) => (
+                  {filteredExpenses.map((e: any) => (
                     <TableRow key={e.id}>
                       <TableCell className="font-medium">{e.description}</TableCell>
                       <TableCell className="text-muted-foreground">{e.category?.name ?? "—"}</TableCell>
