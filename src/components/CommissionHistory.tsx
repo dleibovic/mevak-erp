@@ -432,7 +432,7 @@ function EmployeeCommissionDetail({
   onBack: () => void;
 }) {
   const qc = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canEditAdminFinance } = useAuth();
   const [month, setMonth] = useState<string>(ALL_MONTHS);
   const [grouping, setGrouping] = useState<Grouping>("quarter");
   const thisMonth = currentMonthValue();
@@ -450,6 +450,22 @@ function EmployeeCommissionDetail({
       return (Array.isArray(data) ? data : []) as unknown as Snapshot[];
     },
   });
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ["commission-payments", employee.key],
+    enabled: !!employee.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("commission_payments").select("*").eq("employee_id", employee.id);
+      if (error) throw error;
+      return (data ?? []) as CommissionPayment[];
+    },
+  });
+
+  const paymentsByKey = useMemo(() => {
+    const map = new Map<string, CommissionPayment>();
+    for (const p of payments) map.set(paymentKey(p.period_month, p.currency || "ARS"), p);
+    return map;
+  }, [payments]);
 
   const rows: Snapshot[] = Array.isArray(historyRows) ? historyRows : [];
 
