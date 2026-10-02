@@ -138,6 +138,9 @@ function EstadisticasInner() {
   const [adjFavor, setAdjFavor] = useState<Partner>("dario");
   const [adjConcepto, setAdjConcepto] = useState("");
   const [adjSaving, setAdjSaving] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [ccFrom, setCcFrom] = useState("");   // vacío = desde el inicio
+  const [ccTo, setCcTo] = useState(todayStr);
   const cName = (id: string | null) => (id ? countryNames[id] ?? "—" : "—");
   const perFmt = (d: string | null) => {
     if (!d) return "—";
@@ -189,6 +192,9 @@ function EstadisticasInner() {
   const matchCountry = (id: string | null) => !countryId || id === countryId;
   const fInc = incomes.filter((i) => inPeriod(i.period_month, year, month) && matchCountry(i.country_id));
   const fExp = expenses.filter((e) => inPeriod(e.date, year, month) && matchCountry(e.country_id));
+  const inCcRange = (d: string | null) => !!d && (!ccFrom || d >= ccFrom) && (!ccTo || d <= ccTo);
+  const ccInc = incomes.filter((i) => matchCountry(i.country_id) && inCcRange(i.period_month));
+  const ccExp = expenses.filter((e) => matchCountry(e.country_id) && inCcRange(e.date));
   const sum = compute(fInc, fExp);
   const mInc = incomes.filter((i) => ym(i.period_month ?? "") === curYm && matchCountry(i.country_id));
   const mExp = expenses.filter((e) => ym(e.date ?? "") === curYm && matchCountry(e.country_id));
@@ -204,27 +210,24 @@ function EstadisticasInner() {
   // Cuenta corriente
   const cc = useMemo(() => {
     const r = { dario: { cobro: 0, aporto: 0 }, maria: { cobro: 0, aporto: 0 }, sinAsignar: 0 };
-    fInc.forEach((i) => {
+    ccInc.forEach((i) => {
       const p = partnerOfChannel(i.payment_channel);
       const v = conv(i.amount, i.currency);
       if (p) r[p].cobro += v; else r.sinAsignar += v;
     });
-    fExp.forEach((e) => {
+    ccExp.forEach((e) => {
       if (e.paid_by === "dario" || e.paid_by === "maria") r[e.paid_by].aporto += conv(e.amount, e.currency);
     });
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fInc, fExp, cur, usdArs, eurUsd, countryId]);
+  }, [ccInc, ccExp, cur, usdArs, eurUsd, countryId, ccFrom, ccTo]);
   const posD = cc.dario.aporto - cc.dario.cobro;
   const posM = cc.maria.aporto - cc.maria.cobro;
   const saldoD = (posD - posM) / 2;
 
-  // Saldo inicial y ajustes de cuenta corriente (acumulados hasta fin del período)
-  const endOfPeriod = month === "all"
-    ? `${year}-12-31`
-    : `${year}-${String(Number(month)).padStart(2, "0")}-${String(new Date(Number(year), Number(month), 0).getDate()).padStart(2, "0")}`;
+  // Saldo inicial y ajustes de cuenta corriente (acumulados hasta la fecha "Hasta" de la CC)
   const adjSigned = (a: any) => (a.in_favor_of === "dario" ? 1 : -1) * conv(Number(a.amount), "ARS");
-  const ajustesAplicables = (adjustments as any[]).filter((a) => a.adjustment_date <= endOfPeriod);
+  const ajustesAplicables = (adjustments as any[]).filter((a) => !ccTo || a.adjustment_date <= ccTo);
   const ajusteTotal = ajustesAplicables.reduce((s, a) => s + adjSigned(a), 0);
   const saldoTotal = saldoD + ajusteTotal;
 
@@ -498,9 +501,24 @@ function EstadisticasInner() {
         </TabsContent>
 
         <TabsContent value="cc" className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Desde</Label>
+              <Input type="date" value={ccFrom} onChange={(e) => setCcFrom(e.target.value)} className="w-40" />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setCcFrom("")}>Desde el inicio</Button>
+            <div className="space-y-1">
+              <Label className="text-xs">Hasta</Label>
+              <Input type="date" value={ccTo} onChange={(e) => setCcTo(e.target.value)} className="w-40" />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setCcTo(todayStr)}>Hoy</Button>
+            <p className="text-xs text-muted-foreground max-w-md">
+              Acumulado entre las fechas elegidas. "Desde el inicio" = toda la historia cargada. El saldo total incluye el saldo inicial y los ajustes hasta la fecha "Hasta".
+            </p>
+          </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="text-base">Cuenta corriente · {periodLabel(year, month)}</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">Cuenta corriente · {ccFrom || "inicio"} → {ccTo || "hoy"}</CardTitle></CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader><TableRow><TableHead /><TableHead className="text-right">Darío</TableHead><TableHead className="text-right">Meri</TableHead></TableRow></TableHeader>
@@ -511,11 +529,11 @@ function EstadisticasInner() {
                   </TableBody>
                 </Table>
                 <div className="mt-4 rounded-md border p-4 space-y-1">
-                  <div className="text-sm text-muted-foreground">Saldo del período a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
+                  <div className="text-sm text-muted-foreground">Saldo acumulado a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
                   <div className="text-2xl font-bold">{fmt(saldoD)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoD, other), other)}</div>
                   <p className="text-sm">
-                    {Math.abs(saldoD) < 0.5 ? "Están a mano en este período."
+                    {Math.abs(saldoD) < 0.5 ? "Están a mano en este acumulado."
                       : saldoD > 0 ? `Positivo: Meri le debe ${fmt(saldoD)} a Darío.`
                       : `Negativo: Darío le debe ${fmt(-saldoD)} a Meri.`}
                   </p>
@@ -525,7 +543,7 @@ function EstadisticasInner() {
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <div className="text-sm font-medium">Saldo inicial y ajustes (hasta fin del período)</div>
+                  <div className="text-sm font-medium">Saldo inicial y ajustes (hasta {ccTo || "hoy"})</div>
                   {ajustesAplicables.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Sin ajustes.</p>
                   ) : (
@@ -557,11 +575,11 @@ function EstadisticasInner() {
                 </div>
 
                 <div className="mt-4 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1">
-                  <div className="text-sm text-muted-foreground">SALDO TOTAL a favor de Darío = movimiento del período + ajustes</div>
+                  <div className="text-sm text-muted-foreground">SALDO TOTAL a favor de Darío = movimiento acumulado + ajustes</div>
                   <div className="text-2xl font-bold">{fmt(saldoTotal)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
                   <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
-                  <p className="text-xs text-muted-foreground">Incluye el saldo inicial (provisorio, a validar con Meri). El movimiento del período es transaccional; los ajustes se acumulan hasta el fin del período elegido.</p>
+                  <p className="text-xs text-muted-foreground">Incluye el saldo inicial (provisorio, a validar con Meri). El movimiento es transaccional dentro del rango elegido; los ajustes se acumulan hasta la fecha "Hasta".</p>
                 </div>
               </CardContent>
             </Card>
