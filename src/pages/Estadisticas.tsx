@@ -68,14 +68,15 @@ function EstadisticasInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_invoices")
-        .select("amount, currency, period_month, payment_channel, paid_at, status, clients(company_name, country_id)")
-        .eq("status", "paid");
+        .select("amount, amount_paid, currency, period_month, payment_channel, paid_at, status, clients(company_name, country_id)")
+        .is("voided_at", null);
       if (error) throw error;
+      // amount = lo efectivamente cobrado (incluye pagos a cuenta)
       return (data ?? []).map((r: any) => ({
-        amount: Number(r.amount) || 0, currency: r.currency ?? "ARS", period_month: r.period_month,
+        amount: Number(r.amount_paid) || 0, currency: r.currency ?? "ARS", period_month: r.period_month,
         payment_channel: r.payment_channel, client_name: r.clients?.company_name ?? "—",
         country_id: r.clients?.country_id ?? null, paid_at: r.paid_at ?? null,
-      })) as Inc[];
+      })).filter((i: Inc) => i.amount > 0) as Inc[];
     },
   });
   const { data: expenses = [] } = useQuery({
@@ -97,16 +98,16 @@ function EstadisticasInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_invoices")
-        .select("amount, currency, period_month, status, clients(company_name, country_id, assigned_executive_id)")
-        .neq("status", "paid")
+        .select("amount, amount_paid, currency, period_month, status, clients(company_name, country_id, assigned_executive_id)")
         .is("voided_at", null);
       if (error) throw error;
+      // amount = saldo pendiente (amount - amount_paid)
       return (data ?? []).map((r: any) => ({
-        amount: Number(r.amount) || 0, currency: r.currency ?? "ARS",
+        amount: (Number(r.amount) || 0) - (Number(r.amount_paid) || 0), currency: r.currency ?? "ARS",
         period_month: r.period_month, country_id: r.clients?.country_id ?? null,
         status: r.status as string, client_name: (r.clients?.company_name ?? "—") as string,
         exec_id: (r.clients?.assigned_executive_id ?? null) as string | null,
-      }));
+      })).filter((u) => u.amount > 0);
     },
   });
 
@@ -585,7 +586,7 @@ function EstadisticasInner() {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Cliente</TableHead><TableHead>País</TableHead><TableHead>Período</TableHead>
-                  <TableHead className="text-right">Monto</TableHead><TableHead>Quién cobró</TableHead><TableHead>Fecha de cobro</TableHead>
+                  <TableHead className="text-right">Cobrado</TableHead><TableHead>Quién cobró</TableHead><TableHead>Fecha de cobro</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {fInc.map((i, k) => (
@@ -624,7 +625,7 @@ function EstadisticasInner() {
                 <Table>
                   <TableHeader><TableRow>
                     <TableHead>Cliente</TableHead><TableHead>País</TableHead><TableHead>Período</TableHead>
-                    <TableHead className="text-right">Monto</TableHead><TableHead>Estado</TableHead><TableHead>Responsable</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead><TableHead>Estado</TableHead><TableHead>Responsable</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {rows.map((u, k) => (

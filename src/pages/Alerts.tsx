@@ -75,11 +75,12 @@ export default function Alerts() {
         (a.client?.company_name ?? "").localeCompare(b.client?.company_name ?? ""));
   }, [assignments, periodInvoices, canSeeUnbilled, countryId, execId]);
 
-  // Vencidas = overdue OR (pending y due_date < hoy)
-  const overdue = useMemo(() => invoices.filter((i: any) => clientOk(i.client) &&
-    (i.status === "overdue" || (i.status === "pending" && i.due_date && i.due_date < today))), [invoices, countryId, execId, today]);
-  // Próximos = pending/invoiced con due_date entre hoy y hoy+7
-  const upcoming = useMemo(() => invoices.filter((i: any) => clientOk(i.client) &&
+  const saldo = (i: any) => (Number(i.amount) || 0) - (Number(i.amount_paid) || 0);
+  // Vencidas = saldo>0 y (overdue OR (pending/invoiced y due_date < hoy))
+  const overdue = useMemo(() => invoices.filter((i: any) => clientOk(i.client) && saldo(i) > 0 &&
+    (i.status === "overdue" || ((i.status === "pending" || i.status === "invoiced") && i.due_date && i.due_date < today))), [invoices, countryId, execId, today]);
+  // Próximos = saldo>0, pending/invoiced con due_date entre hoy y hoy+7
+  const upcoming = useMemo(() => invoices.filter((i: any) => clientOk(i.client) && saldo(i) > 0 &&
     (i.status === "pending" || i.status === "invoiced") && i.due_date && i.due_date >= today && i.due_date <= in7), [invoices, countryId, execId, today, in7]);
 
 
@@ -113,7 +114,7 @@ export default function Alerts() {
                     <div className="text-xs text-muted-foreground">Vence: {fmtDate(i.due_date)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono">{formatMoney(i.amount, i.currency)} <span className="text-xs text-muted-foreground">{i.currency}</span></div>
+                    <div className="font-mono">{formatMoney(saldo(i), i.currency)} <span className="text-xs text-muted-foreground">{i.currency}</span></div>
                     <Badge variant="destructive" className="mt-1">{daysOverdue(i.due_date)} días</Badge>
                   </div>
                 </div>
@@ -135,7 +136,7 @@ export default function Alerts() {
                     <div className="font-medium">{i.client?.company_name}</div>
                     <div className="text-xs text-muted-foreground">{fmtDate(i.due_date)}</div>
                   </div>
-                  <div className="font-mono">{formatMoney(i.amount, i.currency)} <span className="text-xs text-muted-foreground">{i.currency}</span></div>
+                  <div className="font-mono">{formatMoney(saldo(i), i.currency)} <span className="text-xs text-muted-foreground">{i.currency}</span></div>
                 </div>
               ))}
             </div>
