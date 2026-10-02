@@ -306,8 +306,8 @@ export default function Clients() {
             </TableHeader>
             <TableBody>
               {filtered.map((c: any) => {
-                const discountVigent = c.discount_active && c.discount_percentage && (!c.discount_ends_at || c.discount_ends_at >= today);
-                const discountExpired = c.discount_percentage && c.discount_ends_at && c.discount_ends_at < today;
+                const discountVigent = c.discount_active && (!c.discount_ends_at || c.discount_ends_at >= today);
+                const discountExpired = !c.discount_active && c.discount_ends_at && c.discount_ends_at < today;
                 return (
                 <TableRow key={c.id}>
                   {canEditAdminFinance && (
@@ -335,7 +335,7 @@ export default function Clients() {
 
                   <TableCell>
                     {discountVigent ? (
-                      <Badge className="bg-primary text-primary-foreground hover:bg-primary text-[10px]">{c.discount_percentage}% · vence {c.discount_ends_at ? fmtDate(c.discount_ends_at) : "—"}</Badge>
+                      <Badge className="bg-primary text-primary-foreground hover:bg-primary text-[10px]">{c.discount_type === "amount" ? `-${c.discount_amount} ${c.fee_currency}` : `${c.discount_percentage}%`} · vence {c.discount_ends_at ? fmtDate(c.discount_ends_at) : "—"}</Badge>
                     ) : discountExpired ? (
                       <Badge variant="destructive" className="text-[10px]">vencido {fmtDate(c.discount_ends_at)}</Badge>
                     ) : "—"}
@@ -562,6 +562,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         payment_term_days: (client as any).payment_term_days ?? 5,
         invoice_letter: (client as any).invoice_letter ?? null,
 
+        discount_type: client.discount_type ?? "percentage",
+        discount_amount: client.discount_amount ?? null,
         discount_percentage: client.discount_percentage ?? null,
         discount_duration: client.discount_duration ?? null,
         discount_starts_at: client.discount_starts_at ?? null,
@@ -612,6 +614,8 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         payment_term_days: 5,
         invoice_letter: null,
 
+        discount_type: "percentage",
+        discount_amount: null,
         discount_percentage: null,
         discount_duration: null,
         discount_starts_at: null,
@@ -715,11 +719,15 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
         payment_term_days: form.payment_term_days === "" || form.payment_term_days == null ? 5 : Math.max(0, Number(form.payment_term_days) || 0),
         invoice_letter: form.invoice_letter || null,
 
-        discount_percentage: form.discount_percentage != null && form.discount_percentage !== "" ? Number(form.discount_percentage) : null,
+        discount_type: form.discount_type || "percentage",
+        discount_percentage: form.discount_type === "percentage" && form.discount_percentage != null && form.discount_percentage !== "" ? Number(form.discount_percentage) : null,
+        discount_amount: form.discount_type === "amount" && form.discount_amount != null && form.discount_amount !== "" ? Number(form.discount_amount) : null,
         discount_duration: form.discount_duration || null,
         discount_starts_at: form.discount_starts_at || null,
         discount_ends_at: form.discount_ends_at || null,
-        discount_active: !!form.discount_active && !!form.discount_percentage,
+        discount_active:
+          (form.discount_type === "percentage" && !!form.discount_percentage && Number(form.discount_percentage) > 0) ||
+          (form.discount_type === "amount" && form.discount_amount != null && form.discount_amount !== "" && Number(form.discount_amount) > 0),
         ...(isAdmin ? { activated_at: form.activated_at || null } : {}),
       };
 
@@ -1517,12 +1525,38 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Descuento</h3>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label>Porcentaje (%)</Label>
-                <Input type="number" min={0} max={100} step="0.01" value={form.discount_percentage ?? ""} onChange={(e) => {
-                  const v = e.target.value;
-                  setForm({ ...form, discount_percentage: v === "" ? null : v, discount_active: v !== "" && Number(v) > 0 });
-                }} />
+                <Label>Tipo de descuento</Label>
+                <Select value={form.discount_type || "percentage"} onValueChange={(v) => {
+                  if (v === "amount") {
+                    setForm({ ...form, discount_type: "amount", discount_percentage: null });
+                  } else {
+                    setForm({ ...form, discount_type: "percentage", discount_amount: null });
+                  }
+                }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Porcentaje (%)</SelectItem>
+                    <SelectItem value="amount">Monto fijo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              {form.discount_type === "amount" ? (
+                <div>
+                  <Label>Monto de descuento ({form.fee_currency})</Label>
+                  <Input type="number" min={0} step="0.01" value={form.discount_amount ?? ""} onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, discount_amount: v === "" ? null : v, discount_active: v !== "" && Number(v) > 0 });
+                  }} />
+                </div>
+              ) : (
+                <div>
+                  <Label>Porcentaje (%)</Label>
+                  <Input type="number" min={0} max={100} step="0.01" value={form.discount_percentage ?? ""} onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, discount_percentage: v === "" ? null : v, discount_active: v !== "" && Number(v) > 0 });
+                  }} />
+                </div>
+              )}
               <div>
                 <Label>Duración</Label>
                 <Select value={form.discount_duration ?? "none"} onValueChange={(v) => {
@@ -1546,13 +1580,20 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                 <Label>Vence el</Label>
                 <Input type="date" value={form.discount_ends_at ?? ""} disabled={form.discount_duration && form.discount_duration !== "custom"} onChange={(e) => setForm({ ...form, discount_ends_at: e.target.value || null })} />
               </div>
-              {form.discount_percentage && Number(form.discount_percentage) > 0 && (
+              {(form.discount_type === "amount"
+                ? form.discount_amount != null && form.discount_amount !== "" && Number(form.discount_amount) > 0
+                : form.discount_percentage && Number(form.discount_percentage) > 0) && (
                 <div className="col-span-3 text-sm rounded-md border border-primary/30 bg-primary/5 p-2 space-y-1">
                   {form.fee_billing_mode === "flat" ? (
                     <div>
                       Fee único con descuento:{" "}
                       <span className="font-mono font-semibold">
-                        {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
+                        {formatMoney(
+                          form.discount_type === "amount"
+                            ? Math.max(Number(form.monthly_fee || 0) - Number(form.discount_amount || 0), 0)
+                            : Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100),
+                          form.fee_currency,
+                        )}
                       </span>
                       {form.discount_ends_at && <> · vence el <strong>{fmtDate(form.discount_ends_at)}</strong></>}
                     </div>
@@ -1561,14 +1602,21 @@ function ClientDialog({ open, onOpenChange, client, profiles = [] }: { open: boo
                       <div>
                         Por sucursal con descuento:{" "}
                         <span className="font-mono font-semibold">
-                          {formatMoney(Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100), form.fee_currency)}
+                          {formatMoney(
+                            form.discount_type === "amount"
+                              ? Math.max(Number(form.monthly_fee || 0) - Number(form.discount_amount || 0), 0)
+                              : Number(form.monthly_fee || 0) * (1 - Number(form.discount_percentage) / 100),
+                            form.fee_currency,
+                          )}
                         </span>
                       </div>
                       <div>
                         Total ({form.branches_count} {Number(form.branches_count) === 1 ? "sucursal" : "sucursales"}) con descuento:{" "}
                         <span className="font-mono font-semibold">
                           {formatMoney(
-                            Number(form.monthly_fee || 0) * Number(form.branches_count || 1) * (1 - Number(form.discount_percentage) / 100),
+                            form.discount_type === "amount"
+                              ? Math.max(Number(form.monthly_fee || 0) - Number(form.discount_amount || 0), 0) * Number(form.branches_count || 1)
+                              : Number(form.monthly_fee || 0) * Number(form.branches_count || 1) * (1 - Number(form.discount_percentage) / 100),
                             form.fee_currency,
                           )}
                         </span>
