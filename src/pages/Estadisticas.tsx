@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area,
 } from "recharts";
@@ -34,7 +35,7 @@ const bucketOf = (cat: string) => {
 };
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2, 160 60% 45%))", "hsl(var(--chart-3, 30 80% 55%))"];
 
-interface Inc { amount: number; currency: string; period_month: string; payment_channel: string | null; client_name: string; country_id: string | null }
+interface Inc { amount: number; currency: string; period_month: string; payment_channel: string | null; client_name: string; country_id: string | null; paid_at: string | null }
 interface Exp { amount: number; currency: string; date: string; paid_by: string | null; description: string | null; category: string; country_id: string | null }
 
 const ym = (d: string) => d.slice(0, 7);
@@ -67,13 +68,13 @@ function EstadisticasInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_invoices")
-        .select("amount, currency, period_month, payment_channel, status, clients(company_name, country_id)")
+        .select("amount, currency, period_month, payment_channel, paid_at, status, clients(company_name, country_id)")
         .eq("status", "paid");
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
         amount: Number(r.amount) || 0, currency: r.currency ?? "ARS", period_month: r.period_month,
         payment_channel: r.payment_channel, client_name: r.clients?.company_name ?? "—",
-        country_id: r.clients?.country_id ?? null,
+        country_id: r.clients?.country_id ?? null, paid_at: r.paid_at ?? null,
       })) as Inc[];
     },
   });
@@ -96,16 +97,44 @@ function EstadisticasInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_invoices")
-        .select("amount, currency, period_month, status, clients(country_id)")
+        .select("amount, currency, period_month, status, clients(company_name, country_id, assigned_executive_id)")
         .neq("status", "paid")
         .is("voided_at", null);
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
         amount: Number(r.amount) || 0, currency: r.currency ?? "ARS",
         period_month: r.period_month, country_id: r.clients?.country_id ?? null,
+        status: r.status as string, client_name: (r.clients?.company_name ?? "—") as string,
+        exec_id: (r.clients?.assigned_executive_id ?? null) as string | null,
       }));
     },
   });
+
+  const { data: countryNames = {} } = useQuery({
+    queryKey: ["estadisticas-countries"],
+    queryFn: async () => {
+      const { data } = await supabase.from("countries").select("id, name");
+      return Object.fromEntries((data ?? []).map((c: any) => [c.id, c.name])) as Record<string, string>;
+    },
+  });
+  const { data: execNames = {} } = useQuery({
+    queryKey: ["estadisticas-execs"],
+    queryFn: async () => {
+      const { data } = await supabase.from("employees").select("id, full_name");
+      return Object.fromEntries((data ?? []).map((e: any) => [e.id, e.full_name])) as Record<string, string>;
+    },
+  });
+  const [detail, setDetail] = useState<null | "ingresos" | "egresos" | "deudaPeriodo" | "deudaAcum">(null);
+  const cName = (id: string | null) => (id ? countryNames[id] ?? "—" : "—");
+  const perFmt = (d: string | null) => {
+    if (!d) return "—";
+    const [y, m] = d.slice(0, 7).split("-");
+    return `${MONTHS[Number(m) - 1]?.slice(0, 3).toLowerCase()}-${y}`;
+  };
+  const dateFmt = (d: string | null) => (d ? new Date(d.length <= 10 ? d + "T00:00:00" : d).toLocaleDateString("es-AR") : "—");
+  const orig = (a: number, c: string) => `${c} ${a.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
+  const payerLabel = (p: string | null) => (p === "dario" ? "Darío" : p === "maria" ? "Meri" : p ?? "—");
+  const statusLabel: Record<string, string> = { pending: "Pendiente", invoiced: "Facturada", overdue: "Vencida" };
 
   const toUsd = (a: number, c: string) => (c === "USD" ? a : c === "EUR" ? a * eurUsd : a / (usdArs || 1));
   const conv = (a: number, c: string, target: Cur = cur) => {
@@ -204,9 +233,20 @@ function EstadisticasInner() {
   });
   const changeCur = (c: Cur) => { setCur(c); setIngOverride(null); setEgrOverride(null); };
 
-  const Kpi = ({ title, value, tone }: { title: string; value: number; tone?: "pos" | "neg" }) => (
-    <Card>
-      <CardHeader className="pb-2"><CardDescription>{title}</CardDescription></CardHeader>
+  const Kpi = ({ title, value, tone, onClick }: { title: string; value: number; tone?: "pos" | "neg"; onClick?: () => void }) => (
+    <Card
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+      className={onClick ? "cursor-pointer transition-colors hover:border-primary/50 hover:bg-secondary/40" : undefined}
+    >
+      <CardHeader className="pb-2">
+        <CardDescription className="flex items-center justify-between gap-2">
+          <span>{title}</span>
+          {onClick && <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Ver detalle" />}
+        </CardDescription>
+      </CardHeader>
       <CardContent>
         <div className={`text-2xl font-bold ${tone === "neg" ? "text-destructive" : ""}`}>{fmt(value)}</div>
         <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(value, other), other)}</div>
@@ -214,10 +254,10 @@ function EstadisticasInner() {
     </Card>
   );
 
-  const KpiGrid = ({ s }: { s: ReturnType<typeof compute> }) => (
+  const KpiGrid = ({ s, clickable }: { s: ReturnType<typeof compute>; clickable?: boolean }) => (
     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-      <Kpi title="Ingresos (cobrado)" value={s.ingresos} />
-      <Kpi title="Egresos total" value={s.egresos} />
+      <Kpi title="Ingresos (cobrado)" value={s.ingresos} onClick={clickable ? () => setDetail("ingresos") : undefined} />
+      <Kpi title="Egresos total" value={s.egresos} onClick={clickable ? () => setDetail("egresos") : undefined} />
       <Kpi title="Ganancia neta" value={s.neta} tone={s.neta < 0 ? "neg" : "pos"} />
       <Kpi title="Ganancia por socio" value={s.neta / 2} tone={s.neta < 0 ? "neg" : "pos"} />
     </div>
@@ -315,10 +355,10 @@ function EstadisticasInner() {
         </TabsList>
 
         <TabsContent value="resumen" className="space-y-4">
-          <KpiGrid s={sum} />
+          <KpiGrid s={sum} clickable />
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            <Kpi title="Deuda del período (a cobrar)" value={deudaPeriodo} />
-            <Kpi title="Deuda acumulada (a cobrar)" value={deudaAcum} />
+            <Kpi title="Deuda del período (a cobrar)" value={deudaPeriodo} onClick={() => setDetail("deudaPeriodo")} />
+            <Kpi title="Deuda acumulada (a cobrar)" value={deudaAcum} onClick={() => setDetail("deudaAcum")} />
           </div>
           <Card>
             <CardContent className="pt-6 text-sm">
@@ -529,6 +569,84 @@ function EstadisticasInner() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={detail !== null} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>
+              {detail === "ingresos" ? `Ingresos cobrados · ${periodLabel(year, month)}`
+                : detail === "egresos" ? `Egresos · ${periodLabel(year, month)}`
+                : detail === "deudaPeriodo" ? `Deuda del período · ${periodLabel(year, month)}`
+                : "Deuda acumulada (todas las impagas)"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[65vh] overflow-auto">
+            {detail === "ingresos" && (
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Cliente</TableHead><TableHead>País</TableHead><TableHead>Período</TableHead>
+                  <TableHead className="text-right">Monto</TableHead><TableHead>Quién cobró</TableHead><TableHead>Fecha de cobro</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {fInc.map((i, k) => (
+                    <TableRow key={k}>
+                      <TableCell>{i.client_name}</TableCell><TableCell>{cName(i.country_id)}</TableCell>
+                      <TableCell>{perFmt(i.period_month)}</TableCell><TableCell className="text-right whitespace-nowrap">{orig(i.amount, i.currency)}</TableCell>
+                      <TableCell><Badge variant="outline">{partnerLabel(partnerOfChannel(i.payment_channel))}</Badge></TableCell>
+                      <TableCell>{dateFmt(i.paid_at)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {fInc.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sin registros</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            )}
+            {detail === "egresos" && (
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Concepto</TableHead><TableHead>Categoría</TableHead><TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Quién pagó</TableHead><TableHead>Fecha</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {fExp.map((e, k) => (
+                    <TableRow key={k}>
+                      <TableCell>{e.description ?? "—"}</TableCell><TableCell>{e.category}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{orig(e.amount, e.currency)}</TableCell>
+                      <TableCell>{payerLabel(e.paid_by)}</TableCell><TableCell>{dateFmt(e.date)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {fExp.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Sin registros</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            )}
+            {(detail === "deudaPeriodo" || detail === "deudaAcum") && (() => {
+              const rows = unpaid.filter((u) => matchCountry(u.country_id) && (detail === "deudaAcum" || inPeriod(u.period_month, year, month)));
+              return (
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Cliente</TableHead><TableHead>País</TableHead><TableHead>Período</TableHead>
+                    <TableHead className="text-right">Monto</TableHead><TableHead>Estado</TableHead><TableHead>Responsable</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {rows.map((u, k) => (
+                      <TableRow key={k}>
+                        <TableCell>{u.client_name}</TableCell><TableCell>{cName(u.country_id)}</TableCell>
+                        <TableCell>{perFmt(u.period_month)}</TableCell><TableCell className="text-right whitespace-nowrap">{orig(u.amount, u.currency)}</TableCell>
+                        <TableCell><Badge variant={u.status === "overdue" ? "destructive" : "outline"}>{statusLabel[u.status] ?? u.status}</Badge></TableCell>
+                        <TableCell>{u.exec_id ? execNames[u.exec_id] ?? "—" : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sin registros</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              );
+            })()}
+          </div>
+          <div className="flex justify-between border-t pt-3 font-semibold">
+            <span>Total ({cur})</span>
+            <span>{fmt(detail === "ingresos" ? sum.ingresos : detail === "egresos" ? sum.egresos : detail === "deudaPeriodo" ? deudaPeriodo : deudaAcum)}</span>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
