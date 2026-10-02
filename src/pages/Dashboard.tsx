@@ -29,7 +29,7 @@ export default function Dashboard() {
 
   const { data: invoicesAll = [] } = useQuery({
     queryKey: ["dash-invoices"],
-    queryFn: async () => (await supabase.from("invoices").select("*, client:clients(company_name, country_id)")).data ?? [],
+    queryFn: async () => (await supabase.from("monthly_invoices").select("*, client:clients(company_name, country_id)")).data ?? [],
   });
   const { data: clientsAll = [] } = useQuery({
     queryKey: ["dash-clients"],
@@ -151,8 +151,8 @@ export default function Dashboard() {
   const series = useMemo(() => {
     const map: Record<string, any> = {};
     const okCurr = (r: any) => !activeCurrency || r.currency === activeCurrency;
-    invoices.filter((i: any) => i.status === "paid" && i.collected_at && okCurr(i)).forEach((i: any) => {
-      const k = format(startOfMonth(parseISO(i.collected_at)), "yyyy-MM");
+    invoices.filter((i: any) => i.status === "paid" && i.paid_at && okCurr(i)).forEach((i: any) => {
+      const k = format(startOfMonth(parseISO(i.paid_at)), "yyyy-MM");
       map[k] = map[k] ?? { month: k, ingresos: 0, gastos: 0 };
       map[k].ingresos += Number(i.amount);
     });
