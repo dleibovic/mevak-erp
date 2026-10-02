@@ -97,7 +97,7 @@
     overflow-x: hidden;
     padding-bottom: env(safe-area-inset-bottom);
   }
-  h1, h2, h3 { @apply font-display; }
+  h1, h2, h3 { @apply font-display text-primary; }
   input, select, textarea, button { font-size: 16px; }
 }
 
