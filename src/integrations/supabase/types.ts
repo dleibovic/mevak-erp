@@ -3891,6 +3891,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_settings: {
+        Row: {
+          category: string
+          config: Json
+          descripcion: string | null
+          enabled: boolean
+          frequency: string
+          id: string
+          key: string
+          label: string
+          last_sent_at: string | null
+          recipients: string[]
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          config?: Json
+          descripcion?: string | null
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          key: string
+          label: string
+          last_sent_at?: string | null
+          recipients?: string[]
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          config?: Json
+          descripcion?: string | null
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          key?: string
+          label?: string
+          last_sent_at?: string | null
+          recipients?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
