@@ -220,6 +220,16 @@ export default function Expenses() {
                 </TableBody>
               </Table>
             }
+            {filtersActive && filteredExpenses.length > 0 && (
+              <div className="p-3 border-t border-border/60 text-sm text-muted-foreground">
+                Total filtrado:{" "}
+                {Object.entries(filteredTotals).map(([cur, tot], i) => (
+                  <span key={cur} className="font-mono">
+                    {i > 0 && " · "}{formatMoney(tot, cur)}
+                  </span>
+                ))}
+              </div>
+            )}
           </Card>
         </TabsContent>
 
