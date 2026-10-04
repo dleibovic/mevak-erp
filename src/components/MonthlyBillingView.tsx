@@ -291,10 +291,10 @@ export function MonthlyBillingView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <Card className="p-3 bg-gradient-card border-border/60 flex flex-wrap gap-2 items-center">
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full min-w-0 sm:w-[200px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {periods.map((p) => <SelectItem key={p.value} value={p.value} className="capitalize">{p.label}</SelectItem>)}
           </SelectContent>
@@ -306,10 +306,10 @@ export function MonthlyBillingView() {
         {[{ v: "all", l: "Todas" }, { v: "pending", l: "Pendientes" }, { v: "invoiced", l: "Facturadas" }, { v: "paid", l: "Cobradas" }, { v: "overdue", l: "Vencidas" }].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex w-full min-w-0 flex-wrap gap-2 sm:w-auto">
           {canEditAdminFinance && (
             <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
-              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Responsable" /></SelectTrigger>
+              <SelectTrigger className="w-full min-w-0 sm:w-[200px]"><SelectValue placeholder="Responsable" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los responsables</SelectItem>
                 <SelectItem value="__none__">Sin asignar</SelectItem>
@@ -318,7 +318,7 @@ export function MonthlyBillingView() {
             </Select>
           )}
           <Select value={groupBy} onValueChange={(v: any) => setGroupBy(v)}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0 sm:w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="channel">Agrupar por canal</SelectItem>
               <SelectItem value="none">Sin agrupar</SelectItem>
@@ -329,7 +329,7 @@ export function MonthlyBillingView() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 [&>*]:min-w-0">
         {Object.entries(stats).map(([ccy, s]) => (
           <Card key={ccy} className="p-4 bg-gradient-card border-border/60">
             <div className="text-xs text-muted-foreground">Total {ccy}</div>

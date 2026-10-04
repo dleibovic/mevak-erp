@@ -166,17 +166,17 @@ export default function Billing() {
         actions={canEditAdminFinance && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nueva factura</Button>}
       />
 
-      <Tabs defaultValue="invoices" className="mb-4">
+      <Tabs defaultValue="invoices" className="mb-4 min-w-0">
         <TabsList>
           <TabsTrigger value="invoices">Facturas</TabsTrigger>
           <TabsTrigger value="monthly">Facturación mensual</TabsTrigger>
         </TabsList>
-        <TabsContent value="monthly" className="mt-4">
+        <TabsContent value="monthly" className="mt-4 min-w-0">
           <MonthlyBillingView />
         </TabsContent>
-        <TabsContent value="invoices" className="mt-4">
+        <TabsContent value="invoices" className="mt-4 min-w-0">
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 [&>*]:min-w-0">
         <KPI label="Facturas vencidas" value={stats.overdueCount} accent="destructive" icon={<AlertTriangle className="h-4 w-4" />} />
         <KPI label="Por vencer" value={stats.pendingCount} accent="warning" />
         <KPI label="Total facturas" value={invoices.length} />
@@ -193,20 +193,20 @@ export default function Billing() {
         ].map(t => (
           <Button key={t.v} variant={filterStatus === t.v ? "default" : "ghost"} size="sm" onClick={() => setFilterStatus(t.v)}>{t.l}</Button>
         ))}
-        <div className="ml-auto flex flex-wrap gap-2 items-center">
+        <div className="ml-auto flex w-full min-w-0 flex-wrap gap-2 items-center sm:w-auto">
           <Button variant="outline" size="sm" onClick={exportInvoicesExcel}><Download className="h-4 w-4 mr-1" />Excel</Button>
-          <MonthFilter value={month} onChange={setMonth} />
+          <MonthFilter value={month} onChange={setMonth} className="w-full min-w-0 sm:w-[190px]" />
 
 
           <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
-            <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Responsable" /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0 h-9 sm:w-[200px]"><SelectValue placeholder="Responsable" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los responsables</SelectItem>
               <SelectItem value="__none__">Sin asignar</SelectItem>
               {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}
             </SelectContent>
           </Select>
-          <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-[180px]" size="sm" />
+          <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-full min-w-0 sm:w-[180px]" size="sm" />
         </div>
       </Card>
 

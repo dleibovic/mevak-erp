@@ -92,6 +92,9 @@
   * { @apply border-border; }
   html, body, #root { @apply h-full; }
   html { -webkit-text-size-adjust: 100%; }
+  @media (max-width: 767px) {
+    html, #root { overflow-x: clip; }
+  }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     overflow-x: hidden;
