@@ -22,6 +22,7 @@ const NAV = [
   { to: "/churn", label: "Churn", icon: TrendingDown },
   { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
   { to: "/alertas", label: "Alertas", icon: AlertTriangle },
+  { to: "/deudas", label: "Deudas", icon: HandCoins, adminOnly: true },
   { to: "/usuarios", label: "Usuarios y Roles", icon: ShieldCheck, adminOnly: true },
   { to: "/admin", label: "Configuración", icon: Settings, adminOnly: true },
 ];
