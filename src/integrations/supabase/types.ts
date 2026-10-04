@@ -4057,6 +4057,62 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_debts: {
+        Row: {
+          amount_ars_origin: number | null
+          amount_usd: number
+          concept: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          entry_date: string
+          entry_type: string
+          id: string
+          ledger: string
+          origin_period: string | null
+          origin_rate_ars: number | null
+          related_invoice_id: string | null
+        }
+        Insert: {
+          amount_ars_origin?: number | null
+          amount_usd: number
+          concept?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          entry_date?: string
+          entry_type: string
+          id?: string
+          ledger: string
+          origin_period?: string | null
+          origin_rate_ars?: number | null
+          related_invoice_id?: string | null
+        }
+        Update: {
+          amount_ars_origin?: number | null
+          amount_usd?: number
+          concept?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          ledger?: string
+          origin_period?: string | null
+          origin_rate_ars?: number | null
+          related_invoice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_debts_related_invoice_id_fkey"
+            columns: ["related_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_methods: {
         Row: {
           created_at: string
