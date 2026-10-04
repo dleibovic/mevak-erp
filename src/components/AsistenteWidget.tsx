@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageSquare, Minus, X, Send, Loader2, Bot } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -79,9 +81,26 @@ export function AsistenteWidget() {
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, busy]);
   useEffect(() => { if (open && !busy) inputRef.current?.focus(); }, [open, busy]);
+  useEffect(() => {
+    if (!open) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const syncViewport = () => {
+      panelRef.current?.style.setProperty("--assistant-vh", `${viewport.height}px`);
+      panelRef.current?.style.setProperty("--assistant-top", `${viewport.offsetTop}px`);
+    };
+    syncViewport();
+    viewport.addEventListener("resize", syncViewport);
+    viewport.addEventListener("scroll", syncViewport);
+    return () => {
+      viewport.removeEventListener("resize", syncViewport);
+      viewport.removeEventListener("scroll", syncViewport);
+    };
+  }, [open]);
 
   if (roleLoading || (role !== "admin" && role !== "administracion")) return null;
 
@@ -119,8 +138,8 @@ export function AsistenteWidget() {
   }
 
   return (
-    <div className="fixed inset-x-2 bottom-20 z-50 flex h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-elevated md:inset-x-auto md:bottom-6 md:right-6 md:h-[600px] md:w-[440px]">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+    <div ref={panelRef} className="fixed inset-x-0 top-[var(--assistant-top,0px)] z-50 flex h-[var(--assistant-vh,100dvh)] flex-col overflow-hidden bg-background md:inset-x-auto md:top-auto md:bottom-6 md:right-6 md:h-[600px] md:w-[440px] md:rounded-2xl md:border md:border-border md:shadow-elevated">
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:pt-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground"><Bot className="h-4 w-4" /></div>
           <div>
@@ -134,7 +153,7 @@ export function AsistenteWidget() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-3">
         {msgs.length === 0 && (
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>Probá con:</p>
@@ -146,7 +165,20 @@ export function AsistenteWidget() {
         {msgs.map((m, i) => (
           <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
             <div className={cn("max-w-[92%] text-sm", m.role === "user" ? "rounded-2xl bg-primary px-3 py-2 text-primary-foreground" : "w-full", m.error && "text-destructive")}>
-              <div className="whitespace-pre-wrap">{m.content}</div>
+              {m.role === "user" ? (
+                <div className="whitespace-pre-wrap">{m.content}</div>
+              ) : (
+                <div className="break-words text-sm leading-relaxed">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>,
+                    ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0">{children}</ol>,
+                    li: ({ children }) => <li className="pl-0.5">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                  }}>{m.content}</ReactMarkdown>
+                </div>
+              )}
               {m.data && <DataView data={m.data} />}
             </div>
           </div>
@@ -155,7 +187,7 @@ export function AsistenteWidget() {
         <div ref={endRef} />
       </div>
 
-      <div className="flex items-end gap-2 border-t border-border p-3">
+      <div className="flex shrink-0 items-end gap-2 border-t border-border p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-3">
         <Textarea ref={inputRef} value={input} rows={1} placeholder="Escribí tu pregunta…" className="max-h-32 min-h-10 resize-none"
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
