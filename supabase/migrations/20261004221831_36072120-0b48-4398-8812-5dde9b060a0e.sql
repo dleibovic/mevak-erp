@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.mark_invoiced_on_afip_doc() FROM PUBLIC, anon, authenticated;
