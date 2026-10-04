@@ -26,6 +26,7 @@ const MetricasSaaS = lazyWithRetry(() => import("./pages/MetricasSaaS"));
 const Churn = lazyWithRetry(() => import("./pages/Churn"));
 const LtvRentabilidad = lazyWithRetry(() => import("./pages/LtvRentabilidad"));
 const Usuarios = lazyWithRetry(() => import("./pages/Usuarios"));
+const Debts = lazyWithRetry(() => import("./pages/Debts"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
 
 const AppLoading = forwardRef<HTMLDivElement>((_, ref) => {

@@ -1,5 +1,5 @@
 import { NavLink, useLocation, Outlet, Navigate } from "react-router-dom";
-import { LayoutDashboard, Users, Receipt, Wallet, UserCog, Settings, LogOut, AlertTriangle, BarChart3, Target, Activity, TrendingDown, PiggyBank, ShieldCheck, LineChart as LineChartIcon } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Wallet, UserCog, Settings, LogOut, AlertTriangle, BarChart3, Target, Activity, TrendingDown, PiggyBank, ShieldCheck, LineChart as LineChartIcon, HandCoins } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
