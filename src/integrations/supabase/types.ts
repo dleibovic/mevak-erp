@@ -3807,6 +3807,94 @@ export type Database = {
           },
         ]
       }
+      monthly_invoices_bkp_20261004: {
+        Row: {
+          amount: number | null
+          amount_paid: number | null
+          billing_entity_id: string | null
+          billing_user_id: string | null
+          client_id: string | null
+          created_at: string | null
+          currency: string | null
+          due_date: string | null
+          id: string | null
+          invoice_date: string | null
+          invoiced_at: string | null
+          invoiced_by: string | null
+          legal_name: string | null
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_assigned_at: string | null
+          payment_channel: Database["public"]["Enums"]["payment_channel"] | null
+          period_month: string | null
+          status: Database["public"]["Enums"]["monthly_invoice_status"] | null
+          sub_brand_id: string | null
+          tax_id: string | null
+          updated_at: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount?: number | null
+          amount_paid?: number | null
+          billing_entity_id?: string | null
+          billing_user_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          id?: string | null
+          invoice_date?: string | null
+          invoiced_at?: string | null
+          invoiced_by?: string | null
+          legal_name?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_assigned_at?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
+          period_month?: string | null
+          status?: Database["public"]["Enums"]["monthly_invoice_status"] | null
+          sub_brand_id?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number | null
+          amount_paid?: number | null
+          billing_entity_id?: string | null
+          billing_user_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          id?: string | null
+          invoice_date?: string | null
+          invoiced_at?: string | null
+          invoiced_by?: string | null
+          legal_name?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_assigned_at?: string | null
+          payment_channel?:
+            | Database["public"]["Enums"]["payment_channel"]
+            | null
+          period_month?: string | null
+          status?: Database["public"]["Enums"]["monthly_invoice_status"] | null
+          sub_brand_id?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: []
+      }
       mrr_recompute_runs: {
         Row: {
           error: string | null
