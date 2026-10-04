@@ -87,11 +87,11 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 relative pb-20 md:pb-0">
+      <main className="flex-1 min-w-0 relative pb-20 md:pb-0 max-md:overflow-x-clip">
         <div className="absolute inset-x-0 top-0 h-64 bg-glow pointer-events-none" />
-        <header className="relative z-10 min-h-14 border-b border-border/60 bg-background/80 backdrop-blur flex flex-wrap items-center justify-between md:justify-end px-4 md:px-6 py-3 gap-3">
+        <header className="relative z-10 min-h-14 min-w-0 border-b border-border/60 bg-background/80 backdrop-blur flex flex-wrap items-center justify-between md:justify-end px-4 md:px-6 py-3 gap-3">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Vista por país</span>
-          <CountryFilterSelect />
+          <CountryFilterSelect className="w-[min(180px,100%)]" />
           <NotificationsBell />
           <ThemeToggle />
         </header>
