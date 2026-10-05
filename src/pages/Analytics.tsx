@@ -175,6 +175,10 @@ function AdminDashboard({ countryId, month, execId, clientId }: DashProps & { mo
     queryKey: ["an-clients", countryId],
     queryFn: async () => (await supabase.from("clients").select("id, company_name, country_id, monthly_fee, fee_currency, status, assigned_executive_id")).data ?? [],
   });
+  const { data: clientMetrics = [] } = useQuery({
+    queryKey: ["an-client-metrics"],
+    queryFn: async () => (await supabase.from("v_client_metrics").select("client_id, current_mrr, currency")).data ?? [],
+  });
   const rateIndex = useRateIndex();
   const usd = (amount: number, currency: string, dateOrMonth: string | Date) => toUsdByCurrency(rateIndex, amount, currency, dateOrMonth);
   // Fecha para valuar/ubicar una factura: su mes de facturación (period_month).
@@ -268,13 +272,14 @@ function AdminDashboard({ countryId, month, execId, clientId }: DashProps & { mo
 
   /* Top 10 clientes por fee (en su moneda original) */
   const topClients = useMemo(() => {
+    const mrr = new Map<string, any>((clientMetrics as any[]).map((m) => [m.client_id, m]));
     return clients
       .filter((c: any) => inCountry(c.country_id) && c.status === "active"
         && (!execId || c.assigned_executive_id === execId) && (!clientId || c.id === clientId))
-      .map((c: any) => ({ id: c.id, name: c.company_name, fee: Number(c.monthly_fee) || 0, currency: c.fee_currency || "ARS" }))
+      .map((c: any) => ({ id: c.id, name: c.company_name, fee: Number(mrr.get(c.id)?.current_mrr) || 0, currency: mrr.get(c.id)?.currency || c.fee_currency || "ARS" }))
       .sort((a, b) => b.fee - a.fee)
       .slice(0, 10);
-  }, [clients, countryId, execId, clientId]);
+  }, [clients, clientMetrics, countryId, execId, clientId]);
 
   /* Pareto clientes (ingresos en USD) */
   const paretoClients = useMemo(() => {
