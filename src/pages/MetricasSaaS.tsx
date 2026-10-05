@@ -49,11 +49,9 @@ function lastNMonths(n: number): string[] {
   return out;
 }
 
-export default function MetricasSaaS() {
-  const [country, setCountry] = useState<string>("all");
-  const [executive, setExecutive] = useState<string>("all");
-  const [foodCat, setFoodCat] = useState<string>("all");
-  const [currency, setCurrency] = useState<string>("all");
+export type MetricsFilters = { country: string; executive: string; foodCat: string; currency: string };
+export function MrrTab({ filters }: { filters: MetricsFilters }) {
+  const { country, executive, foodCat, currency } = filters;
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-lite"],
@@ -290,32 +288,7 @@ export default function MetricasSaaS() {
   }, [filteredCmh, months, clientById]);
 
   return (
-    <PageContainer>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <PageHeader
-          title="Métricas SaaS"
-          description="MRR, churn, NRR y LTV — últimos 24 meses. Snapshots calculados desde activated_at por cliente."
-        />
-        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
-          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Mostrando en</span>
-          <span className="font-semibold tabular-nums">{displayCurrency}</span>
-          {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
-        </div>
-      </div>
-
-
-      {/* Filters */}
-      <Card className="p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3 bg-gradient-card border-border/60 [&>*]:min-w-0">
-        <FilterSelect label="País" value={country} onChange={setCountry}
-          options={[{ value: "all", label: "Todos" }, ...countries.map((c: any) => ({ value: c.id, label: c.name }))]} />
-        <FilterSelect label="Ejecutivo" value={executive} onChange={setExecutive}
-          options={[{ value: "all", label: "Todos" }, ...employees.map((e: any) => ({ value: e.id, label: e.full_name }))]} />
-        <FilterSelect label="Tipo (food category)" value={foodCat} onChange={setFoodCat}
-          options={[{ value: "all", label: "Todos" }, ...foodCategories.map((f: any) => ({ value: f.id, label: f.name }))]} />
-        <FilterSelect label="Moneda original" value={currency} onChange={setCurrency}
-          options={[{ value: "all", label: "Todas" }, ...currenciesAvailable.map((c) => ({ value: c, label: c }))]} />
-      </Card>
+    <div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 [&>*]:min-w-0">
@@ -418,7 +391,7 @@ export default function MetricasSaaS() {
           </Table>
         </div>
       </Card>
-    </PageContainer>
+    </div>
   );
 }
 

@@ -86,11 +86,9 @@ function lastNMonths(n: number): string[] {
   return out;
 }
 
-export default function Churn() {
-  const [country, setCountry] = useState("all");
-  const [executive, setExecutive] = useState("all");
-  const [foodCat, setFoodCat] = useState("all");
-  const [currency, setCurrency] = useState("all");
+type MetricsFilters = { country: string; executive: string; foodCat: string; currency: string };
+export function ChurnTab({ filters }: { filters: MetricsFilters }) {
+  const { country, executive, foodCat, currency } = filters;
   const [period, setPeriod] = useState<"1m" | "3m" | "12m">("3m");
 
   const { data: clients = [] } = useQuery({
@@ -348,50 +346,8 @@ export default function Churn() {
   }, [clients, country, executive, foodCat, currency]);
 
   return (
-    <PageContainer>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <PageHeader
-          title="Churn"
-          description="Pérdida de clientes y revenue — análisis mensual, trimestral y anual"
-        />
-        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
-          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Mostrando en</span>
-          <span className="font-semibold tabular-nums">{displayCurrency}</span>
-          {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
-        </div>
-      </div>
-
-      {/* Filters */}
+    <div className="space-y-5">
       <div className="flex flex-wrap gap-2">
-        <Select value={country} onValueChange={setCountry}>
-          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="País" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los países</SelectItem>
-            {countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={executive} onValueChange={setExecutive}>
-          <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los ejecutivos</SelectItem>
-            {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={foodCat} onValueChange={setFoodCat}>
-          <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Tipo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los tipos</SelectItem>
-            {foodCategories.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={currency} onValueChange={setCurrency}>
-          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Moneda" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las monedas</SelectItem>
-            {currenciesAvailable.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={period} onValueChange={(v: any) => setPeriod(v)}>
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -641,7 +597,7 @@ export default function Churn() {
           </div>
         </div>
       </Card>
-    </PageContainer>
+    </div>
   );
 }
 
