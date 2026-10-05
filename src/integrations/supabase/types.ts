@@ -5903,6 +5903,10 @@ export type Database = {
         Args: { _payment_id: string }
         Returns: undefined
       }
+      undo_invoice_incobrable: {
+        Args: { _invoice_id: string }
+        Returns: undefined
+      }
       undo_salary_payment: { Args: { _payment_id: string }; Returns: undefined }
       upsert_exchange_rate_override: {
         Args: {
