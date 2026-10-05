@@ -3701,6 +3701,8 @@ export type Database = {
           currency: string
           due_date: string | null
           id: string
+          incobrable_at: string | null
+          incobrable_reason: string | null
           invoice_date: string | null
           invoiced_at: string | null
           invoiced_by: string | null
@@ -3728,6 +3730,8 @@ export type Database = {
           currency?: string
           due_date?: string | null
           id?: string
+          incobrable_at?: string | null
+          incobrable_reason?: string | null
           invoice_date?: string | null
           invoiced_at?: string | null
           invoiced_by?: string | null
@@ -3757,6 +3761,8 @@ export type Database = {
           currency?: string
           due_date?: string | null
           id?: string
+          incobrable_at?: string | null
+          incobrable_reason?: string | null
           invoice_date?: string | null
           invoiced_at?: string | null
           invoiced_by?: string | null
@@ -4821,6 +4827,15 @@ export type Database = {
       is_admin_or_administracion: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      mark_invoice_incobrable: {
+        Args: {
+          _invoice_id: string
+          _origin_rate: number
+          _reason: string
+          _usd_full: number
+        }
+        Returns: undefined
       }
       mevak_activate_client_manual: {
         Args: { _client_id: string }

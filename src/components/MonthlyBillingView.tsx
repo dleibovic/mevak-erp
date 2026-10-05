@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2, Pencil, Receipt, History, HandCoins } from "lucide-react";
+import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2, Pencil, Receipt, History, HandCoins, AlertOctagon } from "lucide-react";
+import { defaultRateFor, incobrableUsd } from "@/lib/incobrable";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
@@ -142,6 +143,33 @@ export function MonthlyBillingView() {
     },
     onSuccess: () => { toast.success("Facturas generadas"); qc.invalidateQueries({ queryKey: ["monthly_invoices"] }); },
     onError: (e: any) => toast.error(e.message),
+  });
+
+  const [incob, setIncob] = useState<any>(null);
+  const [incobRate, setIncobRate] = useState("");
+  const [incobReason, setIncobReason] = useState("");
+  const openIncob = (r: any) => { setIncob(r); setIncobRate(defaultRateFor(r.period_month)); setIncobReason(""); };
+  const incobSaldo = incob ? Math.max(0, Number(incob.amount) - (Number(incob.amount_paid) || 0)) : 0;
+  const incobUsdFull = incob ? incobrableUsd(incobSaldo, incob.currency, Number(incobRate)) : NaN;
+  const markIncobrable = useMutation({
+    mutationFn: async () => {
+      if (!incobReason.trim()) throw new Error("El motivo es obligatorio");
+      if (!Number.isFinite(incobUsdFull) || incobUsdFull <= 0) throw new Error("Revisá el saldo y el dólar ingresado");
+      const { error } = await (supabase.rpc as any)("mark_invoice_incobrable", {
+        _invoice_id: incob.id,
+        _usd_full: Math.round(incobUsdFull * 100) / 100,
+        _origin_rate: incob.currency === "ARS" ? Number(incobRate) : null,
+        _reason: incobReason.trim(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Factura marcada como incobrable");
+      setIncob(null);
+      qc.invalidateQueries({ queryKey: ["monthly_invoices"] });
+      qc.invalidateQueries({ queryKey: ["partner-debts"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "No se pudo marcar como incobrable"),
   });
 
   const [paying, setPaying] = useState<any>(null);
@@ -407,7 +435,7 @@ export function MonthlyBillingView() {
                     {r.due_date ? fmtDate(r.due_date) : "—"}
                   </TableCell>
                   <TableCell>
-                    {r.voided_at ? <Badge variant="outline" className="border-destructive text-destructive">Anulada</Badge> : (<>
+                    {r.incobrable_at ? <Badge variant="destructive" title={r.incobrable_reason ?? undefined}>Incobrable</Badge> : r.voided_at ? <Badge variant="outline" className="border-destructive text-destructive">Anulada</Badge> : (<>
                     {r.status === "paid" && <Badge className="bg-success text-success-foreground hover:bg-success">Cobrada</Badge>}
                     {r.status === "invoiced" && <Badge className="bg-primary text-primary-foreground">Facturada</Badge>}
                     {r.status === "pending" && <Badge className="bg-warning text-warning-foreground hover:bg-warning">Pendiente</Badge>}
@@ -490,6 +518,11 @@ export function MonthlyBillingView() {
                         </Button>
                       )
                     )}
+                    {canEditAdminFinance && !r.voided_at && !r.incobrable_at && r.status !== "paid" && (
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openIncob(r)} title="Marcar incobrable (split 50/50)">
+                        <AlertOctagon className="h-4 w-4 mr-1" />Incobrable
+                      </Button>
+                    )}
                     {isAdmin && (
                       <Button size="icon" variant="ghost" title="Eliminar definitivamente"
                         onClick={() => { if (window.confirm("¿Eliminar definitivamente esta factura? Esta acción no se puede deshacer.")) removeInvoice.mutate(r.id); }}>
@@ -507,6 +540,41 @@ export function MonthlyBillingView() {
         </Card>
       ))}
       {isLoading && <div className="text-center text-muted-foreground py-6">Cargando…</div>}
+
+      {/* Dialogo: marcar incobrable */}
+      <Dialog open={!!incob} onOpenChange={(v) => !v && setIncob(null)}>
+        <DialogContent className="min-w-0">
+          <DialogHeader><DialogTitle>Marcar incobrable</DialogTitle></DialogHeader>
+          {incob && (
+            <div className="min-w-0 space-y-3 text-sm">
+              <div className="break-words"><span className="text-muted-foreground">Cliente:</span> {incob.client?.company_name ?? "—"}</div>
+              <div><span className="text-muted-foreground">Período:</span> {String(incob.period_month).slice(0, 7)}</div>
+              <div><span className="text-muted-foreground">Saldo:</span> {formatMoney(incobSaldo, incob.currency)} ({incob.currency})</div>
+              {incob.currency === "ARS" && (
+                <div className="space-y-1">
+                  <Label htmlFor="incob-rate">Dólar más bajo del mes de origen (ARS por USD)</Label>
+                  <Input id="incob-rate" type="number" min="0" step="any" value={incobRate} onChange={(e) => setIncobRate(e.target.value)} />
+                </div>
+              )}
+              {incob.currency === "EUR" && <p className="text-muted-foreground">Se convierte con EUR→USD 1,165.</p>}
+              <div className="rounded-md border border-border p-3 space-y-1 break-words">
+                <div>Valor en USD: <strong>{Number.isFinite(incobUsdFull) ? formatMoney(incobUsdFull, "USD") : "—"}</strong></div>
+                <div>Mitad que suma a la deuda de Meri = <strong>{Number.isFinite(incobUsdFull) ? formatMoney(Math.round(incobUsdFull * 50) / 100, "USD") : "—"}</strong></div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="incob-reason">Motivo</Label>
+                <Textarea id="incob-reason" value={incobReason} onChange={(e) => setIncobReason(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIncob(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={markIncobrable.isPending || !incobReason.trim() || !Number.isFinite(incobUsdFull) || incobUsdFull <= 0} onClick={() => markIncobrable.mutate()}>
+              {markIncobrable.isPending ? "Guardando…" : "Confirmar incobrable"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialogo: registrar pago */}
       <Dialog open={!!paying} onOpenChange={(v) => !v && setPaying(null)}>
