@@ -50,6 +50,40 @@ export function SalaryPayments() {
       return (data ?? []) as any[];
     },
   });
+  const { data: snaps = [] } = useQuery({
+    queryKey: ["salary-commission-snapshots", month],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("commission_snapshots").select("employee_id, commission_value, commission_override, commission_currency, was_billed").eq("period_month", month);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+  const { data: cec = [] } = useQuery({
+    queryKey: ["salary-client-exec-commission"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("client_executive_commission").select("employee_id, commission_value, currency");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+  const commByEmp = useMemo(() => {
+    const m = new Map<string, Record<string, number>>();
+    const hasSnap = new Set(snaps.map((s) => s.employee_id));
+    const add = (id: string, c: string, v: number) => {
+      const r = m.get(id) ?? {}; r[c] = (r[c] ?? 0) + v; m.set(id, r);
+    };
+    snaps.forEach((s) => { if (s.was_billed) add(s.employee_id, s.commission_currency || "ARS", Number(s.commission_override ?? s.commission_value ?? 0)); });
+    cec.forEach((c) => { if (!hasSnap.has(c.employee_id)) add(c.employee_id, c.currency || "ARS", Number(c.commission_value ?? 0)); });
+    return m;
+  }, [snaps, cec]);
+  const breakdown = (e: any) => {
+    const cur = e.salary_currency || "ARS";
+    const base = Number(e.base_salary ?? 0);
+    const comm = commByEmp.get(e.id) ?? {};
+    const same = comm[cur] ?? 0;
+    const others = Object.entries(comm).filter(([c, v]) => c !== cur && v !== 0);
+    return { cur, base, same, total: base + same, others };
+  };
   const byEmp = useMemo(() => new Map(payments.map((p) => [p.employee_id, p])), [payments]);
   const totals = useMemo(() => {
     const t: Record<string, number> = {};
@@ -64,7 +98,8 @@ export function SalaryPayments() {
 
   const open = (e: any) => {
     setTarget(e);
-    setAmount(e.base_salary != null ? String(e.base_salary) : "");
+    const b = breakdown(e);
+    setAmount(b.total > 0 ? String(b.total) : "");
     setCurrency(e.salary_currency || "ARS");
     setPaidAt(today()); setPaidBy("dario"); setNote("");
   };
@@ -98,18 +133,24 @@ export function SalaryPayments() {
         <div className="w-full min-w-0 overflow-x-auto">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>Nombre</TableHead><TableHead>Rol</TableHead><TableHead className="text-right">Sueldo base</TableHead>
+              <TableHead>Nombre</TableHead><TableHead>Rol</TableHead><TableHead className="text-right">Sueldo base</TableHead><TableHead className="text-right">Comisiones</TableHead><TableHead className="text-right">Total</TableHead>
               <TableHead>Estado del mes</TableHead><TableHead className="text-right">Acción</TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {employees.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Sin empleados activos.</TableCell></TableRow>}
+              {employees.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Sin empleados activos.</TableCell></TableRow>}
               {employees.map((e: any) => {
                 const p = byEmp.get(e.id);
+                const b = breakdown(e);
                 return (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium break-words">{e.full_name}</TableCell>
                     <TableCell className="break-words">{e.role ?? "—"}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">{e.base_salary != null ? money(Number(e.base_salary), e.salary_currency || "ARS") : "—"}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      {money(b.same, b.cur)}
+                      {b.others.map(([c, v]) => <p key={c} className="text-xs text-muted-foreground whitespace-normal break-words">+ {money(v, c)} en comisiones — cargar por separado</p>)}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap font-semibold">{money(b.total, b.cur)}</TableCell>
                     <TableCell>
                       {p ? (
                         <div className="space-y-1">
@@ -150,6 +191,11 @@ export function SalaryPayments() {
       <Dialog open={!!target} onOpenChange={(o) => !o && setTarget(null)}>
         <DialogContent className="min-w-0">
           <DialogHeader><DialogTitle className="break-words">Marcar pagado · {target?.full_name}</DialogTitle></DialogHeader>
+          {target && (() => { const b = breakdown(target); return (
+            <div className="min-w-0 space-y-1 text-sm text-muted-foreground break-words">
+              <p>Base: {money(b.base, b.cur)} · Comisiones: {money(b.same, b.cur)} · Total: <span className="font-semibold text-foreground">{money(b.total, b.cur)}</span></p>
+              {b.others.map(([c, v]) => <p key={c}>+ {money(v, c)} en comisiones — cargar por separado</p>)}
+            </div>); })()}
           <div className="grid min-w-0 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <div className="space-y-1"><Label htmlFor="sal-amount">Monto</Label><Input id="sal-amount" type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
             <div className="space-y-1"><Label>Moneda</Label>
