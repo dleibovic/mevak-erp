@@ -4577,6 +4577,66 @@ export type Database = {
           },
         ]
       }
+      salary_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          employee_id: string | null
+          employee_name: string | null
+          expense_id: string | null
+          id: string
+          note: string | null
+          paid_at: string
+          paid_by: Database["public"]["Enums"]["collector"]
+          period_month: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency: string
+          employee_id?: string | null
+          employee_name?: string | null
+          expense_id?: string | null
+          id?: string
+          note?: string | null
+          paid_at: string
+          paid_by: Database["public"]["Enums"]["collector"]
+          period_month: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          employee_id?: string | null
+          employee_name?: string | null
+          expense_id?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string
+          paid_by?: Database["public"]["Enums"]["collector"]
+          period_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_payments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payments_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -5807,6 +5867,18 @@ export type Database = {
         }
         Returns: string
       }
+      pay_salary: {
+        Args: {
+          _amount: number
+          _currency: string
+          _employee_id: string
+          _note: string
+          _paid_at: string
+          _paid_by: Database["public"]["Enums"]["collector"]
+          _period_month: string
+        }
+        Returns: string
+      }
       prorated_mrr: {
         Args: {
           _activated_at: string
@@ -5831,6 +5903,7 @@ export type Database = {
         Args: { _payment_id: string }
         Returns: undefined
       }
+      undo_salary_payment: { Args: { _payment_id: string }; Returns: undefined }
       upsert_exchange_rate_override: {
         Args: {
           _currency: string
