@@ -237,6 +237,7 @@ export default function Dashboard() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="current">Mes actual</SelectItem>
+                <SelectItem value="lastMonth">Mes pasado</SelectItem>
                 <SelectItem value="3m">Últimos 3 meses</SelectItem>
                 <SelectItem value="6m">Últimos 6 meses</SelectItem>
                 <SelectItem value="12m">Últimos 12 meses</SelectItem>
