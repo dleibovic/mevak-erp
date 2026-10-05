@@ -429,7 +429,7 @@ function Kpi({ label, value, delta, sub, subAccent, muted }: {
   return (
     <Card className={`p-4 bg-gradient-card border-border/60 ${muted ? "opacity-60" : ""}`}>
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold mt-1 tabular-nums">{value}</div>
+      <div className="text-lg sm:text-2xl font-semibold mt-1 tabular-nums break-words">{value}</div>
       {delta != null && (
         <div className={`text-xs flex items-center gap-1 mt-1 ${delta >= 0 ? "text-emerald-500" : "text-red-500"}`}>
           {delta >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}

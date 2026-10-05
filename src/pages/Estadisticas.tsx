@@ -294,14 +294,14 @@ function EstadisticasInner() {
       className={onClick ? "cursor-pointer transition-colors hover:border-primary/50 hover:bg-secondary/40" : undefined}
     >
       <CardHeader className="pb-2">
-        <CardDescription className="flex items-center justify-between gap-2">
-          <span>{title}</span>
+        <CardDescription className="flex min-w-0 items-center justify-between gap-2">
+          <span className="min-w-0 break-words">{title}</span>
           {onClick && <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Ver detalle" />}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className={`text-2xl font-bold ${tone === "neg" ? "text-destructive" : ""}`}>{fmt(value)}</div>
-        <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(value, other), other)}</div>
+        <div className={`text-lg sm:text-2xl font-bold break-words ${tone === "neg" ? "text-destructive" : ""}`}>{fmt(value)}</div>
+        <div className="text-xs text-muted-foreground break-words">≈ {fmt(fromCur(value, other), other)}</div>
       </CardContent>
     </Card>
   );
@@ -319,7 +319,7 @@ function EstadisticasInner() {
     const [open, setOpen] = useState(false);
     const cats = Object.entries(s.cats).sort((a, b) => b[1] - a[1]);
     return (
-      <Card className="min-w-0">
+      <Card>
         <CardHeader><CardTitle className="text-base">Desglose de egresos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {(["Sueldos", "Comisiones a ejecutivos"] as const).map((b) => (
@@ -532,7 +532,7 @@ function EstadisticasInner() {
                 </div>
                 <div className="mt-4 min-w-0 rounded-md border p-4 space-y-1 break-words">
                   <div className="text-sm text-muted-foreground whitespace-normal break-words">Saldo acumulado a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
-                  <div className="text-2xl font-bold">{fmt(saldoD)}</div>
+                  <div className="text-2xl font-bold break-words">{fmt(saldoD)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoD, other), other)}</div>
                   <p className="text-sm">
                     {Math.abs(saldoD) < 0.5 ? "Están a mano en este acumulado."
@@ -580,7 +580,7 @@ function EstadisticasInner() {
 
                 <div className="mt-4 min-w-0 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1 break-words">
                   <div className="text-sm text-muted-foreground whitespace-normal break-words">SALDO TOTAL a favor de Darío = movimiento acumulado + ajustes</div>
-                  <div className="text-2xl font-bold">{fmt(saldoTotal)}</div>
+                  <div className="text-2xl font-bold break-words">{fmt(saldoTotal)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
                   <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
                   <p className="text-xs text-muted-foreground">Incluye el saldo inicial (provisorio, a validar con Meri). El movimiento es transaccional dentro del rango elegido; los ajustes se acumulan hasta la fecha "Hasta".</p>
