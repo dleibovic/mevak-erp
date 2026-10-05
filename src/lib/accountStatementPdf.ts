@@ -48,7 +48,12 @@ export function generateStatementPdf(client: any, invoices: StmtInvoice[], subBr
   const nameLines = doc.splitTextToSize(`${client.company_name}${sbNames.length ? ` (${sbNames.join(", ")})` : ""}`, W / 2 + 20);
   doc.text(nameLines, M, y + 16);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...MUTED);
-  const feeLine = `Fee mensual ${money(Number(client.monthly_fee || 0), client.fee_currency || "USD")} · facturación ${FREQ[client.billing_frequency] ?? client.billing_frequency ?? "mensual"}`;
+  const isWeekly = client.billing_frequency === "weekly";
+  const feePorLocal = Number((subBrands[0] as any)?.monthly_fee ?? client.monthly_fee ?? 0);
+  const feeCur = client.fee_currency || "USD";
+  const feeLine = isWeekly
+    ? `Facturación semanal · ${money(feePorLocal, feeCur)}/semana por local${subBrands.length ? ` · ${subBrands.length} locales` : ""}`
+    : `Fee mensual ${money(Number(client.monthly_fee || 0), client.fee_currency || "USD")} · facturación ${FREQ[client.billing_frequency] ?? client.billing_frequency ?? "mensual"}`;
   doc.text(feeLine, M, y + 16 + nameLines.length * 15);
   doc.setTextColor(...INK); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
   doc.text("Mevak", W - M, y, { align: "right" });
