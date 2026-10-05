@@ -1,5 +1,9 @@
 # Marca Mevak
 
+## Responsive móvil del ERP
+- [ ] Corregir Cuenta corriente socios y controles, tablas, tarjetas y diálogos de las pantallas indicadas solo en mobile.
+- [ ] Verificar rutas y pestañas a 375 px, compilación y tests; documentar límites de acceso si los hubiera.
+
 ## Instalación en celular
 - [x] Agregar manifest, íconos de marca y metadatos para pantalla de inicio sin caché de páginas.
 
