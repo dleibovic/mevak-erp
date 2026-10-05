@@ -198,13 +198,13 @@ export default function Clients() {
       )}
 
       <Card className="p-4 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[200px]">
+        <div className="relative w-full max-w-sm flex-1 min-w-0 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <CountryFilterSelect className="w-[200px]" />
+        <CountryFilterSelect className="w-full sm:w-[200px]" />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[170px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[170px]"><SelectValue placeholder="Estado" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="active">Activos</SelectItem>
             <SelectItem value="onboarding">Onboarding</SelectItem>
@@ -214,14 +214,14 @@ export default function Clients() {
           </SelectContent>
         </Select>
         <Select value={filterChannel} onValueChange={setFilterChannel}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Quién cobra" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Quién cobra" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los canales</SelectItem>
             {PAYMENT_CHANNEL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterBillingUser} onValueChange={setFilterBillingUser}>
-          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Responsable de facturar" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Responsable de facturar" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los responsables</SelectItem>
             <SelectItem value="__none__">Sin asignar</SelectItem>
@@ -230,7 +230,7 @@ export default function Clients() {
         </Select>
         <Button
           variant="outline"
-          className="ml-auto"
+          className="ml-auto max-sm:w-full"
           disabled={filtered.length === 0}
           onClick={() => exportClientsExcel(filtered, profileName)}
         >
@@ -265,7 +265,7 @@ export default function Clients() {
         <Card className="p-3 mb-3 bg-primary/5 border-primary/30 flex flex-wrap items-center gap-3">
           <span className="text-sm">{selected.size} seleccionado(s)</span>
           <Select value={bulkUserId} onValueChange={setBulkUserId}>
-            <SelectTrigger className="w-[220px]"><SelectValue placeholder="Reasignar responsable…" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[220px]"><SelectValue placeholder="Reasignar responsable…" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__none__">Sin asignar</SelectItem>
               {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.email}</SelectItem>)}

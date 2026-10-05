@@ -102,7 +102,7 @@ export default function Debts() {
                         </Badge>
                       </TableCell>
                       <TableCell>{ENTRY_TYPE_LABEL[r.entry_type] ?? r.entry_type}</TableCell>
-                      <TableCell className="max-w-[280px] truncate">{r.concept ?? "—"}</TableCell>
+                      <TableCell className="max-w-[150px] whitespace-normal break-words sm:max-w-[280px] sm:truncate">{r.concept ?? "—"}</TableCell>
                       <TableCell className={`text-right whitespace-nowrap font-medium ${Number(r.amount_usd) < 0 ? "text-destructive" : ""}`}>
                         {fmtUsd(Number(r.amount_usd || 0))}
                       </TableCell>

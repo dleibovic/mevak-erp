@@ -92,14 +92,14 @@ export default function Analytics() {
 
       <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-center gap-2">
         <Select value={execId} onValueChange={(v) => { setExecId(v); setClientId("all"); }}>
-          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los ejecutivos</SelectItem>
             {(execOpts as any[]).map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={clientId} onValueChange={setClientId}>
-          <SelectTrigger className="w-[220px]"><SelectValue placeholder="Cliente" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[220px]"><SelectValue placeholder="Cliente" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los clientes</SelectItem>
             {(clientOpts as any[]).map((c) => <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>)}
@@ -111,7 +111,7 @@ export default function Analytics() {
       </Card>
 
       <Tabs defaultValue="admin" className="w-full">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="admin">Administración</TabsTrigger>
           <TabsTrigger value="ops">Plataformas y ejecutivos</TabsTrigger>
         </TabsList>
@@ -325,7 +325,7 @@ function AdminDashboard({ countryId, month, execId, clientId }: DashProps & { mo
   const yearOpts = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 4 + i);
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* Filters */}
       <Card className="p-3 bg-gradient-card border-border/60 flex flex-wrap items-center gap-2">
         {mRange ? (
@@ -335,7 +335,7 @@ function AdminDashboard({ countryId, month, execId, clientId }: DashProps & { mo
         ) : (
           <>
             <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setAnchor(v === "month" ? now.getMonth() : 0); }}>
-              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="month">Mensual</SelectItem>
                 <SelectItem value="quarter">Trimestral</SelectItem>
@@ -344,24 +344,24 @@ function AdminDashboard({ countryId, month, execId, clientId }: DashProps & { mo
               </SelectContent>
             </Select>
             <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>{yearOpts.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
             </Select>
             {period === "month" && (
               <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[140px]"><SelectValue /></SelectTrigger>
                 <SelectContent>{MONTHS_ES.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
               </Select>
             )}
             {period === "quarter" && (
               <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[140px]"><SelectValue /></SelectTrigger>
                 <SelectContent>{[0, 1, 2, 3].map((i) => <SelectItem key={i} value={String(i)}>{`T${i + 1}`}</SelectItem>)}</SelectContent>
               </Select>
             )}
             {period === "semester" && (
               <Select value={String(anchor)} onValueChange={(v) => setAnchor(Number(v))}>
-                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[140px]"><SelectValue /></SelectTrigger>
                 <SelectContent>{[0, 1].map((i) => <SelectItem key={i} value={String(i)}>{`S${i + 1}`}</SelectItem>)}</SelectContent>
               </Select>
             )}
@@ -603,7 +603,7 @@ function OpsDashboard({ countryId, execId, clientId }: DashProps) {
   }, [clients, invByClient, rateIndex]);
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <div className="grid lg:grid-cols-2 gap-4">
         <Card className="p-5 bg-gradient-card border-border/60">
           <h3 className="font-semibold mb-3">Contratos por plataforma</h3>

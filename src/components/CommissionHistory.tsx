@@ -521,7 +521,7 @@ function EmployeeCommissionDetail({
             if (next) onSelectEmployee(next);
           }}
         >
-          <SelectTrigger className="w-[220px] h-9">
+          <SelectTrigger className="w-full sm:w-[220px] h-9">
             <SelectValue placeholder="Empleado" />
           </SelectTrigger>
           <SelectContent className="max-h-72">
@@ -537,7 +537,7 @@ function EmployeeCommissionDetail({
 
         {/* El toggle SIEMPRE está; se deshabilita cuando hay un mes puntual elegido */}
         <Tabs value={grouping} onValueChange={(v) => setGrouping(v as Grouping)}>
-          <TabsList className="h-9">
+          <TabsList className="h-auto flex-wrap sm:h-9">
             <TabsTrigger value="quarter" disabled={month !== ALL_MONTHS}>
               Trimestre
             </TabsTrigger>
@@ -703,7 +703,7 @@ function PayPopover({
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Pagado por</Label>
             <Select value={paidBy} onValueChange={setPaidBy}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-auto flex-wrap sm:h-9">
                 <SelectValue placeholder="Elegí quién pagó" />
               </SelectTrigger>
               <SelectContent>

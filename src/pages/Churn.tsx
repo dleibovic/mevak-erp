@@ -365,35 +365,35 @@ export default function Churn() {
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
         <Select value={country} onValueChange={setCountry}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="País" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="País" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los países</SelectItem>
             {countries.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={executive} onValueChange={setExecutive}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los ejecutivos</SelectItem>
             {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={foodCat} onValueChange={setFoodCat}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Tipo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los tipos</SelectItem>
             {foodCategories.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={currency} onValueChange={setCurrency}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Moneda" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Moneda" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas las monedas</SelectItem>
             {currenciesAvailable.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={period} onValueChange={(v: any) => setPeriod(v)}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="1m">Último mes</SelectItem>
             <SelectItem value="3m">Últimos 3 meses</SelectItem>

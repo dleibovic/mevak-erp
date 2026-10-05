@@ -254,8 +254,8 @@ export default function Usuarios() {
                 <TableHead>Email</TableHead>
                 <TableHead>Rol actual</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="w-[220px]">Cambiar rol</TableHead>
-                <TableHead className="w-[120px] text-right">Acciones</TableHead>
+                <TableHead className="sm:w-[220px]">Cambiar rol</TableHead>
+                <TableHead className="sm:w-[120px] text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -91,7 +91,7 @@ export default function Alerts() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <CountryFilterSelect />
         <Select value={execId} onValueChange={setExecId}>
-          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los ejecutivos</SelectItem>
             {(execOpts as any[]).map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
