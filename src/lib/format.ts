@@ -4,6 +4,7 @@ import { es } from "date-fns/locale";
 export const CURRENCY_SYMBOL: Record<string, string> = {
   ARS: "$",
   EUR: "€",
+  USD: "US$",
 };
 
 export function formatMoney(amount: number | string | null | undefined, currency: string = "ARS") {
