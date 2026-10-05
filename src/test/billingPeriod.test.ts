@@ -32,6 +32,9 @@ describe("período del dashboard", () => {
   it("últimos 12 meses cruza el año", () => {
     expect(periodRange("12m", base)).toEqual({ from: "2025-11-01", to: "2026-11-01", months: 12 });
   });
+  it("mes pasado = mes calendario anterior completo", () => {
+    expect(periodRange("lastMonth", base)).toEqual({ from: "2026-09-01", to: "2026-10-01", months: 1 });
+  });
   it("rango personalizado incluye el día hasta y cuenta meses calendario", () => {
     expect(periodRange("custom", base, "2026-07-15", "2026-09-10")).toEqual({ from: "2026-07-15", to: "2026-09-11", months: 3 });
   });
