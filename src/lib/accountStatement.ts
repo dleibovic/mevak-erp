@@ -66,7 +66,8 @@ export function totalsByCurrency(invs: StmtInvoice[], today = todayISO()): Recor
 
 const SYM: Record<string, string> = { ARS: "$", EUR: "€", USD: "US$" };
 export function money(n: number, cur: string) {
-  return `${SYM[cur] ?? cur + " "}${Number(n || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const v = Number(n || 0);
+  return `${v < 0 ? "-" : ""}${SYM[cur] ?? cur + " "}${Math.abs(v).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];

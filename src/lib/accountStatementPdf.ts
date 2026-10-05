@@ -96,6 +96,7 @@ export function generateStatementPdf(client: any, invoices: StmtInvoice[], subBr
       alternateRowStyles: { fillColor: CREAM },
       columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
       didParseCell: (d) => {
+        if (d.section === "head" && [2, 3, 4].includes(d.column.index)) d.cell.styles.halign = "right";
         const raw: any = d.cell.raw;
         if (d.section === "body" && raw && raw._tone) {
           d.cell.styles.textColor = TONE[raw._tone];
@@ -121,6 +122,7 @@ export function generateStatementPdf(client: any, invoices: StmtInvoice[], subBr
         headStyles: { fillColor: VIOLET, textColor: [255, 255, 255] },
         alternateRowStyles: { fillColor: CREAM },
         columnStyles: { 2: { halign: "right" } },
+        didParseCell: (d) => { if (d.section === "head" && d.column.index === 2) d.cell.styles.halign = "right"; },
       });
       y = (doc as any).lastAutoTable.finalY + 22;
     }
