@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
-import { evalInvoice, stateTone, totalsByCurrency, fmtPeriod, todayISO, type StmtInvoice, type StmtState } from "@/lib/accountStatement";
+import { evalInvoice, stateTone, totalsByCurrency, fmtPeriod, todayISO, weeklyRangeLabels, type StmtInvoice, type StmtState } from "@/lib/accountStatement";
 import { generateStatementPdf } from "@/lib/accountStatementPdf";
 import { cn } from "@/lib/utils";
 
