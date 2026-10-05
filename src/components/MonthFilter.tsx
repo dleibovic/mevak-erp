@@ -53,7 +53,7 @@ interface MonthFilterProps {
   forward?: number;
 }
 
-export function MonthFilter({ value, onChange, className = "w-[190px]", includeAll = true, back = 11, forward = 1 }: MonthFilterProps) {
+export function MonthFilter({ value, onChange, className = "w-full sm:w-[190px]", includeAll = true, back = 11, forward = 1 }: MonthFilterProps) {
   const months = monthList(back, forward);
   const extra = value !== ALL_MONTHS && !months.some((m) => m.value === value)
     ? [{ value, label: monthLabel(value) }]
