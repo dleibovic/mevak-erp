@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, FileCheck2, Download, FileText, Search, Ban, RotateCcw, Trash2, Pencil, Receipt, History, HandCoins, AlertOctagon } from "lucide-react";
@@ -170,6 +171,21 @@ export function MonthlyBillingView() {
       qc.invalidateQueries({ queryKey: ["partner-debts"] });
     },
     onError: (e: any) => toast.error(e.message ?? "No se pudo marcar como incobrable"),
+  });
+
+  const [undoIncob, setUndoIncob] = useState<any>(null);
+  const undoIncobrable = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.rpc as any)("undo_invoice_incobrable", { _invoice_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Incobrable revertido: la factura volvió a la deuda");
+      setUndoIncob(null);
+      qc.invalidateQueries({ queryKey: ["monthly_invoices"] });
+      qc.invalidateQueries({ queryKey: ["partner-debts"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "No se pudo deshacer el incobrable"),
   });
 
   const [paying, setPaying] = useState<any>(null);
@@ -507,7 +523,12 @@ export function MonthlyBillingView() {
                         <Receipt className="h-4 w-4 mr-1" />Ajustar
                       </Button>
                     )}
-                    {canEditAdminFinance && (
+                    {canEditAdminFinance && r.incobrable_at && (
+                      <Button size="sm" variant="ghost" onClick={() => setUndoIncob(r)} title="Deshacer incobrable">
+                        <RotateCcw className="h-4 w-4 mr-1" />Deshacer incobrable
+                      </Button>
+                    )}
+                    {canEditAdminFinance && !r.incobrable_at && (
                       r.voided_at ? (
                         <Button size="sm" variant="ghost" onClick={() => setVoid.mutate({ id: r.id, voided: false })}>
                           <RotateCcw className="h-4 w-4 mr-1" />Restaurar
@@ -540,6 +561,24 @@ export function MonthlyBillingView() {
         </Card>
       ))}
       {isLoading && <div className="text-center text-muted-foreground py-6">Cargando…</div>}
+
+      {/* Confirmación: deshacer incobrable */}
+      <AlertDialog open={!!undoIncob} onOpenChange={(v) => !v && setUndoIncob(null)}>
+        <AlertDialogContent className="min-w-0">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Deshacer incobrable?</AlertDialogTitle>
+            <AlertDialogDescription className="break-words">
+              Vuelve la factura a la deuda y borra el ajuste 50/50 de Meri y la reversa de empresa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => undoIncobrable.mutate(undoIncob.id)} disabled={undoIncobrable.isPending}>
+              {undoIncobrable.isPending ? "Procesando…" : "Deshacer incobrable"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialogo: marcar incobrable */}
       <Dialog open={!!incob} onOpenChange={(v) => !v && setIncob(null)}>
