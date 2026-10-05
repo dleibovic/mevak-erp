@@ -136,33 +136,33 @@ export default function Expenses() {
               </Button>
             )}
             <MonthFilter value={month} onChange={setMonth} />
-            <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-[200px]" size="sm" />
+            <CountryFilterSelect value={localCountry ?? countryId} onChange={setLocalCountry} className="w-full sm:w-[200px]" size="sm" />
             <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nuevo gasto</Button>
           </Card>
 
           <Card className="p-3 mb-4 bg-gradient-card border-border/60 flex flex-wrap items-end gap-2">
-            <div className="grid gap-1">
+            <div className="grid w-full gap-1 sm:w-auto">
               <Label className="text-xs text-muted-foreground">Desde</Label>
-              <Input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className="w-[150px] h-9" />
+              <Input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className="w-full sm:w-[150px] h-9" />
             </div>
-            <div className="grid gap-1">
+            <div className="grid w-full gap-1 sm:w-auto">
               <Label className="text-xs text-muted-foreground">Hasta</Label>
-              <Input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className="w-[150px] h-9" />
+              <Input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className="w-full sm:w-[150px] h-9" />
             </div>
-            <div className="grid gap-1">
+            <div className="grid w-full gap-1 sm:w-auto">
               <Label className="text-xs text-muted-foreground">Tipo de gasto</Label>
               <Select value={fCategory} onValueChange={setFCategory}>
-                <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[180px] h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
                   {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1">
+            <div className="grid w-full gap-1 sm:w-auto">
               <Label className="text-xs text-muted-foreground">Quién pagó</Label>
               <Select value={fPaidBy} onValueChange={setFPaidBy}>
-                <SelectTrigger className="w-[130px] h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[130px] h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="dario">Darío</SelectItem>

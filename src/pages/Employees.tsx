@@ -69,7 +69,7 @@ export default function Employees() {
         <TabsContent value="equipo">
           <div className="mb-4 flex items-center gap-2">
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Activos</SelectItem>
                 <SelectItem value="inactive">Inactivos</SelectItem>
@@ -85,10 +85,10 @@ export default function Employees() {
             const totalComm = emp.commissions.reduce((acc: number, c: any) => acc + Number(c.commission_value), 0);
             const total = Number(emp.base_salary || 0) + totalComm;
             return (
-              <Card key={emp.id} className="p-5 bg-gradient-card border-border/60">
+              <Card key={emp.id} className="min-w-0 p-5 bg-gradient-card border-border/60">
                 <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-semibold">{emp.full_name}</h3>
+                  <div className="min-w-0 break-words">
+                    <h3 className="font-semibold break-words">{emp.full_name}</h3>
                     <p className="text-sm text-muted-foreground">{emp.role}</p>
                   </div>
                   <div className="flex gap-1">
@@ -103,7 +103,7 @@ export default function Employees() {
                     </AlertDialog>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-sm border-t border-border pt-3">
+                <div className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2 text-sm border-t border-border pt-3 [&>*]:min-w-0 [&_*]:break-words">
                   <div><div className="text-xs text-muted-foreground">Sueldo base</div><div className="font-mono">{formatMoney(emp.base_salary, emp.salary_currency)}</div></div>
                   <div><div className="text-xs text-muted-foreground">Comisiones</div><div className="font-mono">{formatMoney(totalComm, emp.salary_currency)}</div></div>
                   <div><div className="text-xs text-muted-foreground">Total mensual</div><div className="font-mono text-primary font-semibold">{formatMoney(total, emp.salary_currency)}</div></div>
@@ -121,9 +121,9 @@ export default function Employees() {
                     <div className="text-xs text-muted-foreground mb-2">Clientes asignados</div>
                     <div className="space-y-1">
                       {emp.commissions.map((c: any) => (
-                        <div key={c.id} className="flex justify-between text-xs">
-                          <span>{c.client?.company_name}</span>
-                          <span className="font-mono">{formatMoney(c.commission_value, c.currency)}</span>
+                        <div key={c.id} className="flex min-w-0 flex-wrap justify-between gap-1 text-xs">
+                          <span className="min-w-0 break-words">{c.client?.company_name}</span>
+                          <span className="font-mono break-words">{formatMoney(c.commission_value, c.currency)}</span>
                         </div>
                       ))}
                     </div>
@@ -192,7 +192,7 @@ function EmployeeDialog({ open, onOpenChange, employee }: any) {
             <div><Label>DNI</Label><Input value={form.dni ?? ""} onChange={(e) => setForm({ ...form, dni: e.target.value })} /></div>
           </div>
           <div><Label>Dirección</Label><Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div><Label>Fecha de nacimiento</Label><Input type="date" value={form.birth_date ?? ""} onChange={(e) => setForm({ ...form, birth_date: e.target.value || null })} /></div>
             <div><Label>Fecha de inicio</Label><Input type="date" value={form.start_date ?? ""} onChange={(e) => setForm({ ...form, start_date: e.target.value || null })} /></div>
             <div><Label>Fecha de fin</Label><Input type="date" value={form.end_date ?? ""} onChange={(e) => setForm({ ...form, end_date: e.target.value || null })} /></div>
