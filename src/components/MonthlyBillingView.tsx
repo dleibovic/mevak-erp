@@ -333,7 +333,7 @@ export function MonthlyBillingView() {
         {Object.entries(stats).map(([ccy, s]) => (
           <Card key={ccy} className="p-4 bg-gradient-card border-border/60">
             <div className="text-xs text-muted-foreground">Total {ccy}</div>
-            <div className="text-2xl font-semibold">{formatMoney(s.total, ccy)}</div>
+            <div className="text-lg sm:text-2xl font-semibold break-words">{formatMoney(s.total, ccy)}</div>
             <div className="text-xs mt-1 text-muted-foreground">
               Pend: {formatMoney(s.pending, ccy)} · Cobrado: <span className="text-success">{formatMoney(s.paid, ccy)}</span>
             </div>
@@ -520,7 +520,7 @@ export function MonthlyBillingView() {
             const valid = v > 0 && v <= bal + 1e-9 && !!payChannel && !!payDate;
             return (
               <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm [&>*]:min-w-0 [&_*]:break-words">
                   <div><div className="text-xs text-muted-foreground">Facturado</div><div className="font-mono">{formatMoney(amt, paying.currency)}</div></div>
                   <div><div className="text-xs text-muted-foreground">Ya cobrado</div><div className="font-mono">{formatMoney(paid, paying.currency)}</div></div>
                   <div><div className="text-xs text-muted-foreground">Saldo</div><div className="font-mono">{formatMoney(bal, paying.currency)}</div></div>
