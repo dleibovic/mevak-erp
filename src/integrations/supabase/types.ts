@@ -4844,6 +4844,10 @@ export type Database = {
       }
       auto_churn_paused_clients: { Args: never; Returns: number }
       backfill_mrr_snapshots: { Args: { _months?: number }; Returns: number }
+      client_normalized_monthly_fee: {
+        Args: { _client_id: string }
+        Returns: number
+      }
       effective_monthly_fee: { Args: { _client_id: string }; Returns: number }
       expire_discounts: {
         Args: never

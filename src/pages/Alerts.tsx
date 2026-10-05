@@ -10,16 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock, RefreshCw, AlertCircle, UserX } from "lucide-react";
 import { daysOverdue, fmtDate, formatMoney } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { monthBounds } from "@/lib/billingPeriod";
 
-const periodMonth = () => {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-};
 
 export default function Alerts() {
   const { isAdmin, isAdministracion } = useAuth();
   const canSeeUnbilled = isAdmin || isAdministracion;
-  const period = periodMonth();
+  const { from: periodFrom, to: periodTo } = monthBounds();
   const { countryId } = useCountryFilter();
   const [execId, setExecId] = useState<string>("all");
   const today = new Date().toISOString().slice(0, 10);
@@ -57,10 +54,14 @@ export default function Alerts() {
   });
 
   const { data: periodInvoices = [] } = useQuery({
-    queryKey: ["alerts-monthly-invoices", period],
+    queryKey: ["alerts-monthly-invoices", periodFrom],
     enabled: canSeeUnbilled,
     queryFn: async () =>
-      (await supabase.from("monthly_invoices").select("client_id").eq("period_month", period)).data ?? [],
+      (await supabase
+        .from("monthly_invoices")
+        .select("client_id")
+        .gte("period_month", periodFrom)
+        .lt("period_month", periodTo)).data ?? [],
   });
 
   const unbilled = useMemo(() => {
