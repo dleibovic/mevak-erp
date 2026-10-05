@@ -95,7 +95,7 @@ export function generateStatementPdf(client: any, invoices: StmtInvoice[], subBr
     autoTable(doc, {
       startY: y,
       margin: { left: M, right: M },
-      head: [["Período", "Vencimiento", "Importe", "Pagado", "Saldo", "Estado"]],
+      head: [[isWeekly ? "Semana" : "Período", "Vencimiento", "Importe", "Pagado", "Saldo", "Estado"]],
       body,
       styles: { fontSize: 8.5, textColor: INK, cellPadding: 5 },
       headStyles: { fillColor: VIOLET, textColor: [255, 255, 255], fontStyle: "bold" },
