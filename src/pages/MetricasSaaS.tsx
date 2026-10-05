@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChurnTab } from "./Churn";
+import { LtvTab } from "./LtvRentabilidad";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/PageShell";
@@ -49,11 +53,9 @@ function lastNMonths(n: number): string[] {
   return out;
 }
 
-export default function MetricasSaaS() {
-  const [country, setCountry] = useState<string>("all");
-  const [executive, setExecutive] = useState<string>("all");
-  const [foodCat, setFoodCat] = useState<string>("all");
-  const [currency, setCurrency] = useState<string>("all");
+export type MetricsFilters = { country: string; executive: string; foodCat: string; currency: string };
+export function MrrTab({ filters }: { filters: MetricsFilters }) {
+  const { country, executive, foodCat, currency } = filters;
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-lite"],
@@ -290,32 +292,7 @@ export default function MetricasSaaS() {
   }, [filteredCmh, months, clientById]);
 
   return (
-    <PageContainer>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <PageHeader
-          title="Métricas SaaS"
-          description="MRR, churn, NRR y LTV — últimos 24 meses. Snapshots calculados desde activated_at por cliente."
-        />
-        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
-          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Mostrando en</span>
-          <span className="font-semibold tabular-nums">{displayCurrency}</span>
-          {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
-        </div>
-      </div>
-
-
-      {/* Filters */}
-      <Card className="p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3 bg-gradient-card border-border/60 [&>*]:min-w-0">
-        <FilterSelect label="País" value={country} onChange={setCountry}
-          options={[{ value: "all", label: "Todos" }, ...countries.map((c: any) => ({ value: c.id, label: c.name }))]} />
-        <FilterSelect label="Ejecutivo" value={executive} onChange={setExecutive}
-          options={[{ value: "all", label: "Todos" }, ...employees.map((e: any) => ({ value: e.id, label: e.full_name }))]} />
-        <FilterSelect label="Tipo (food category)" value={foodCat} onChange={setFoodCat}
-          options={[{ value: "all", label: "Todos" }, ...foodCategories.map((f: any) => ({ value: f.id, label: f.name }))]} />
-        <FilterSelect label="Moneda original" value={currency} onChange={setCurrency}
-          options={[{ value: "all", label: "Todas" }, ...currenciesAvailable.map((c) => ({ value: c, label: c }))]} />
-      </Card>
+    <div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 [&>*]:min-w-0">
@@ -418,7 +395,7 @@ export default function MetricasSaaS() {
           </Table>
         </div>
       </Card>
-    </PageContainer>
+    </div>
   );
 }
 
@@ -471,5 +448,75 @@ function FilterSelect({ label, value, onChange, options }: {
         </SelectContent>
       </Select>
     </div>
+  );
+}
+
+export default function MetricasSaaS() {
+  const [params, setParams] = useSearchParams();
+  const rawTab = params.get("tab");
+  const tab = rawTab === "churn" || rawTab === "ltv" ? rawTab : "mrr";
+  const [country, setCountry] = useState("all");
+  const [executive, setExecutive] = useState("all");
+  const [foodCat, setFoodCat] = useState("all");
+  const [currency, setCurrency] = useState("all");
+  const filters: MetricsFilters = { country, executive, foodCat, currency };
+
+  const { data: countries = [] } = useQuery({
+    queryKey: ["countries-cc"],
+    queryFn: async () => (await supabase.from("countries").select("id, name, currency_code")).data ?? [],
+  });
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees-list"],
+    queryFn: async () => (await supabase.from("employees").select("id, full_name").eq("is_active", true)).data ?? [],
+  });
+  const { data: foodCategories = [] } = useQuery({
+    queryKey: ["food-categories"],
+    queryFn: async () => (await supabase.from("food_categories").select("id, name")).data ?? [],
+  });
+  const { data: clientCurrencies = [] } = useQuery({
+    queryKey: ["clients-currencies"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("fee_currency");
+      return Array.from(new Set((data ?? []).map((c: any) => c.fee_currency).filter(Boolean))).sort() as string[];
+    },
+  });
+
+  const displayCurrency = getDisplayCurrency(country, countries as any);
+  const displayCountryName = getDisplayCountryName(country, countries as any);
+
+  return (
+    <PageContainer>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <PageHeader title="Métricas SaaS" description="MRR, churn, NRR, LTV y rentabilidad — últimos 24 meses" />
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs">
+          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">Mostrando en</span>
+          <span className="font-semibold tabular-nums">{displayCurrency}</span>
+          {displayCountryName && <span className="text-muted-foreground">· {displayCountryName}</span>}
+        </div>
+      </div>
+
+      <Card className="p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3 bg-gradient-card border-border/60 [&>*]:min-w-0">
+        <FilterSelect label="País" value={country} onChange={setCountry}
+          options={[{ value: "all", label: "Todos" }, ...countries.map((c: any) => ({ value: c.id, label: c.name }))]} />
+        <FilterSelect label="Ejecutivo" value={executive} onChange={setExecutive}
+          options={[{ value: "all", label: "Todos" }, ...employees.map((e: any) => ({ value: e.id, label: e.full_name }))]} />
+        <FilterSelect label="Tipo (food category)" value={foodCat} onChange={setFoodCat}
+          options={[{ value: "all", label: "Todos" }, ...foodCategories.map((f: any) => ({ value: f.id, label: f.name }))]} />
+        <FilterSelect label="Moneda original" value={currency} onChange={setCurrency}
+          options={[{ value: "all", label: "Todas" }, ...clientCurrencies.map((c) => ({ value: c, label: c }))]} />
+      </Card>
+
+      <Tabs value={tab} onValueChange={(v) => { const p = new URLSearchParams(params); p.set("tab", v); setParams(p, { replace: true }); }}>
+        <TabsList className="mb-4 flex-wrap h-auto">
+          <TabsTrigger value="mrr">MRR</TabsTrigger>
+          <TabsTrigger value="churn">Churn</TabsTrigger>
+          <TabsTrigger value="ltv">LTV & Rentabilidad</TabsTrigger>
+        </TabsList>
+        <TabsContent value="mrr"><MrrTab filters={filters} /></TabsContent>
+        <TabsContent value="churn"><ChurnTab filters={filters} /></TabsContent>
+        <TabsContent value="ltv"><LtvTab filters={filters} /></TabsContent>
+      </Tabs>
+    </PageContainer>
   );
 }
