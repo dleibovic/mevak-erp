@@ -1,6 +1,6 @@
 import { forwardRef, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,8 +23,6 @@ const Alerts = lazyWithRetry(() => import("./pages/Alerts"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const Prospecting = lazyWithRetry(() => import("./pages/Prospecting"));
 const MetricasSaaS = lazyWithRetry(() => import("./pages/MetricasSaaS"));
-const Churn = lazyWithRetry(() => import("./pages/Churn"));
-const LtvRentabilidad = lazyWithRetry(() => import("./pages/LtvRentabilidad"));
 const Usuarios = lazyWithRetry(() => import("./pages/Usuarios"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
 
@@ -62,8 +60,8 @@ const App = () => (
               <Route path="/admin" element={<Admin />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/metricas-saas" element={<MetricasSaaS />} />
-              <Route path="/churn" element={<Churn />} />
-              <Route path="/ltv-rentabilidad" element={<LtvRentabilidad />} />
+              <Route path="/churn" element={<Navigate to="/metricas-saas?tab=churn" replace />} />
+              <Route path="/ltv-rentabilidad" element={<Navigate to="/metricas-saas?tab=ltv" replace />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

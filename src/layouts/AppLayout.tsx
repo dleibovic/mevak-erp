@@ -35,8 +35,6 @@ const NAV_GROUPS: { group: string; items: any[] }[] = [
     items: [
       { to: "/analytics", label: "Analytics", icon: BarChart3 },
       { to: "/metricas-saas", label: "Métricas SaaS", icon: Activity },
-      { to: "/churn", label: "Churn", icon: TrendingDown },
-      { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
       { to: "/estadisticas", label: "Estadísticas", icon: LineChartIcon, adminOnly: true },
     ],
   },

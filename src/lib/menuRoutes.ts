@@ -8,8 +8,6 @@ export const MENU_ROUTES: { route: string; label: string }[] = [
   { route: "/empleados", label: "Empleados" },
   { route: "/analytics", label: "Analytics" },
   { route: "/metricas-saas", label: "Métricas SaaS" },
-  { route: "/churn", label: "Churn" },
-  { route: "/ltv-rentabilidad", label: "LTV & Rentabilidad" },
   { route: "/estadisticas", label: "Estadísticas" },
   { route: "/usuarios", label: "Usuarios y Roles" },
   { route: "/admin", label: "Configuración" },
