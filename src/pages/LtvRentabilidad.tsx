@@ -107,6 +107,16 @@ export function LtvTab({ filters }: { filters: MetricsFilters }) {
     queryFn: async () => (await (supabase as any).from("client_executive_commission").select("client_id, employee_id, commission_value, currency")).data ?? [],
   });
 
+  const { data: metricsRows = [] } = useQuery({
+    queryKey: ["ltv-client-metrics"],
+    queryFn: async () => (await (supabase as any).from("v_client_metrics").select("client_id, current_mrr, current_mrr_usd")).data ?? [],
+  });
+  const mrrByClient = useMemo(() => {
+    const m = new Map<string, number>();
+    (metricsRows as any[]).forEach((r) => m.set(r.client_id, Number(r.current_mrr || 0)));
+    return m;
+  }, [metricsRows]);
+
   const latestRate = useMemo(() => {
     const m = new Map<string, number>();
     rates.forEach((r) => { if (!m.has(r.base_currency)) m.set(r.base_currency, Number(r.rate)); });
@@ -174,10 +184,8 @@ export function LtvTab({ filters }: { filters: MetricsFilters }) {
   const today = new Date();
   const perClient = useMemo(() => {
     return filteredClients.map((c) => {
-      const effectiveFee = c.discount_active && c.discount_percentage
-        ? c.monthly_fee * (1 - Number(c.discount_percentage) / 100)
-        : c.monthly_fee;
-      const feeUsd = toUsd(Number(effectiveFee || 0), c.fee_currency);
+      // Fee mensualizado (incluye semanal, sucursales y descuentos) desde v_client_metrics.
+      const feeUsd = toUsd(mrrByClient.get(c.id) ?? 0, c.fee_currency);
       const cmvUsd = toUsd(Number(c.cmv_cost || 0), c.cmv_currency);
       const hasCmv = Number(c.cmv_cost || 0) > 0;
 
@@ -226,7 +234,7 @@ export function LtvTab({ filters }: { filters: MetricsFilters }) {
         marginPct, marginUsd, historicalLtvUsd,
       };
     });
-  }, [filteredClients, cmhByClient, latestRate, commissionUsdByClient, employeeById, activeCountByExec, grossMarginDefault]);
+  }, [filteredClients, cmhByClient, latestRate, mrrByClient, commissionUsdByClient, employeeById, activeCountByExec, grossMarginDefault]);
 
   const active = perClient.filter((p) => p.status === "active");
   const totalMrrUsd = active.reduce((s, p) => s + p.feeUsd, 0);
@@ -313,7 +321,7 @@ export function LtvTab({ filters }: { filters: MetricsFilters }) {
             value={fmtMoney(totalMrrUsd)}
             sub={`${active.length} clientes activos`}
             tag="real"
-            tooltip={`Suma de monthly_fee efectivo (con descuento activo) de clientes con status='active'. Convertido a ${displayCurrency} al rate canónico más reciente.`}
+            tooltip={`Suma del fee mensualizado (v_client_metrics.current_mrr, con descuentos) de clientes con status='active'. Convertido a ${displayCurrency} al rate canónico más reciente.`}
           />
           <KpiCard
             icon={<DollarSign className="h-4 w-4" />}
