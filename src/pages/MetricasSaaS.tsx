@@ -306,7 +306,7 @@ export default function MetricasSaaS() {
 
 
       {/* Filters */}
-      <Card className="p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3 bg-gradient-card border-border/60">
+      <Card className="p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3 bg-gradient-card border-border/60 [&>*]:min-w-0">
         <FilterSelect label="País" value={country} onChange={setCountry}
           options={[{ value: "all", label: "Todos" }, ...countries.map((c: any) => ({ value: c.id, label: c.name }))]} />
         <FilterSelect label="Ejecutivo" value={executive} onChange={setExecutive}
@@ -318,7 +318,7 @@ export default function MetricasSaaS() {
       </Card>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 [&>*]:min-w-0">
         <Kpi label="MRR actual" value={fmtMoney(cur?.mrr ?? 0)}
           delta={mrrDelta} sub={`vs mes anterior`} />
         <Kpi label="ARR" value={fmtMoney(arr)} sub="MRR × 12" />

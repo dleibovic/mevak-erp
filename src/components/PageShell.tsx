@@ -13,7 +13,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function PageContainer({ children }: { children: ReactNode }) {
-  return <div className="w-full max-w-[1400px] mx-auto px-4 py-5 sm:p-6 md:p-8 overflow-x-hidden">{children}</div>;
+  return <div className="w-full min-w-0 max-w-[1400px] mx-auto px-4 py-5 sm:p-6 md:p-8 overflow-x-hidden max-md:[&_.grid>*]:min-w-0">{children}</div>;
 }
 
 export function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
