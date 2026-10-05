@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RoleAccessMatrix } from "@/components/RoleAccessMatrix";
 
 const ROLES: { value: AppRole; label: string }[] = [
   { value: "admin", label: "Admin" },
@@ -241,6 +243,12 @@ export default function Usuarios() {
         }
       />
 
+      <Tabs defaultValue="usuarios">
+        <TabsList className="mb-4">
+          <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger value="accesos">Accesos por rol</TabsTrigger>
+        </TabsList>
+        <TabsContent value="usuarios">
       <Card className="bg-gradient-card border-border/60">
         {isLoading ? (
           <p className="p-6 text-muted-foreground">Cargando...</p>
@@ -302,6 +310,11 @@ export default function Usuarios() {
           </Table>
         )}
       </Card>
+        </TabsContent>
+        <TabsContent value="accesos">
+          <RoleAccessMatrix />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
