@@ -36,6 +36,10 @@ export default function Dashboard() {
     queryKey: ["dash-clients"],
     queryFn: async () => (await supabase.from("clients").select("id, country_id, monthly_fee, fee_currency, billing_frequency, branches_count, fee_billing_mode, status")).data ?? [],
   });
+  const { data: metricsAll = [] } = useQuery({
+    queryKey: ["dash-client-metrics"],
+    queryFn: async () => (await supabase.from("v_client_metrics").select("client_id, country_id, currency, status, current_mrr")).data ?? [],
+  });
   const { data: prospectsAll = [] } = useQuery({
     queryKey: ["dash-prospects"],
     queryFn: async () => (await supabase.from("prospects").select("id, country_id, currency, estimated_monthly_revenue, status")).data ?? [],
@@ -53,6 +57,7 @@ export default function Dashboard() {
   const matchesCountry = (cid?: string | null) => !countryId || cid === countryId;
   const invoices = invoicesAll.filter((i: any) => matchesCountry(i.client?.country_id));
   const clients = clientsAll.filter((c: any) => matchesCountry(c.country_id));
+  const metrics = metricsAll.filter((m: any) => matchesCountry(m.country_id));
   const prospects = prospectsAll.filter((p: any) => matchesCountry(p.country_id));
   const expenses = expensesAll.filter((e: any) => matchesCountry(e.country_id));
   const employees = employeesAll.filter((e: any) => matchesCountry(e.country_id));
@@ -60,12 +65,8 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     const sumByCurr = (rows: any[], key = "amount") => rows.reduce((acc: any, r: any) => { acc[r.currency] = (acc[r.currency] ?? 0) + Number(r[key]); return acc; }, {});
-    const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
-    const normalizedClientFee = (c: any) => {
-      const branches = c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1));
-      return Number(c.monthly_fee || 0) * branches * billingMultiplier(c.billing_frequency);
-    };
-    const sumClientFees = (currency: string) => clients.filter((c: any) => c.fee_currency === currency && c.status === "active").reduce((acc: number, c: any) => acc + normalizedClientFee(c), 0);
+    // Facturación = fee mensualizado correcto por cliente (v_client_metrics.current_mrr).
+    const sumClientFees = (currency: string) => metrics.filter((m: any) => m.currency === currency && m.status === "active").reduce((acc: number, m: any) => acc + Number(m.current_mrr || 0), 0);
     const isOverdue = (i: any) => (i.status === "overdue" || ((i.status === "pending" || i.status === "invoiced") && i.due_date && new Date(i.due_date) < new Date())) && invBalance(i) > 0;
     if (activeCurrency) {
       const c = activeCurrency;
@@ -100,10 +101,9 @@ export default function Dashboard() {
       return { currency, totalBilling: sumClientFees(currency), income, overdue: overdueByCurrency[currency] ?? 0, exp, payroll, net: income - exp - payroll };
     });
     return { mode: "multi" as const, clientCount: clients.length, rows };
-  }, [invoices, clients, expenses, employees, activeCurrency]);
+  }, [invoices, clients, metrics, expenses, employees, activeCurrency]);
 
   const countrySummaries = useMemo(() => {
-    const billingMultiplier = (frequency?: string | null) => frequency === "weekly" ? 4 : frequency === "biweekly" ? 2 : 1;
     const countryName = (countryId?: string | null) => countries.find((c) => c.id === countryId)?.name ?? "Sin país";
     const countryIds = Array.from(new Set([
       ...clients.map((c: any) => c.country_id),
@@ -115,6 +115,7 @@ export default function Dashboard() {
 
     return countryIds.map((countryId: string) => {
       const countryClients = clients.filter((c: any) => c.country_id === countryId);
+      const countryMetrics = metrics.filter((m: any) => m.country_id === countryId);
       const countryInvoices = invoices.filter((i: any) => i.client?.country_id === countryId);
       const countryExpenses = expenses.filter((e: any) => e.country_id === countryId);
       const countryEmployees = employees.filter((e: any) => e.country_id === countryId);
@@ -125,9 +126,9 @@ export default function Dashboard() {
         ...countryEmployees.map((e: any) => e.salary_currency),
       ].filter(Boolean))).sort();
       const rows = currencies.map((currency) => {
-        const totalBilling = countryClients
-          .filter((c: any) => c.fee_currency === currency && c.status === "active")
-          .reduce((acc: number, c: any) => acc + Number(c.monthly_fee || 0) * (c.fee_billing_mode === "flat" ? 1 : Math.max(1, Number(c.branches_count || 1))) * billingMultiplier(c.billing_frequency), 0);
+        const totalBilling = countryMetrics
+          .filter((m: any) => m.currency === currency && m.status === "active")
+          .reduce((acc: number, m: any) => acc + Number(m.current_mrr || 0), 0);
         const income = countryInvoices
           .filter((i: any) => i.currency === currency)
           .reduce((acc: number, i: any) => acc + Number(i.amount_paid || 0), 0);
@@ -147,7 +148,7 @@ export default function Dashboard() {
 
       return { countryId, countryName: countryName(countryId), clientCount: countryClients.length, rows };
     });
-  }, [countries, clients, invoices, expenses, employees]);
+  }, [countries, clients, metrics, invoices, expenses, employees]);
 
   const series = useMemo(() => {
     const map: Record<string, any> = {};
@@ -213,7 +214,7 @@ export default function Dashboard() {
       <section className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
           <h2 className="text-lg font-semibold">Resumen por país</h2>
-          <span className="text-xs text-muted-foreground">Valores mensualizados por frecuencia de cobro</span>
+          <span className="text-xs text-muted-foreground">Fee mensualizado por cliente</span>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {countrySummaries.map((country: any) => (
