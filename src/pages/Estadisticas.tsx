@@ -584,7 +584,7 @@ function EstadisticasInner() {
                           <TableCell className="whitespace-nowrap">{({ opening: "Saldo inicial", freeze: "Congelamiento", incobrable_split: "Incobrable (reparto)", payment: "Repago", adjustment: "Ajuste" } as Record<string, string>)[row.entry_type] ?? row.entry_type}</TableCell>
                           <TableCell className="max-w-40 whitespace-normal break-words">{row.concept ?? "—"}</TableCell>
                           <TableCell className="whitespace-nowrap">{originMonth(row.origin_period)}</TableCell>
-                          <TableCell className="text-right whitespace-nowrap">{row.origin_rate_ars == null ? "—" : fmt(Number(row.origin_rate_ars), "ARS")}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap">{row.ledger === "meri" ? "—" : row.origin_rate_ars == null ? "—" : fmt(Number(row.origin_rate_ars), "ARS")}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">{row.amount_ars_origin == null ? "—" : fmt(Number(row.amount_ars_origin), "ARS")}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">{fmt(Number(row.amount_usd), "USD")}</TableCell>
                           <TableCell className="text-right whitespace-nowrap font-semibold">{fmt(row.runningBalance, "USD")}</TableCell>
