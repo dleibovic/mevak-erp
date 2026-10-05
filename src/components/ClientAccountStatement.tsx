@@ -159,7 +159,7 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Período</TableHead><TableHead>Vencimiento</TableHead>
+                  <TableHead>{weekly ? "Semana" : "Período"}</TableHead><TableHead>Vencimiento</TableHead>
                   <TableHead className="text-right">Importe</TableHead><TableHead className="text-right">Pagado</TableHead>
                   <TableHead className="text-right">Saldo</TableHead><TableHead>Estado</TableHead>
                 </TableRow>
