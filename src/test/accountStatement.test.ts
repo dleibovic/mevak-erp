@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evalInvoice, totalsByCurrency } from "@/lib/accountStatement";
+import { evalInvoice, totalsByCurrency, weeklyRangeLabels } from "@/lib/accountStatement";
 
 const T = "2026-10-05";
 const base = { period_month: "2026-09-01", currency: "USD" };
