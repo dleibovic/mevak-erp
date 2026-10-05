@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { evalInvoice, stateTone, totalsByCurrency, money, fmtPeriod, fmtDMY, todayISO, type StmtInvoice } from "@/lib/accountStatement";
+import { evalInvoice, stateTone, totalsByCurrency, money, fmtPeriod, fmtDMY, todayISO, weeklyRangeLabels, type StmtInvoice } from "@/lib/accountStatement";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 
 const VIOLET: [number, number, number] = [93, 87, 214];
@@ -48,7 +48,12 @@ export function generateStatementPdf(client: any, invoices: StmtInvoice[], subBr
   const nameLines = doc.splitTextToSize(`${client.company_name}${sbNames.length ? ` (${sbNames.join(", ")})` : ""}`, W / 2 + 20);
   doc.text(nameLines, M, y + 16);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...MUTED);
-  const feeLine = `Fee mensual ${money(Number(client.monthly_fee || 0), client.fee_currency || "USD")} · facturación ${FREQ[client.billing_frequency] ?? client.billing_frequency ?? "mensual"}`;
+  const isWeekly = client.billing_frequency === "weekly";
+  const feePorLocal = Number((subBrands[0] as any)?.monthly_fee ?? client.monthly_fee ?? 0);
+  const feeCur = client.fee_currency || "USD";
+  const feeLine = isWeekly
+    ? `Facturación semanal · ${money(feePorLocal, feeCur)}/semana por local${subBrands.length ? ` · ${subBrands.length} locales` : ""}`
+    : `Fee mensual ${money(Number(client.monthly_fee || 0), client.fee_currency || "USD")} · facturación ${FREQ[client.billing_frequency] ?? client.billing_frequency ?? "mensual"}`;
   doc.text(feeLine, M, y + 16 + nameLines.length * 15);
   doc.setTextColor(...INK); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
   doc.text("Mevak", W - M, y, { align: "right" });
@@ -77,19 +82,20 @@ export function generateStatementPdf(client: any, invoices: StmtInvoice[], subBr
       ? Array.from(new Set(invs.map((i) => i.sub_brand_id ?? ""))).map((k) => ({ key: k, name: sbMap.get(k) ?? "General", rows: invs.filter((i) => (i.sub_brand_id ?? "") === k) }))
       : [{ key: "", name: "", rows: invs }];
     for (const g of groups) {
+      const ranges = isWeekly ? weeklyRangeLabels(g.rows.map((i) => i.period_month).slice().sort()) : null;
       if (hasGroups) body.push([{ content: g.name, colSpan: 6, styles: { fillColor: VIOLET_LIGHT, textColor: VIOLET2, fontStyle: "bold" } }]);
       let sub = 0;
       for (const inv of g.rows) {
         const { state, saldo } = evalInvoice(inv, today);
         if (state !== "Incobrable") sub += saldo;
-        body.push([fmtPeriod(inv.period_month), fmtDMY(inv.due_date), money(Number(inv.amount), cur), money(Number(inv.amount_paid || 0), cur), money(saldo, cur), { content: state, _tone: stateTone(state) }]);
+        body.push([ranges ? (ranges[inv.period_month] ?? fmtPeriod(inv.period_month)) : fmtPeriod(inv.period_month), fmtDMY(inv.due_date), money(Number(inv.amount), cur), money(Number(inv.amount_paid || 0), cur), money(saldo, cur), { content: state, _tone: stateTone(state) }]);
       }
       if (hasGroups) body.push([{ content: `Saldo ${g.name}`, colSpan: 4, styles: { fontStyle: "bold", halign: "right" } }, { content: money(sub, cur), styles: { fontStyle: "bold" } }, ""]);
     }
     autoTable(doc, {
       startY: y,
       margin: { left: M, right: M },
-      head: [["Período", "Vencimiento", "Importe", "Pagado", "Saldo", "Estado"]],
+      head: [[isWeekly ? "Semana" : "Período", "Vencimiento", "Importe", "Pagado", "Saldo", "Estado"]],
       body,
       styles: { fontSize: 8.5, textColor: INK, cellPadding: 5 },
       headStyles: { fillColor: VIOLET, textColor: [255, 255, 255], fontStyle: "bold" },

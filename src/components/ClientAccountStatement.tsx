@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney, fmtDate } from "@/lib/format";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
-import { evalInvoice, stateTone, totalsByCurrency, fmtPeriod, todayISO, type StmtInvoice, type StmtState } from "@/lib/accountStatement";
+import { evalInvoice, stateTone, totalsByCurrency, fmtPeriod, todayISO, weeklyRangeLabels, type StmtInvoice, type StmtState } from "@/lib/accountStatement";
 import { generateStatementPdf } from "@/lib/accountStatementPdf";
 import { cn } from "@/lib/utils";
 
@@ -58,9 +58,9 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
     queryKey: ["client-statement-subbrands", id],
     enabled: open && !!id,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("client_sub_brands").select("id, name").eq("client_id", id).order("name");
+      const { data, error } = await (supabase as any).from("client_sub_brands").select("id, name, monthly_fee").eq("client_id", id).order("name");
       if (error) throw error;
-      return data as { id: string; name: string }[];
+      return data as { id: string; name: string; monthly_fee?: number | null }[];
     },
   });
   const { data: commissions = [] } = useQuery({
@@ -76,11 +76,15 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
   const today = todayISO();
   const totals = useMemo(() => totalsByCurrency(invoices, today), [invoices, today]);
   const sbMap = useMemo(() => new Map(subBrands.map((s) => [s.id, s.name])), [subBrands]);
+  const weekly = client?.billing_frequency === "weekly";
   const groups = useMemo(() => {
     if (!subBrands.length) return [{ key: "", name: "", rows: invoices }];
     const keys = Array.from(new Set(invoices.map((i) => i.sub_brand_id ?? "")));
-    return keys.map((k) => ({ key: k, name: sbMap.get(k) ?? "General", rows: invoices.filter((i) => (i.sub_brand_id ?? "") === k) }));
-  }, [invoices, subBrands, sbMap]);
+    return keys.map((k) => {
+      const rows = invoices.filter((i) => (i.sub_brand_id ?? "") === k);
+      return { key: k, name: sbMap.get(k) ?? "General", rows, ranges: weekly ? weeklyRangeLabels(rows.map((i) => i.period_month).sort()) : undefined };
+    });
+  }, [invoices, subBrands, sbMap, weekly]);
   const pagos = invoices.filter((i) => Number(i.amount_paid || 0) > 0 && !(i.voided_at && !i.incobrable_at));
   const pagosByCur = pagos.reduce<Record<string, number>>((a, i) => ((a[i.currency] = (a[i.currency] ?? 0) + Number(i.amount_paid)), a), {});
 
@@ -155,7 +159,7 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Período</TableHead><TableHead>Vencimiento</TableHead>
+                  <TableHead>{weekly ? "Semana" : "Período"}</TableHead><TableHead>Vencimiento</TableHead>
                   <TableHead className="text-right">Importe</TableHead><TableHead className="text-right">Pagado</TableHead>
                   <TableHead className="text-right">Saldo</TableHead><TableHead>Estado</TableHead>
                 </TableRow>
@@ -170,7 +174,7 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
                     if (state !== "Incobrable" && state !== "Anulada") subs[inv.currency] = (subs[inv.currency] ?? 0) + saldo;
                     return (
                       <TableRow key={inv.id} className={state === "Anulada" ? "opacity-60" : ""}>
-                        <TableCell className="whitespace-nowrap">{fmtPeriod(inv.period_month)}</TableCell>
+                        <TableCell className="whitespace-nowrap">{weekly ? (g.ranges?.[inv.period_month] ?? fmtPeriod(inv.period_month)) : fmtPeriod(inv.period_month)}</TableCell>
                         <TableCell className="whitespace-nowrap">{inv.due_date ? fmtDate(inv.due_date) : "—"}</TableCell>
                         <TableCell className="text-right whitespace-nowrap">{formatMoney(inv.amount, inv.currency)}</TableCell>
                         <TableCell className="text-right whitespace-nowrap">{formatMoney(inv.amount_paid ?? 0, inv.currency)}</TableCell>

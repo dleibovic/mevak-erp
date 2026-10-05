@@ -4861,6 +4861,10 @@ export type Database = {
         Args: { _period?: string }
         Returns: number
       }
+      generate_weekly_invoices: {
+        Args: { _week_start?: string }
+        Returns: number
+      }
       get_exchange_rate: {
         Args: { _currency: string; _period_month: string }
         Returns: number
