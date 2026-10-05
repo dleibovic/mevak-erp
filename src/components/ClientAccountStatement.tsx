@@ -174,7 +174,7 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
                     if (state !== "Incobrable" && state !== "Anulada") subs[inv.currency] = (subs[inv.currency] ?? 0) + saldo;
                     return (
                       <TableRow key={inv.id} className={state === "Anulada" ? "opacity-60" : ""}>
-                        <TableCell className="whitespace-nowrap">{fmtPeriod(inv.period_month)}</TableCell>
+                        <TableCell className="whitespace-nowrap">{weekly ? (g.ranges?.[inv.period_month] ?? fmtPeriod(inv.period_month)) : fmtPeriod(inv.period_month)}</TableCell>
                         <TableCell className="whitespace-nowrap">{inv.due_date ? fmtDate(inv.due_date) : "—"}</TableCell>
                         <TableCell className="text-right whitespace-nowrap">{formatMoney(inv.amount, inv.currency)}</TableCell>
                         <TableCell className="text-right whitespace-nowrap">{formatMoney(inv.amount_paid ?? 0, inv.currency)}</TableCell>
