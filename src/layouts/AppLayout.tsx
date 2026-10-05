@@ -53,7 +53,7 @@ const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
 
 export default function AppLayout() {
-  const { user, loading, signOut, isAdmin, canEditAdminFinance, role } = useAuth();
+  const { user, loading, roleLoading, signOut, isAdmin, canEditAdminFinance, role } = useAuth();
   const location = useLocation();
 
   const { data: accessRows } = useQuery({
@@ -85,7 +85,7 @@ export default function AppLayout() {
   const items = NAV.filter(allowed);
 
   const current = matchMenuRoute(location.pathname);
-  if (current && current !== "/" && !allowed({ ...NAV.find((n: any) => n.to === current), to: current })) {
+  if (!roleLoading && current && current !== "/" && !allowed({ ...NAV.find((n: any) => n.to === current), to: current })) {
     return <Navigate to="/" replace />;
   }
 
