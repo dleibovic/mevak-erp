@@ -9,22 +9,45 @@ import { AsistenteWidget } from "@/components/AsistenteWidget";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/prospecting", label: "Prospecting", icon: Target },
-  { to: "/facturacion", label: "Facturación", icon: Receipt },
-  { to: "/empleados", label: "Empleados", icon: UserCog, adminOnly: true },
-  { to: "/gastos", label: "Gastos", icon: Wallet, financeOnly: true },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/estadisticas", label: "Estadísticas", icon: LineChartIcon, adminOnly: true },
-  { to: "/metricas-saas", label: "Métricas SaaS", icon: Activity },
-  { to: "/churn", label: "Churn", icon: TrendingDown },
-  { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
-  { to: "/alertas", label: "Alertas", icon: AlertTriangle },
-  { to: "/usuarios", label: "Usuarios y Roles", icon: ShieldCheck, adminOnly: true },
-  { to: "/admin", label: "Configuración", icon: Settings, adminOnly: true },
+const NAV_GROUPS: { group: string; items: any[] }[] = [
+  {
+    group: "Día a día",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/alertas", label: "Alertas", icon: AlertTriangle },
+      { to: "/clientes", label: "Clientes", icon: Users },
+      { to: "/prospecting", label: "Prospecting", icon: Target },
+      { to: "/facturacion", label: "Facturación", icon: Receipt },
+    ],
+  },
+  {
+    group: "Equipo & finanzas",
+    items: [
+      { to: "/gastos", label: "Gastos", icon: Wallet, financeOnly: true },
+      { to: "/empleados", label: "Empleados", icon: UserCog, adminOnly: true },
+    ],
+  },
+  {
+    group: "Inteligencia",
+    items: [
+      { to: "/analytics", label: "Analytics", icon: BarChart3 },
+      { to: "/metricas-saas", label: "Métricas SaaS", icon: Activity },
+      { to: "/churn", label: "Churn", icon: TrendingDown },
+      { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
+      { to: "/estadisticas", label: "Estadísticas", icon: LineChartIcon, adminOnly: true },
+    ],
+  },
+  {
+    group: "Administración",
+    items: [
+      { to: "/usuarios", label: "Usuarios y Roles", icon: ShieldCheck, adminOnly: true },
+      { to: "/admin", label: "Configuración", icon: Settings, adminOnly: true },
+    ],
+  },
 ];
+
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
+
 
 export default function AppLayout() {
   const { user, loading, signOut, isAdmin, canEditAdminFinance, role } = useAuth();
