@@ -21,7 +21,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, X, AlertCircle, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X, AlertCircle, Download, Receipt } from "lucide-react";
+import { ClientAccountStatement } from "@/components/ClientAccountStatement";
 import { useCountries, usePlatforms, useProvinces, useCities, useFoodCategories, usePaymentMethods } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +56,7 @@ export default function Clients() {
   const { countryId } = useCountryFilter();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
+  const [statementClient, setStatementClient] = useState<Client | null>(null);
   const [open, setOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filterChannel, setFilterChannel] = useState<string>("all");
@@ -356,6 +358,7 @@ export default function Clients() {
                   </TableCell>
                   {canEditAdminFinance && (
                     <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" title="Cuenta corriente" aria-label="Cuenta corriente" onClick={() => setStatementClient(c)}><Receipt className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => openClientDialog(c)}><Pencil className="h-4 w-4" /></Button>
                       {isAdmin && <Button variant="ghost" size="icon" onClick={() => setClientToDelete(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                     </TableCell>
@@ -369,6 +372,7 @@ export default function Clients() {
       </Card>
 
       <ClientDialog open={open} onOpenChange={setOpen} client={editing} profiles={profiles} />
+      <ClientAccountStatement client={statementClient} open={!!statementClient} onOpenChange={(v) => !v && setStatementClient(null)} billingUserName={statementClient?.billing_user_id ? profileName(statementClient.billing_user_id) : "—"} />
       <AlertDialog open={!!clientToDelete} onOpenChange={(next) => !next && setClientToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
