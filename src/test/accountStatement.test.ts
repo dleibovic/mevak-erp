@@ -26,5 +26,19 @@ describe("estado de cuenta", () => {
     expect(t.vencido).toBe(50);
     expect(t.aVencer).toBe(30);
     expect(t.saldoTotal).toBe(80);
+});
+
+describe("rangos semanales", () => {
+  it("calcula el fin como el período siguiente menos 1 día", () => {
+    const labels = weeklyRangeLabels(["2026-09-08", "2026-09-15", "2026-09-22"]);
+    expect(labels["2026-09-08"]).toBe("08/09 – 14/09");
+    expect(labels["2026-09-15"]).toBe("15/09 – 21/09");
+    expect(labels["2026-09-22"]).toBe("22/09 – 28/09");
   });
+  it("la última semana cubre 7 días y cruza de mes sin desfase", () => {
+    const labels = weeklyRangeLabels(["2026-09-29"]);
+    expect(labels["2026-09-29"]).toBe("29/09 – 05/10");
+  });
+});
+
 });
