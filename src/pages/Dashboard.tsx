@@ -8,6 +8,10 @@ import { formatMoney } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Users, ReceiptText, AlertTriangle } from "lucide-react";
 import { format, parseISO, startOfMonth } from "date-fns";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
+import { es } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { periodRange, type PeriodPreset } from "@/lib/billingPeriod";
 
 const invBalance = (i: any) => (Number(i.amount) || 0) - (Number(i.amount_paid) || 0);
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 70% 50%)"];
@@ -15,6 +19,18 @@ const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(2
 export default function Dashboard() {
   const { countries, countryId } = useCountryFilter();
   const [supportsCharts, setSupportsCharts] = useState(false);
+  const [preset, setPreset] = useState<PeriodPreset>("current");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const period = useMemo(() => periodRange(preset, new Date(), customFrom, customTo), [preset, customFrom, customTo]);
+  const inPeriod = (d?: string | null) => !!d && d.slice(0, 10) >= period.from && d.slice(0, 10) < period.to;
+  const periodLabel = useMemo(() => {
+    const f = parseISO(period.from);
+    const last = new Date(parseISO(period.to).getTime() - 86400000);
+    const a = format(f, "MMM yyyy", { locale: es });
+    const b = format(last, "MMM yyyy", { locale: es });
+    return a === b ? a : `${format(f, f.getFullYear() === last.getFullYear() ? "MMM" : "MMM yyyy", { locale: es })}–${b}`;
+  }, [period]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -59,7 +75,9 @@ export default function Dashboard() {
   const clients = clientsAll.filter((c: any) => matchesCountry(c.country_id));
   const metrics = metricsAll.filter((m: any) => matchesCountry(m.country_id));
   const prospects = prospectsAll.filter((p: any) => matchesCountry(p.country_id));
-  const expenses = expensesAll.filter((e: any) => matchesCountry(e.country_id));
+  const expenses = expensesAll.filter((e: any) => matchesCountry(e.country_id) && inPeriod(e.date));
+  const paidInvoices = invoices.filter((i: any) => Number(i.amount_paid) > 0 && inPeriod(i.paid_at));
+  const months = period.months;
   const employees = employeesAll.filter((e: any) => matchesCountry(e.country_id));
   const activeCurrency = null;
 
@@ -70,7 +88,7 @@ export default function Dashboard() {
     const isOverdue = (i: any) => (i.status === "overdue" || ((i.status === "pending" || i.status === "invoiced") && i.due_date && new Date(i.due_date) < new Date())) && invBalance(i) > 0;
     if (activeCurrency) {
       const c = activeCurrency;
-      const income = sumByCurr(invoices.filter((i: any) => Number(i.amount_paid) > 0 && i.currency === c), "amount_paid")[c] ?? 0;
+      const income = sumByCurr(paidInvoices.filter((i: any) => i.currency === c), "amount_paid")[c] ?? 0;
       const overdue = invoices.filter((i: any) => isOverdue(i) && i.currency === c).reduce((a: number, i: any) => a + invBalance(i), 0) ?? 0;
       const totalBilling = sumClientFees(c);
       const exp = sumByCurr(expenses.filter((e: any) => e.currency === c))[c] ?? 0;
@@ -78,7 +96,7 @@ export default function Dashboard() {
         if (e.salary_currency !== c) return acc;
         const comm = (e.commissions ?? []).filter((cm: any) => cm.currency === c).reduce((a: number, cm: any) => a + Number(cm.commission_value), 0);
         return acc + Number(e.base_salary || 0) + comm;
-      }, 0);
+      }, 0) * months;
       return { mode: "single" as const, currency: c, clientCount: clients.length, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
     }
     const currencies = Array.from(new Set([
@@ -87,7 +105,7 @@ export default function Dashboard() {
       ...expenses.map((e: any) => e.currency),
       ...employees.map((e: any) => e.salary_currency),
     ].filter(Boolean))).sort();
-    const paidByCurrency = sumByCurr(invoices.filter((i: any) => Number(i.amount_paid) > 0), "amount_paid");
+    const paidByCurrency = sumByCurr(paidInvoices, "amount_paid");
     const overdueByCurrency = invoices.filter(isOverdue).reduce((acc: any, i: any) => { acc[i.currency] = (acc[i.currency] ?? 0) + invBalance(i); return acc; }, {});
     const expensesByCurrency = sumByCurr(expenses);
     const rows = currencies.map((currency) => {
@@ -95,13 +113,13 @@ export default function Dashboard() {
         const base = e.salary_currency === currency ? Number(e.base_salary || 0) : 0;
         const comm = (e.commissions ?? []).filter((c: any) => c.currency === currency).reduce((a: number, c: any) => a + Number(c.commission_value), 0);
         return acc + base + comm;
-      }, 0);
+      }, 0) * months;
       const income = paidByCurrency[currency] ?? 0;
       const exp = expensesByCurrency[currency] ?? 0;
       return { currency, totalBilling: sumClientFees(currency), income, overdue: overdueByCurrency[currency] ?? 0, exp, payroll, net: income - exp - payroll };
     });
     return { mode: "multi" as const, clientCount: clients.length, rows };
-  }, [invoices, clients, metrics, expenses, employees, activeCurrency]);
+  }, [invoices, paidInvoices, clients, metrics, expenses, employees, activeCurrency, months]);
 
   const countrySummaries = useMemo(() => {
     const countryName = (countryId?: string | null) => countries.find((c) => c.id === countryId)?.name ?? "Sin país";
@@ -130,7 +148,7 @@ export default function Dashboard() {
           .filter((m: any) => m.currency === currency && m.status === "active")
           .reduce((acc: number, m: any) => acc + Number(m.current_mrr || 0), 0);
         const income = countryInvoices
-          .filter((i: any) => i.currency === currency)
+          .filter((i: any) => i.currency === currency && Number(i.amount_paid) > 0 && inPeriod(i.paid_at))
           .reduce((acc: number, i: any) => acc + Number(i.amount_paid || 0), 0);
         const overdue = countryInvoices
           .filter((i: any) => isOverdue(i) && i.currency === currency)
@@ -142,18 +160,18 @@ export default function Dashboard() {
           const base = e.salary_currency === currency ? Number(e.base_salary || 0) : 0;
           const comm = (e.commissions ?? []).filter((c: any) => c.currency === currency).reduce((a: number, c: any) => a + Number(c.commission_value || 0), 0);
           return acc + base + comm;
-        }, 0);
+        }, 0) * months;
         return { currency, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
       });
 
       return { countryId, countryName: countryName(countryId), clientCount: countryClients.length, rows };
     });
-  }, [countries, clients, metrics, invoices, expenses, employees]);
+  }, [countries, clients, metrics, invoices, expenses, employees, months, period]);
 
   const series = useMemo(() => {
     const map: Record<string, any> = {};
     const okCurr = (r: any) => !activeCurrency || r.currency === activeCurrency;
-    invoices.filter((i: any) => Number(i.amount_paid) > 0 && i.paid_at && okCurr(i)).forEach((i: any) => {
+    paidInvoices.filter(okCurr).forEach((i: any) => {
       const k = format(startOfMonth(parseISO(i.paid_at)), "yyyy-MM");
       map[k] = map[k] ?? { month: k, ingresos: 0, gastos: 0 };
       map[k].ingresos += Number(i.amount_paid);
@@ -164,7 +182,7 @@ export default function Dashboard() {
       map[k].gastos += Number(e.amount);
     });
     return Object.values(map).sort((a: any, b: any) => a.month.localeCompare(b.month));
-  }, [invoices, expenses, activeCurrency]);
+  }, [paidInvoices, expenses, activeCurrency]);
 
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -177,12 +195,12 @@ export default function Dashboard() {
 
   const byClient = useMemo(() => {
     const map: Record<string, number> = {};
-    invoices.filter((i: any) => Number(i.amount_paid) > 0 && (!activeCurrency || i.currency === activeCurrency)).forEach((i: any) => {
+    paidInvoices.filter((i: any) => !activeCurrency || i.currency === activeCurrency).forEach((i: any) => {
       const k = i.client?.company_name ?? "—";
       map[k] = (map[k] ?? 0) + Number(i.amount_paid);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
-  }, [invoices, activeCurrency]);
+  }, [paidInvoices, activeCurrency]);
 
   const prospectSummary = useMemo(() => {
     const activeProspects = prospects.filter((p: any) => p.status === "active");
@@ -211,6 +229,31 @@ export default function Dashboard() {
         <KCard label="Clientes totales" value={String(stats.clientCount)} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
       </div>
 
+      <Card className="p-3 mb-4 bg-gradient-card border-border/60">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-2">
+          <div className="min-w-0 sm:w-56">
+            <div className="text-xs text-muted-foreground mb-1">Período</div>
+            <Select value={preset} onValueChange={(v) => setPreset(v as PeriodPreset)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Mes actual</SelectItem>
+                <SelectItem value="3m">Últimos 3 meses</SelectItem>
+                <SelectItem value="6m">Últimos 6 meses</SelectItem>
+                <SelectItem value="12m">Últimos 12 meses</SelectItem>
+                <SelectItem value="custom">Rango personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {preset === "custom" && (
+            <div className="grid grid-cols-2 gap-2 min-w-0">
+              <div><div className="text-xs text-muted-foreground mb-1">Desde</div><Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} /></div>
+              <div><div className="text-xs text-muted-foreground mb-1">Hasta</div><Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} /></div>
+            </div>
+          )}
+          <span className="text-xs text-muted-foreground sm:ml-auto capitalize">{periodLabel}</span>
+        </div>
+      </Card>
+
       <section className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
           <h2 className="text-lg font-semibold">Resumen por país</h2>
@@ -231,9 +274,9 @@ export default function Dashboard() {
                   <div key={`${country.countryId}-${row.currency}`} className="space-y-2">
                     <div className="text-xs font-semibold text-primary">{row.currency}</div>
                     <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      <Metric label="Facturación" value={formatMoney(row.totalBilling, row.currency)} icon={<ReceiptText className="h-3.5 w-3.5" />} />
+                      <Metric label="Facturación mensual" value={formatMoney(row.totalBilling, row.currency)} icon={<ReceiptText className="h-3.5 w-3.5" />} />
                       <Metric label="Cobrado" value={formatMoney(row.income, row.currency)} icon={<TrendingUp className="h-3.5 w-3.5" />} />
-                      <Metric label="Mora" value={formatMoney(row.overdue, row.currency)} accent={row.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-3.5 w-3.5" />} />
+                      <Metric label="Mora (a hoy)" value={formatMoney(row.overdue, row.currency)} accent={row.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-3.5 w-3.5" />} />
                       <Metric label="Gastos" value={formatMoney(row.exp, row.currency)} icon={<TrendingDown className="h-3.5 w-3.5" />} />
                       <Metric label="Nómina" value={formatMoney(row.payroll, row.currency)} icon={<Users className="h-3.5 w-3.5" />} />
                       <Metric label="Neto" value={formatMoney(row.net, row.currency)} accent={row.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-3.5 w-3.5" />} />

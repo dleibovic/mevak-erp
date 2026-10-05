@@ -234,7 +234,7 @@ export function LtvTab({ filters }: { filters: MetricsFilters }) {
         marginPct, marginUsd, historicalLtvUsd,
       };
     });
-  }, [filteredClients, cmhByClient, latestRate, commissionUsdByClient, employeeById, activeCountByExec, grossMarginDefault]);
+  }, [filteredClients, cmhByClient, latestRate, mrrByClient, commissionUsdByClient, employeeById, activeCountByExec, grossMarginDefault]);
 
   const active = perClient.filter((p) => p.status === "active");
   const totalMrrUsd = active.reduce((s, p) => s + p.feeUsd, 0);
