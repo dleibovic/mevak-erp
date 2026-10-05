@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useCountryFilter } from "@/hooks/useCountryFilter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommissionHistory } from "@/components/CommissionHistory";
+import { SalaryPayments } from "@/components/SalaryPayments";
 
 
 export default function Employees() {
@@ -64,6 +65,7 @@ export default function Employees() {
         <TabsList>
           <TabsTrigger value="equipo">Equipo</TabsTrigger>
           <TabsTrigger value="comisiones">Historial de comisiones</TabsTrigger>
+          <TabsTrigger value="sueldos">Sueldos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="equipo">
@@ -137,6 +139,10 @@ export default function Employees() {
 
         <TabsContent value="comisiones">
           <CommissionHistory />
+        </TabsContent>
+
+        <TabsContent value="sueldos">
+          <SalaryPayments />
         </TabsContent>
       </Tabs>
 
