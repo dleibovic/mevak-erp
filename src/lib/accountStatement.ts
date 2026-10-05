@@ -71,6 +71,28 @@ export function money(n: number, cur: string) {
 }
 
 const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+// Parsear ISO YYYY-MM-DD por partes y aritmética en UTC (sin desfase de zona).
+function shiftISO(iso: string, days: number): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
+}
+
+/** Etiquetas de rango semanal ("08/09 – 13/09") por local.
+ *  fin(i) = period de i+1 menos 1 día; si es la última, period(i) + 6 días. */
+export function weeklyRangeLabels(periodsSortedAsc: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (let i = 0; i < periodsSortedAsc.length; i++) {
+    const start = periodsSortedAsc[i];
+    const end = i + 1 < periodsSortedAsc.length ? shiftISO(periodsSortedAsc[i + 1], -1) : shiftISO(start, 6);
+    out[start] = `${fmtDMY(start).slice(0, 5)} – ${fmtDMY(end).slice(0, 5)}`;
+  }
+  return out;
+}
+
 export function fmtPeriod(p?: string | null) {
   if (!p) return "—";
   const [y, m] = p.slice(0, 10).split("-");
