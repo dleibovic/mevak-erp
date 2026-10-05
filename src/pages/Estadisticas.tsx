@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Search, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ChevronDown, ChevronRight, Search, Trash2, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { debtBalances, originMonth, paymentInUsd } from "@/lib/partnerDebt";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area,
 } from "recharts";
@@ -133,6 +134,24 @@ function EstadisticasInner() {
     queryKey: ["cc-adjustments"],
     queryFn: async () => (await supabase.from("cc_adjustments").select("*").order("adjustment_date")).data ?? [],
   });
+  const { data: partnerDebts = [], isLoading: debtsLoading, isError: debtsError } = useQuery({
+    queryKey: ["partner-debts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("partner_debts").select("id, ledger, amount_usd, entry_type, entry_date, created_at, concept, origin_period, origin_rate_ars, amount_ars_origin");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const { balances: debtTotals, movements: debtMovements } = useMemo(() => debtBalances(partnerDebts), [partnerDebts]);
+  const isMeri = user?.email?.toLowerCase() === "maria@mevak.com.ar";
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [payLedger, setPayLedger] = useState<"meri" | "empresa">("meri");
+  const [payCurrency, setPayCurrency] = useState<"USD" | "ARS">("USD");
+  const [payAmount, setPayAmount] = useState("");
+  const [payRate, setPayRate] = useState("");
+  const [payDate, setPayDate] = useState("");
+  const [payConcept, setPayConcept] = useState("Repago del mes — excedente de Meri sobre $10M");
+  const [paySaving, setPaySaving] = useState(false);
   const [adjDate, setAdjDate] = useState("");
   const [adjAmount, setAdjAmount] = useState("");
   const [adjFavor, setAdjFavor] = useState<Partner>("dario");
@@ -230,6 +249,35 @@ function EstadisticasInner() {
   const ajustesAplicables = (adjustments as any[]).filter((a) => !ccTo || a.adjustment_date <= ccTo);
   const ajusteTotal = ajustesAplicables.reduce((s, a) => s + adjSigned(a), 0);
   const saldoTotal = saldoD + ajusteTotal;
+
+  const registerPayment = async () => {
+    const amount = Number(payAmount);
+    const rate = Number(payRate);
+    const usd = paymentInUsd(amount, payCurrency, rate);
+    if (!payDate || !payConcept.trim() || !Number.isFinite(amount) || amount <= 0 ||
+        (payCurrency === "ARS" && (!Number.isFinite(rate) || rate <= 0)) || !Number.isFinite(usd) || usd <= 0) {
+      toast.error("Completá fecha, concepto y monto positivo; si pagás en ARS, indicá un dólar mayor a 0.");
+      return;
+    }
+    setPaySaving(true);
+    const { error } = await supabase.from("partner_debts").insert({
+      ledger: payLedger,
+      entry_type: "payment",
+      currency: "USD",
+      amount_usd: -usd,
+      entry_date: payDate,
+      concept: payConcept.trim(),
+      origin_rate_ars: payCurrency === "ARS" ? rate : null,
+      amount_ars_origin: payCurrency === "ARS" ? -amount : null,
+      created_by: user?.id,
+    });
+    setPaySaving(false);
+    if (error) { toast.error("No se pudo registrar el repago."); return; }
+    toast.success("Repago registrado.");
+    setPaymentOpen(false);
+    setPayAmount(""); setPayRate("");
+    queryClient.invalidateQueries({ queryKey: ["partner-debts"] });
+  };
 
   const addAdjustment = async () => {
     if (!adjDate || !adjConcepto.trim() || !(Number(adjAmount) > 0)) {
@@ -501,6 +549,54 @@ function EstadisticasInner() {
         </TabsContent>
 
         <TabsContent value="cc" className="space-y-4">
+          <section className="min-w-0 space-y-4">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Deuda entre socios</h2>
+              <Button onClick={() => { setPayDate(todayStr); setPaymentOpen(true); }}><Plus className="h-4 w-4" /> Registrar pago</Button>
+            </div>
+            {debtsError && <p role="alert" className="text-sm text-destructive">No se pudo cargar la deuda. Intentá nuevamente.</p>}
+            <div className="grid min-w-0 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
+              <Card className="min-w-0">
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Deuda de Meri · {isMeri ? "Le debo a Darío" : "Meri me debe"}</CardTitle></CardHeader>
+                <CardContent className="text-2xl font-semibold break-words">{debtsLoading || debtsError ? "—" : fmt(debtTotals.meri, "USD")}</CardContent>
+              </Card>
+              <Card className="min-w-0">
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Deuda de la empresa (clientes)</CardTitle></CardHeader>
+                <CardContent className="text-2xl font-semibold break-words">{debtsLoading || debtsError ? "—" : fmt(debtTotals.empresa, "USD")}</CardContent>
+              </Card>
+            </div>
+            <Card className="min-w-0">
+              <CardHeader><CardTitle className="text-base">Cuenta corriente de saldado</CardTitle></CardHeader>
+              <CardContent className="min-w-0">
+                <div className="w-full min-w-0 max-h-[28rem] overflow-auto">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>Fecha</TableHead><TableHead>Deuda</TableHead><TableHead>Tipo</TableHead><TableHead>Concepto</TableHead>
+                      <TableHead>Período origen</TableHead><TableHead className="text-right">Dólar usado</TableHead><TableHead className="text-right">ARS original</TableHead>
+                      <TableHead className="text-right">Movimiento USD</TableHead><TableHead className="text-right">Saldo corriente USD</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {!debtsLoading && !debtsError && debtMovements.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Sin movimientos todavía.</TableCell></TableRow>}
+                      {debtMovements.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="whitespace-nowrap">{dateFmt(row.entry_date)}</TableCell>
+                          <TableCell>{row.ledger === "meri" ? "Meri" : "Empresa"}</TableCell>
+                          <TableCell className="whitespace-nowrap">{({ opening: "Saldo inicial", freeze: "Congelamiento", incobrable_split: "Incobrable (reparto)", payment: "Repago", adjustment: "Ajuste" } as Record<string, string>)[row.entry_type] ?? row.entry_type}</TableCell>
+                          <TableCell className="max-w-40 whitespace-normal break-words">{row.concept ?? "—"}</TableCell>
+                          <TableCell className="whitespace-nowrap">{originMonth(row.origin_period)}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap">{row.origin_rate_ars == null ? "—" : fmt(Number(row.origin_rate_ars), "ARS")}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap">{row.amount_ars_origin == null ? "—" : fmt(Number(row.amount_ars_origin), "ARS")}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap">{fmt(Number(row.amount_usd), "USD")}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap font-semibold">{fmt(row.runningBalance, "USD")}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+          <div className="border-t border-border pt-4"><h2 className="text-lg font-semibold">Cuenta corriente operativa</h2></div>
           <div className="flex min-w-0 flex-wrap items-end gap-3">
             <div className="w-full space-y-1 sm:w-auto">
               <Label className="text-xs">Desde</Label>
@@ -531,7 +627,8 @@ function EstadisticasInner() {
                 </Table>
                 </div>
                 <div className="mt-4 min-w-0 rounded-md border p-4 space-y-1 break-words">
-                  <div className="text-sm text-muted-foreground whitespace-normal break-words">Saldo acumulado a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
+                  <div className="text-sm font-medium whitespace-normal break-words">Saldo operativo</div>
+                  <p className="text-xs text-muted-foreground whitespace-normal break-words">Estimación automática según lo cobrado/aportado cargado en el ERP. Se mueve con las transacciones; no es el número acordado con Meri.</p>
                   <div className="text-2xl font-bold break-words">{fmt(saldoD)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoD, other), other)}</div>
                   <p className="text-sm">
@@ -579,7 +676,8 @@ function EstadisticasInner() {
                 </div>
 
                 <div className="mt-4 min-w-0 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1 break-words">
-                  <div className="text-sm text-muted-foreground whitespace-normal break-words">SALDO TOTAL a favor de Darío = movimiento acumulado + ajustes</div>
+                  <div className="text-sm font-medium whitespace-normal break-words">Saldo histórico (suma todo)</div>
+                  <p className="text-xs text-muted-foreground whitespace-normal break-words">Incluye el saldo operativo + saldo inicial + ajustes.</p>
                   <div className="text-2xl font-bold break-words">{fmt(saldoTotal)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
                   <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
@@ -746,6 +844,25 @@ function EstadisticasInner() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+        <DialogContent className="min-w-0">
+          <DialogHeader>
+            <DialogTitle>Registrar pago</DialogTitle>
+            <DialogDescription>El repago es el excedente de la ganancia de Meri por encima de su piso de $10M, que se cede para bajar la deuda — no es un pago en efectivo.</DialogDescription>
+          </DialogHeader>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
+            <div className="space-y-1"><Label>Deuda</Label><Select value={payLedger} onValueChange={(value) => setPayLedger(value as "meri" | "empresa")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="meri">Meri</SelectItem><SelectItem value="empresa">Empresa</SelectItem></SelectContent></Select></div>
+            <div className="space-y-1"><Label>Moneda</Label><Select value={payCurrency} onValueChange={(value) => setPayCurrency(value as "USD" | "ARS")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="ARS">ARS</SelectItem></SelectContent></Select></div>
+            <div className="space-y-1"><Label htmlFor="pay-amount">Monto ({payCurrency})</Label><Input id="pay-amount" type="number" min="0" step="any" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} /></div>
+            {payCurrency === "ARS" && <div className="space-y-1"><Label htmlFor="pay-rate">Dólar a usar (ARS por USD)</Label><Input id="pay-rate" type="number" min="0" step="any" value={payRate} onChange={(e) => setPayRate(e.target.value)} /></div>}
+            <div className="space-y-1"><Label htmlFor="pay-date">Fecha</Label><Input id="pay-date" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} /></div>
+            <div className="space-y-1 sm:col-span-2"><Label htmlFor="pay-concept">Concepto</Label><Input id="pay-concept" value={payConcept} onChange={(e) => setPayConcept(e.target.value)} /></div>
+            {payCurrency === "ARS" && Number(payAmount) > 0 && Number(payRate) > 0 && <p className="text-sm text-muted-foreground sm:col-span-2">Equivale a {fmt(paymentInUsd(Number(payAmount), "ARS", Number(payRate)), "USD")}</p>}
+          </div>
+          <DialogFooter><Button onClick={registerPayment} disabled={paySaving}>{paySaving ? "Guardando…" : "Registrar pago"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={detail !== null} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="min-w-0 max-w-5xl">

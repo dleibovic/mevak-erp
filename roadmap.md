@@ -1,5 +1,9 @@
 # Marca Mevak
 
+## Deuda entre socios
+- [x] Unificar movimientos y registro de repagos en Cuenta corriente socios; retirar la página Deudas.
+- [x] Verificar compilación y pruebas de saldos, conversión y fechas.
+
 ## Instalación en celular
 - [x] Agregar manifest, íconos de marca y metadatos para pantalla de inicio sin caché de páginas.
 
