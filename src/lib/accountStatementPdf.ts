@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { evalInvoice, stateTone, totalsByCurrency, money, fmtPeriod, fmtDMY, todayISO, type StmtInvoice } from "@/lib/accountStatement";
+import { evalInvoice, stateTone, totalsByCurrency, money, fmtPeriod, fmtDMY, todayISO, weeklyRangeLabels, type StmtInvoice } from "@/lib/accountStatement";
 import { PAYMENT_CHANNEL_LABEL } from "@/lib/billing";
 
 const VIOLET: [number, number, number] = [93, 87, 214];
