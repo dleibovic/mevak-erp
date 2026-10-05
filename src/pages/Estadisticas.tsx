@@ -319,7 +319,7 @@ function EstadisticasInner() {
     const [open, setOpen] = useState(false);
     const cats = Object.entries(s.cats).sort((a, b) => b[1] - a[1]);
     return (
-      <Card>
+      <Card className="min-w-0">
         <CardHeader><CardTitle className="text-base">Desglose de egresos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {(["Sueldos", "Comisiones a ejecutivos"] as const).map((b) => (
