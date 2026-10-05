@@ -8,6 +8,9 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { AsistenteWidget } from "@/components/AsistenteWidget";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_HARD_ROUTES, matchMenuRoute } from "@/lib/menuRoutes";
 
 const NAV_GROUPS: { group: string; items: any[] }[] = [
   {
@@ -50,8 +53,18 @@ const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
 
 export default function AppLayout() {
-  const { user, loading, signOut, isAdmin, canEditAdminFinance, role } = useAuth();
+  const { user, loading, roleLoading, signOut, isAdmin, canEditAdminFinance, role } = useAuth();
   const location = useLocation();
+
+  const { data: accessRows } = useQuery({
+    queryKey: ["role_menu_access", role],
+    enabled: !!user && !!role,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("role_menu_access" as any).select("route, visible").eq("role", role as any);
+      if (error) throw error;
+      return (data ?? []) as unknown as { route: string; visible: boolean }[];
+    },
+  });
 
   if (loading) {
     return (
@@ -62,7 +75,19 @@ export default function AppLayout() {
   }
   if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
 
-  const items = NAV.filter((n: any) => (!n.adminOnly || isAdmin) && (!n.financeOnly || canEditAdminFinance));
+  const visibleSet = accessRows && accessRows.length ? new Set(accessRows.filter((r) => r.visible).map((r) => r.route)) : null;
+  const allowed = (n: any) => {
+    if (isAdmin) return true;
+    if (ADMIN_HARD_ROUTES.has(n.to)) return false;
+    if (visibleSet) return visibleSet.has(n.to);
+    return (!n.adminOnly || isAdmin) && (!n.financeOnly || canEditAdminFinance);
+  };
+  const items = NAV.filter(allowed);
+
+  const current = matchMenuRoute(location.pathname);
+  if (!roleLoading && current && current !== "/" && !allowed({ ...NAV.find((n: any) => n.to === current), to: current })) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="min-h-screen flex w-full bg-background">
@@ -81,9 +106,7 @@ export default function AppLayout() {
 
         <nav className="flex-1 px-3 pb-2">
           {NAV_GROUPS.map((grp) => {
-            const visible = grp.items.filter(
-              (n: any) => (!n.adminOnly || isAdmin) && (!n.financeOnly || canEditAdminFinance)
-            );
+            const visible = grp.items.filter(allowed);
             if (!visible.length) return null;
             return (
               <div key={grp.group}>

@@ -4577,6 +4577,27 @@ export type Database = {
           },
         ]
       }
+      role_menu_access: {
+        Row: {
+          role: Database["public"]["Enums"]["app_role"]
+          route: string
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          role: Database["public"]["Enums"]["app_role"]
+          route: string
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          role?: Database["public"]["Enums"]["app_role"]
+          route?: string
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
       salary_payments: {
         Row: {
           amount: number
