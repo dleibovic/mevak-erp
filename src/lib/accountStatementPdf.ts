@@ -82,12 +82,13 @@ export function generateStatementPdf(client: any, invoices: StmtInvoice[], subBr
       ? Array.from(new Set(invs.map((i) => i.sub_brand_id ?? ""))).map((k) => ({ key: k, name: sbMap.get(k) ?? "General", rows: invs.filter((i) => (i.sub_brand_id ?? "") === k) }))
       : [{ key: "", name: "", rows: invs }];
     for (const g of groups) {
+      const ranges = isWeekly ? weeklyRangeLabels(g.rows.map((i) => i.period_month).slice().sort()) : null;
       if (hasGroups) body.push([{ content: g.name, colSpan: 6, styles: { fillColor: VIOLET_LIGHT, textColor: VIOLET2, fontStyle: "bold" } }]);
       let sub = 0;
       for (const inv of g.rows) {
         const { state, saldo } = evalInvoice(inv, today);
         if (state !== "Incobrable") sub += saldo;
-        body.push([fmtPeriod(inv.period_month), fmtDMY(inv.due_date), money(Number(inv.amount), cur), money(Number(inv.amount_paid || 0), cur), money(saldo, cur), { content: state, _tone: stateTone(state) }]);
+        body.push([ranges ? (ranges[inv.period_month] ?? fmtPeriod(inv.period_month)) : fmtPeriod(inv.period_month), fmtDMY(inv.due_date), money(Number(inv.amount), cur), money(Number(inv.amount_paid || 0), cur), money(saldo, cur), { content: state, _tone: stateTone(state) }]);
       }
       if (hasGroups) body.push([{ content: `Saldo ${g.name}`, colSpan: 4, styles: { fontStyle: "bold", halign: "right" } }, { content: money(sub, cur), styles: { fontStyle: "bold" } }, ""]);
     }
