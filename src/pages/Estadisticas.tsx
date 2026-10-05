@@ -307,7 +307,7 @@ function EstadisticasInner() {
   );
 
   const KpiGrid = ({ s, clickable }: { s: ReturnType<typeof compute>; clickable?: boolean }) => (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
       <Kpi title="Ingresos (cobrado)" value={s.ingresos} onClick={clickable ? () => setDetail("ingresos") : undefined} />
       <Kpi title="Egresos total" value={s.egresos} onClick={clickable ? () => setDetail("egresos") : undefined} />
       <Kpi title="Ganancia neta" value={s.neta} tone={s.neta < 0 ? "neg" : "pos"} />
@@ -348,14 +348,14 @@ function EstadisticasInner() {
     Object.entries(s.buckets).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="min-w-0 space-y-6 p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-bold">Estadísticas</h1>
         <p className="text-sm text-muted-foreground">Situación financiera, cuenta entre socios y proyección.</p>
       </div>
 
       <Card>
-        <CardContent className="pt-6 grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 items-end">
+        <CardContent className="pt-6 grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 items-end [&>*]:min-w-0">
           <div className="space-y-1">
             <Label>Año</Label>
             <Select value={year} onValueChange={setYear}>
@@ -408,7 +408,7 @@ function EstadisticasInner() {
 
         <TabsContent value="resumen" className="space-y-4">
           <KpiGrid s={sum} clickable />
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
             <Kpi title="Deuda del período (a cobrar)" value={deudaPeriodo} onClick={() => setDetail("deudaPeriodo")} />
             <Kpi title="Deuda acumulada (a cobrar)" value={deudaAcum} onClick={() => setDetail("deudaAcum")} />
           </div>
@@ -418,7 +418,7 @@ function EstadisticasInner() {
               <b>{fmt(sum.neta)}</b>; a cada socio le corresponden <b>{fmt(sum.neta / 2)}</b>.
             </CardContent>
           </Card>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-3 [&>*]:min-w-0">
             <Buckets s={sum} />
             <Card>
               <CardHeader><CardTitle className="text-base">Egresos por bucket</CardTitle></CardHeader>
@@ -456,7 +456,7 @@ function EstadisticasInner() {
         <TabsContent value="mes" className="space-y-4">
           <p className="text-sm text-muted-foreground">{MONTHS[now.getMonth()]} {now.getFullYear()}</p>
           <KpiGrid s={mSum} />
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-3 [&>*]:min-w-0">
             <Buckets s={mSum} />
             <Card className="lg:col-span-2">
               <CardHeader><CardTitle className="text-base">Ingresos del mes</CardTitle></CardHeader>
@@ -501,25 +501,26 @@ function EstadisticasInner() {
         </TabsContent>
 
         <TabsContent value="cc" className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
+          <div className="flex min-w-0 flex-wrap items-end gap-3">
+            <div className="w-full space-y-1 sm:w-auto">
               <Label className="text-xs">Desde</Label>
-              <Input type="date" value={ccFrom} onChange={(e) => setCcFrom(e.target.value)} className="w-40" />
+              <Input type="date" value={ccFrom} onChange={(e) => setCcFrom(e.target.value)} className="w-full sm:w-40" />
             </div>
             <Button variant="outline" size="sm" onClick={() => setCcFrom("")}>Desde el inicio</Button>
-            <div className="space-y-1">
+            <div className="w-full space-y-1 sm:w-auto">
               <Label className="text-xs">Hasta</Label>
-              <Input type="date" value={ccTo} onChange={(e) => setCcTo(e.target.value)} className="w-40" />
+              <Input type="date" value={ccTo} onChange={(e) => setCcTo(e.target.value)} className="w-full sm:w-40" />
             </div>
             <Button variant="outline" size="sm" onClick={() => setCcTo(todayStr)}>Hoy</Button>
             <p className="text-xs text-muted-foreground max-w-md">
               Acumulado entre las fechas elegidas. "Desde el inicio" = toda la historia cargada. El saldo total incluye el saldo inicial y los ajustes hasta la fecha "Hasta".
             </p>
           </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Cuenta corriente · {ccFrom || "inicio"} → {ccTo || "hoy"}</CardTitle></CardHeader>
-              <CardContent>
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+            <Card className="min-w-0">
+              <CardHeader className="max-sm:pb-2"><CardTitle className="text-base break-words leading-snug">Cuenta corriente · {ccFrom || "inicio"} → {ccTo || "hoy"}</CardTitle></CardHeader>
+              <CardContent className="min-w-0 max-sm:px-4">
+                <div className="w-full min-w-0 overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow><TableHead /><TableHead className="text-right">Darío</TableHead><TableHead className="text-right">Meri</TableHead></TableRow></TableHeader>
                   <TableBody>
@@ -528,8 +529,9 @@ function EstadisticasInner() {
                     <TableRow className="font-semibold"><TableCell>Posición neta (Aportó − Cobró)</TableCell><TableCell className="text-right">{fmt(posD)}</TableCell><TableCell className="text-right">{fmt(posM)}</TableCell></TableRow>
                   </TableBody>
                 </Table>
-                <div className="mt-4 rounded-md border p-4 space-y-1">
-                  <div className="text-sm text-muted-foreground">Saldo acumulado a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
+                </div>
+                <div className="mt-4 min-w-0 rounded-md border p-4 space-y-1 break-words">
+                  <div className="text-sm text-muted-foreground whitespace-normal break-words">Saldo acumulado a favor de Darío = (PosiciónDarío − PosiciónMeri) / 2</div>
                   <div className="text-2xl font-bold">{fmt(saldoD)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoD, other), other)}</div>
                   <p className="text-sm">
@@ -542,11 +544,12 @@ function EstadisticasInner() {
                   )}
                 </div>
 
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 min-w-0 space-y-2">
                   <div className="text-sm font-medium">Saldo inicial y ajustes (hasta {ccTo || "hoy"})</div>
                   {ajustesAplicables.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Sin ajustes.</p>
                   ) : (
+                    <div className="w-full min-w-0 overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -560,7 +563,7 @@ function EstadisticasInner() {
                         {ajustesAplicables.map((a) => (
                           <TableRow key={a.id}>
                             <TableCell>{dateFmt(a.adjustment_date)}</TableCell>
-                            <TableCell>{a.concepto}</TableCell>
+                            <TableCell className="max-w-40 whitespace-normal break-words sm:max-w-none sm:whitespace-nowrap">{a.concepto}</TableCell>
                             <TableCell><Badge variant="outline">{a.in_favor_of === "dario" ? "Darío" : "Meri"}</Badge></TableCell>
                             <TableCell className={`text-right ${adjSigned(a) >= 0 ? "text-primary" : "text-accent"}`}>{fmt(adjSigned(a))}</TableCell>
                           </TableRow>
@@ -571,11 +574,12 @@ function EstadisticasInner() {
                         </TableRow>
                       </TableBody>
                     </Table>
+                    </div>
                   )}
                 </div>
 
-                <div className="mt-4 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1">
-                  <div className="text-sm text-muted-foreground">SALDO TOTAL a favor de Darío = movimiento acumulado + ajustes</div>
+                <div className="mt-4 min-w-0 rounded-md border border-primary/40 bg-secondary/50 p-4 space-y-1 break-words">
+                  <div className="text-sm text-muted-foreground whitespace-normal break-words">SALDO TOTAL a favor de Darío = movimiento acumulado + ajustes</div>
                   <div className="text-2xl font-bold">{fmt(saldoTotal)}</div>
                   <div className="text-xs text-muted-foreground">≈ {fmt(fromCur(saldoTotal, other), other)}</div>
                   <p className="text-sm">Positivo = Meri le debe a Darío; negativo = al revés.</p>
@@ -613,7 +617,7 @@ function EstadisticasInner() {
               {(adjustments as any[]).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Todavía no hay ajustes cargados.</p>
               ) : (
-                <div className="max-h-64 overflow-auto">
+                <div className="max-h-64 min-w-0 overflow-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -628,7 +632,7 @@ function EstadisticasInner() {
                       {(adjustments as any[]).map((a) => (
                         <TableRow key={a.id}>
                           <TableCell>{dateFmt(a.adjustment_date)}</TableCell>
-                          <TableCell>{a.concepto}</TableCell>
+                          <TableCell className="max-w-40 whitespace-normal break-words sm:max-w-none sm:whitespace-nowrap">{a.concepto}</TableCell>
                           <TableCell><Badge variant="outline">{a.in_favor_of === "dario" ? "Darío" : "Meri"}</Badge></TableCell>
                           <TableCell className="text-right">{fmt(Number(a.amount), "ARS")}</TableCell>
                           <TableCell className="text-right">
@@ -703,7 +707,7 @@ function EstadisticasInner() {
             const s = { ingresos: last.ing, egresos: last.egr, neta: last.gan, buckets: {}, cats: {} } as any;
             return <KpiGrid s={s} />;
           })()}
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
             <Card>
               <CardHeader><CardTitle className="text-base">Ganancia acumulada</CardTitle></CardHeader>
               <CardContent className="h-72">
@@ -744,7 +748,7 @@ function EstadisticasInner() {
       </Tabs>
 
       <Dialog open={detail !== null} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="min-w-0 max-w-5xl">
           <DialogHeader>
             <DialogTitle>
               {detail === "ingresos" ? `Ingresos cobrados · ${periodLabel(year, month)}`
