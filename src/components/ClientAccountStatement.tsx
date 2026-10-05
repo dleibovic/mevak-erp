@@ -58,9 +58,9 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
     queryKey: ["client-statement-subbrands", id],
     enabled: open && !!id,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("client_sub_brands").select("id, name").eq("client_id", id).order("name");
+      const { data, error } = await (supabase as any).from("client_sub_brands").select("id, name, monthly_fee").eq("client_id", id).order("name");
       if (error) throw error;
-      return data as { id: string; name: string }[];
+      return data as { id: string; name: string; monthly_fee?: number | null }[];
     },
   });
   const { data: commissions = [] } = useQuery({
