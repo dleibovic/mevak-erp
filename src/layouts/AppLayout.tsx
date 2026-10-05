@@ -9,22 +9,45 @@ import { AsistenteWidget } from "@/components/AsistenteWidget";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/prospecting", label: "Prospecting", icon: Target },
-  { to: "/facturacion", label: "Facturación", icon: Receipt },
-  { to: "/empleados", label: "Empleados", icon: UserCog, adminOnly: true },
-  { to: "/gastos", label: "Gastos", icon: Wallet, financeOnly: true },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/estadisticas", label: "Estadísticas", icon: LineChartIcon, adminOnly: true },
-  { to: "/metricas-saas", label: "Métricas SaaS", icon: Activity },
-  { to: "/churn", label: "Churn", icon: TrendingDown },
-  { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
-  { to: "/alertas", label: "Alertas", icon: AlertTriangle },
-  { to: "/usuarios", label: "Usuarios y Roles", icon: ShieldCheck, adminOnly: true },
-  { to: "/admin", label: "Configuración", icon: Settings, adminOnly: true },
+const NAV_GROUPS: { group: string; items: any[] }[] = [
+  {
+    group: "Día a día",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/alertas", label: "Alertas", icon: AlertTriangle },
+      { to: "/clientes", label: "Clientes", icon: Users },
+      { to: "/prospecting", label: "Prospecting", icon: Target },
+      { to: "/facturacion", label: "Facturación", icon: Receipt },
+    ],
+  },
+  {
+    group: "Equipo & finanzas",
+    items: [
+      { to: "/gastos", label: "Gastos", icon: Wallet, financeOnly: true },
+      { to: "/empleados", label: "Empleados", icon: UserCog, adminOnly: true },
+    ],
+  },
+  {
+    group: "Inteligencia",
+    items: [
+      { to: "/analytics", label: "Analytics", icon: BarChart3 },
+      { to: "/metricas-saas", label: "Métricas SaaS", icon: Activity },
+      { to: "/churn", label: "Churn", icon: TrendingDown },
+      { to: "/ltv-rentabilidad", label: "LTV & Rentabilidad", icon: PiggyBank },
+      { to: "/estadisticas", label: "Estadísticas", icon: LineChartIcon, adminOnly: true },
+    ],
+  },
+  {
+    group: "Administración",
+    items: [
+      { to: "/usuarios", label: "Usuarios y Roles", icon: ShieldCheck, adminOnly: true },
+      { to: "/admin", label: "Configuración", icon: Settings, adminOnly: true },
+    ],
+  },
 ];
+
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
+
 
 export default function AppLayout() {
   const { user, loading, signOut, isAdmin, canEditAdminFinance, role } = useAuth();
@@ -56,25 +79,41 @@ export default function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 space-y-0.5">
-          {items.map((it) => (
-            <NavLink
-              key={it.to}
-              to={it.to}
-              end={it.end}
-              className={({ isActive }) => cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                 isActive
-                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <it.icon className="h-4 w-4" />
-              <span className="flex-1">{it.label}</span>
-              {it.to === "/prospecting" && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] leading-none text-destructive-foreground">0</span>}
-            </NavLink>
-          ))}
+        <nav className="flex-1 px-3 pb-2">
+          {NAV_GROUPS.map((grp) => {
+            const visible = grp.items.filter(
+              (n: any) => (!n.adminOnly || isAdmin) && (!n.financeOnly || canEditAdminFinance)
+            );
+            if (!visible.length) return null;
+            return (
+              <div key={grp.group}>
+                <div className="px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {grp.group}
+                </div>
+                <div className="space-y-0.5">
+                  {visible.map((it) => (
+                    <NavLink
+                      key={it.to}
+                      to={it.to}
+                      end={it.end}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                         isActive
+                           ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <it.icon className="h-4 w-4" />
+                      <span className="flex-1">{it.label}</span>
+                      {it.to === "/prospecting" && <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] leading-none text-destructive-foreground">0</span>}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </nav>
+
 
         <div className="p-3 border-t border-sidebar-border">
           <div className="px-2 py-2 text-xs text-muted-foreground truncate">
