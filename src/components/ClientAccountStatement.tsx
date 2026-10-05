@@ -76,11 +76,15 @@ export function ClientAccountStatement({ client, open, onOpenChange, billingUser
   const today = todayISO();
   const totals = useMemo(() => totalsByCurrency(invoices, today), [invoices, today]);
   const sbMap = useMemo(() => new Map(subBrands.map((s) => [s.id, s.name])), [subBrands]);
+  const weekly = client?.billing_frequency === "weekly";
   const groups = useMemo(() => {
     if (!subBrands.length) return [{ key: "", name: "", rows: invoices }];
     const keys = Array.from(new Set(invoices.map((i) => i.sub_brand_id ?? "")));
-    return keys.map((k) => ({ key: k, name: sbMap.get(k) ?? "General", rows: invoices.filter((i) => (i.sub_brand_id ?? "") === k) }));
-  }, [invoices, subBrands, sbMap]);
+    return keys.map((k) => {
+      const rows = invoices.filter((i) => (i.sub_brand_id ?? "") === k);
+      return { key: k, name: sbMap.get(k) ?? "General", rows, ranges: weekly ? weeklyRangeLabels(rows.map((i) => i.period_month).sort()) : undefined };
+    });
+  }, [invoices, subBrands, sbMap, weekly]);
   const pagos = invoices.filter((i) => Number(i.amount_paid || 0) > 0 && !(i.voided_at && !i.incobrable_at));
   const pagosByCur = pagos.reduce<Record<string, number>>((a, i) => ((a[i.currency] = (a[i.currency] ?? 0) + Number(i.amount_paid)), a), {});
 
