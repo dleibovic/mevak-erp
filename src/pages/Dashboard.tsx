@@ -12,6 +12,18 @@ import { es } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { periodRange, type PeriodPreset } from "@/lib/billingPeriod";
+import { buildRateIndex, rateForMonth, monthsList, type RateIndex, type RateRow } from "@/lib/monthlyRates";
+
+// Mismo criterio que Analytics: USD tal cual; EUR ×rate; otras ÷rate (cotización del mes del monto).
+function toUsdByCurrency(index: RateIndex, amount: number, currency: string | null | undefined, dateOrMonth: string | Date): number {
+  const cur = (currency || "ARS").toUpperCase();
+  const a = Number(amount) || 0;
+  if (cur === "USD") return a;
+  const month = (typeof dateOrMonth === "string" ? dateOrMonth : dateOrMonth.toISOString()).slice(0, 7);
+  const { rate } = rateForMonth(index, cur, month);
+  if (!rate) return 0;
+  return cur === "EUR" ? a * rate : a / rate;
+}
 
 const invBalance = (i: any) => (Number(i.amount) || 0) - (Number(i.amount_paid) || 0);
 const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(200 80% 55%)", "hsl(280 70% 60%)", "hsl(0 75% 60%)", "hsl(50 90% 55%)", "hsl(170 70% 50%)"];
@@ -69,6 +81,12 @@ export default function Dashboard() {
     queryKey: ["dash-employees"],
     queryFn: async () => (await supabase.from("employees").select("*, commissions:client_executive_commission(commission_value, currency)")).data ?? [],
   });
+  const { data: ratesAll = [] } = useQuery({
+    queryKey: ["dash-fx-rates"],
+    queryFn: async () => (await supabase.from("exchange_rates").select("base_currency, rate, rate_date").eq("quote_currency", "USD")).data ?? [],
+  });
+  const rateIndex = useMemo(() => buildRateIndex(ratesAll as RateRow[]), [ratesAll]);
+  const [topCountry, setTopCountry] = useState("all");
 
   const matchesCountry = (cid?: string | null) => !countryId || cid === countryId;
   const invoices = invoicesAll.filter((i: any) => matchesCountry(i.client?.country_id));
@@ -193,14 +211,32 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [expenses, activeCurrency]);
 
+  const consolidated = useMemo(() => {
+    const income = paidInvoices.reduce((a: number, i: any) => a + toUsdByCurrency(rateIndex, Number(i.amount_paid), i.currency, i.paid_at), 0);
+    const opex = expenses.reduce((a: number, e: any) => a + toUsdByCurrency(rateIndex, Number(e.amount), e.currency, e.date), 0);
+    const monthKeys = monthsList(parseISO(period.from), parseISO(period.to));
+    let payroll = 0;
+    employees.filter((e: any) => e.is_active !== false).forEach((e: any) => {
+      monthKeys.forEach((m) => {
+        payroll += toUsdByCurrency(rateIndex, Number(e.base_salary || 0), e.salary_currency, m);
+        (e.commissions ?? []).forEach((c: any) => { payroll += toUsdByCurrency(rateIndex, Number(c.commission_value || 0), c.currency, m); });
+      });
+    });
+    const totalExp = opex + payroll;
+    return { income, totalExp, net: income - totalExp };
+  }, [paidInvoices, expenses, employees, rateIndex, period]);
+
   const byClient = useMemo(() => {
     const map: Record<string, number> = {};
-    paidInvoices.filter((i: any) => !activeCurrency || i.currency === activeCurrency).forEach((i: any) => {
-      const k = i.client?.company_name ?? "—";
-      map[k] = (map[k] ?? 0) + Number(i.amount_paid);
-    });
+    invoicesAll
+      .filter((i: any) => Number(i.amount_paid) > 0 && inPeriod(i.paid_at) && (topCountry === "all" || i.client?.country_id === topCountry))
+      .forEach((i: any) => {
+        const k = i.client?.company_name ?? "—";
+        map[k] = (map[k] ?? 0) + toUsdByCurrency(rateIndex, Number(i.amount_paid), i.currency, i.paid_at);
+      });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
-  }, [paidInvoices, activeCurrency]);
+  }, [invoicesAll, topCountry, rateIndex, period]);
+  const byClientTotal = byClient.reduce((a, r) => a + r.value, 0);
 
   const prospectSummary = useMemo(() => {
     const activeProspects = prospects.filter((p: any) => p.status === "active");
@@ -254,6 +290,18 @@ export default function Dashboard() {
           <span className="text-xs text-muted-foreground sm:ml-auto capitalize">{periodLabel}</span>
         </div>
       </Card>
+
+      <section className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
+          <h2 className="text-lg font-semibold">Totales</h2>
+          <span className="text-xs text-muted-foreground">Consolidado en USD · <span className="capitalize">{periodLabel}</span></span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <BigCard label="Ingresos (cobrado)" value={formatMoney(consolidated.income, "USD")} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Gastos totales" value={formatMoney(consolidated.totalExp, "USD")} hint="Operativos + nómina" icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ganancia neta" value={formatMoney(consolidated.net, "USD")} accent={consolidated.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
+        </div>
+      </section>
 
       <section className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
@@ -373,7 +421,19 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-4 bg-gradient-card border-border/60">
-          <h3 className="font-semibold mb-3">Top clientes (ingresos cobrados)</h3>
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+            <div className="min-w-0">
+              <h3 className="font-semibold">Top clientes (cobrado, USD)</h3>
+              <p className="text-xs text-muted-foreground">Total: <span className="font-mono">{formatMoney(byClientTotal, "USD")}</span></p>
+            </div>
+            <Select value={topCountry} onValueChange={setTopCountry}>
+              <SelectTrigger className="h-8 text-xs w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los países</SelectItem>
+                {countries.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           {supportsCharts ? (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -389,7 +449,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {byClient.slice(0, 6).map((item) => (
-                <Metric key={item.name} label={item.name} value={formatMoney(item.value)} />
+                <Metric key={item.name} label={item.name} value={formatMoney(item.value, "USD")} />
               ))}
             </div>
           )}
@@ -419,6 +479,17 @@ const KCard = forwardRef<HTMLDivElement, MetricCardProps>(({ label, value, icon,
 });
 
 KCard.displayName = "KCard";
+
+function BigCard({ label, value, icon, accent, hint }: { label: string; value: string; icon?: ReactNode; accent?: "success" | "destructive"; hint?: string }) {
+  const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
+  return (
+    <Card className={`p-5 bg-gradient-card border-border/60 min-w-0 ${accent === "success" ? "border-l-4 border-l-success" : accent === "destructive" ? "border-l-4 border-l-destructive" : ""}`}>
+      <div className="flex justify-between items-center text-xs text-muted-foreground"><span>{label}</span>{icon}</div>
+      <div className={`text-2xl font-semibold mt-1 font-mono break-words ${accentClass}`}>{value}</div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
+    </Card>
+  );
+}
 
 const Metric = forwardRef<HTMLDivElement, MetricCardProps>(({ label, value, icon, accent, className, ...props }, ref) => {
   const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
