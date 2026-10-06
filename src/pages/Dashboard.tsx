@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { periodRange, type PeriodPreset } from "@/lib/billingPeriod";
 import { buildRateIndex, rateForMonth, monthsList, type RateIndex, type RateRow } from "@/lib/monthlyRates";
+import { useAuth } from "@/hooks/useAuth";
 
 // Mismo criterio que Analytics: USD tal cual; EUR ×rate; otras ÷rate (cotización del mes del monto).
 function toUsdByCurrency(index: RateIndex, amount: number, currency: string | null | undefined, dateOrMonth: string | Date): number {
@@ -30,6 +31,7 @@ const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(2
 
 export default function Dashboard() {
   const { countries, countryId } = useCountryFilter();
+  const { isAdmin } = useAuth();
   const [supportsCharts, setSupportsCharts] = useState(false);
   const [preset, setPreset] = useState<PeriodPreset>("current");
   const [customFrom, setCustomFrom] = useState("");
@@ -223,8 +225,11 @@ export default function Dashboard() {
       });
     });
     const totalExp = opex + payroll;
-    return { income, totalExp, net: income - totalExp };
-  }, [paidInvoices, expenses, employees, rateIndex, period]);
+    const invoiced = invoices
+      .filter((i: any) => !i.voided_at && inPeriod(i.period_month))
+      .reduce((a: number, i: any) => a + toUsdByCurrency(rateIndex, Number(i.amount), i.currency, i.period_month), 0);
+    return { income, invoiced, totalExp, net: income - totalExp, netAccrued: invoiced - totalExp };
+  }, [paidInvoices, invoices, expenses, employees, rateIndex, period]);
 
   const byClient = useMemo(() => {
     const map: Record<string, number> = {};
@@ -253,6 +258,17 @@ export default function Dashboard() {
       .map((item) => ({ ...item, rows: Object.entries(item.currencies).map(([currency, potential]) => ({ currency, potential })).sort((a, b) => a.currency.localeCompare(b.currency)) }))
       .sort((a, b) => a.countryName.localeCompare(b.countryName));
   }, [prospects, countries]);
+
+  if (!isAdmin) {
+    return (
+      <PageContainer>
+        <PageHeader title="Dashboard" description="Cuenta corriente general" />
+        <Card className="p-6 bg-gradient-card border-border/60">
+          <p className="text-sm text-muted-foreground">Este panel es solo para socios. Usá el menú para acceder a tus secciones.</p>
+        </Card>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -296,11 +312,14 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold">Totales</h2>
           <span className="text-xs text-muted-foreground">Consolidado en USD · <span className="capitalize">{periodLabel}</span></span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <BigCard label="Ingresos (cobrado)" value={formatMoney(consolidated.income, "USD")} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <BigCard label="Ingresos cobrado" value={formatMoney(consolidated.income, "USD")} hint="Financiero / caja" icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ingresos facturado" value={formatMoney(consolidated.invoiced, "USD")} hint="Económico / devengado" icon={<ReceiptText className="h-4 w-4 text-muted-foreground" />} />
           <BigCard label="Gastos totales" value={formatMoney(consolidated.totalExp, "USD")} hint="Operativos + nómina" icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} />
-          <BigCard label="Ganancia neta" value={formatMoney(consolidated.net, "USD")} accent={consolidated.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ganancia financiera (caja)" value={formatMoney(consolidated.net, "USD")} accent={consolidated.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ganancia económica (devengada)" value={formatMoney(consolidated.netAccrued, "USD")} accent={consolidated.netAccrued >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
         </div>
+        <p className="text-[11px] text-muted-foreground mt-2">Financiero = caja (lo cobrado). Económico = devengado (lo facturado). La diferencia es lo que falta cobrar del período.</p>
       </section>
 
       <section className="mb-6">
