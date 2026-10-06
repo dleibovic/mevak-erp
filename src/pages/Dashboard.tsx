@@ -12,7 +12,7 @@ import { es } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { periodRange, type PeriodPreset } from "@/lib/billingPeriod";
-import { buildRateIndex, rateForMonth, monthsList, type RateIndex, type RateRow } from "@/lib/monthlyRates";
+import { buildRateIndex, rateForMonth, type RateIndex, type RateRow } from "@/lib/monthlyRates";
 import { useAuth } from "@/hooks/useAuth";
 
 // Mismo criterio que Analytics: USD tal cual; EUR ×rate; otras ÷rate (cotización del mes del monto).
@@ -79,10 +79,6 @@ export default function Dashboard() {
     queryKey: ["dash-expenses"],
     queryFn: async () => (await supabase.from("expenses").select("*, category:expense_categories(name)")).data ?? [],
   });
-  const { data: employeesAll = [] } = useQuery({
-    queryKey: ["dash-employees"],
-    queryFn: async () => (await supabase.from("employees").select("*, commissions:client_executive_commission(commission_value, currency)")).data ?? [],
-  });
   const { data: ratesAll = [] } = useQuery({
     queryKey: ["dash-fx-rates"],
     queryFn: async () => (await supabase.from("exchange_rates").select("base_currency, rate, rate_date").eq("quote_currency", "USD")).data ?? [],
@@ -97,8 +93,6 @@ export default function Dashboard() {
   const prospects = prospectsAll.filter((p: any) => matchesCountry(p.country_id));
   const expenses = expensesAll.filter((e: any) => matchesCountry(e.country_id) && inPeriod(e.date));
   const paidInvoices = invoices.filter((i: any) => Number(i.amount_paid) > 0 && inPeriod(i.paid_at));
-  const months = period.months;
-  const employees = employeesAll.filter((e: any) => matchesCountry(e.country_id));
   const activeCurrency = null;
 
   const stats = useMemo(() => {
@@ -112,41 +106,29 @@ export default function Dashboard() {
       const overdue = invoices.filter((i: any) => isOverdue(i) && i.currency === c).reduce((a: number, i: any) => a + invBalance(i), 0) ?? 0;
       const totalBilling = sumClientFees(c);
       const exp = sumByCurr(expenses.filter((e: any) => e.currency === c))[c] ?? 0;
-      const payroll = employees.reduce((acc: number, e: any) => {
-        if (e.salary_currency !== c) return acc;
-        const comm = (e.commissions ?? []).filter((cm: any) => cm.currency === c).reduce((a: number, cm: any) => a + Number(cm.commission_value), 0);
-        return acc + Number(e.base_salary || 0) + comm;
-      }, 0) * months;
-      return { mode: "single" as const, currency: c, clientCount: clients.length, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
+      return { mode: "single" as const, currency: c, clientCount: clients.length, totalBilling, income, overdue, exp, net: income - exp };
     }
     const currencies = Array.from(new Set([
       ...clients.map((c: any) => c.fee_currency),
       ...invoices.map((i: any) => i.currency),
       ...expenses.map((e: any) => e.currency),
-      ...employees.map((e: any) => e.salary_currency),
     ].filter(Boolean))).sort();
     const paidByCurrency = sumByCurr(paidInvoices, "amount_paid");
     const overdueByCurrency = invoices.filter(isOverdue).reduce((acc: any, i: any) => { acc[i.currency] = (acc[i.currency] ?? 0) + invBalance(i); return acc; }, {});
     const expensesByCurrency = sumByCurr(expenses);
     const rows = currencies.map((currency) => {
-      const payroll = employees.reduce((acc: number, e: any) => {
-        const base = e.salary_currency === currency ? Number(e.base_salary || 0) : 0;
-        const comm = (e.commissions ?? []).filter((c: any) => c.currency === currency).reduce((a: number, c: any) => a + Number(c.commission_value), 0);
-        return acc + base + comm;
-      }, 0) * months;
       const income = paidByCurrency[currency] ?? 0;
       const exp = expensesByCurrency[currency] ?? 0;
-      return { currency, totalBilling: sumClientFees(currency), income, overdue: overdueByCurrency[currency] ?? 0, exp, payroll, net: income - exp - payroll };
+      return { currency, totalBilling: sumClientFees(currency), income, overdue: overdueByCurrency[currency] ?? 0, exp, net: income - exp };
     });
     return { mode: "multi" as const, clientCount: clients.length, rows };
-  }, [invoices, paidInvoices, clients, metrics, expenses, employees, activeCurrency, months]);
+  }, [invoices, paidInvoices, clients, metrics, expenses, activeCurrency]);
 
   const countrySummaries = useMemo(() => {
     const countryName = (countryId?: string | null) => countries.find((c) => c.id === countryId)?.name ?? "Sin país";
     const countryIds = Array.from(new Set([
       ...clients.map((c: any) => c.country_id),
       ...expenses.map((e: any) => e.country_id),
-      ...employees.map((e: any) => e.country_id),
       ...invoices.map((i: any) => i.client?.country_id),
     ].filter(Boolean))).sort((a: any, b: any) => countryName(a).localeCompare(countryName(b)));
     const isOverdue = (i: any) => (i.status === "overdue" || ((i.status === "pending" || i.status === "invoiced") && i.due_date && new Date(i.due_date) < new Date())) && invBalance(i) > 0;
@@ -156,12 +138,10 @@ export default function Dashboard() {
       const countryMetrics = metrics.filter((m: any) => m.country_id === countryId);
       const countryInvoices = invoices.filter((i: any) => i.client?.country_id === countryId);
       const countryExpenses = expenses.filter((e: any) => e.country_id === countryId);
-      const countryEmployees = employees.filter((e: any) => e.country_id === countryId);
       const currencies = Array.from(new Set([
         ...countryClients.map((c: any) => c.fee_currency),
         ...countryInvoices.map((i: any) => i.currency),
         ...countryExpenses.map((e: any) => e.currency),
-        ...countryEmployees.map((e: any) => e.salary_currency),
       ].filter(Boolean))).sort();
       const rows = currencies.map((currency) => {
         const totalBilling = countryMetrics
@@ -176,17 +156,12 @@ export default function Dashboard() {
         const exp = countryExpenses
           .filter((e: any) => e.currency === currency)
           .reduce((acc: number, e: any) => acc + Number(e.amount || 0), 0);
-        const payroll = countryEmployees.reduce((acc: number, e: any) => {
-          const base = e.salary_currency === currency ? Number(e.base_salary || 0) : 0;
-          const comm = (e.commissions ?? []).filter((c: any) => c.currency === currency).reduce((a: number, c: any) => a + Number(c.commission_value || 0), 0);
-          return acc + base + comm;
-        }, 0) * months;
-        return { currency, totalBilling, income, overdue, exp, payroll, net: income - exp - payroll };
+        return { currency, totalBilling, income, overdue, exp, net: income - exp };
       });
 
       return { countryId, countryName: countryName(countryId), clientCount: countryClients.length, rows };
     });
-  }, [countries, clients, metrics, invoices, expenses, employees, months, period]);
+  }, [countries, clients, metrics, invoices, expenses, period]);
 
   const series = useMemo(() => {
     const map: Record<string, any> = {};
@@ -213,23 +188,15 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [expenses, activeCurrency]);
 
+  // Gastos = solo la tabla expenses (los sueldos ya se cargan ahí, categoría "Sueldos").
   const consolidated = useMemo(() => {
     const income = paidInvoices.reduce((a: number, i: any) => a + toUsdByCurrency(rateIndex, Number(i.amount_paid), i.currency, i.paid_at), 0);
-    const opex = expenses.reduce((a: number, e: any) => a + toUsdByCurrency(rateIndex, Number(e.amount), e.currency, e.date), 0);
-    const monthKeys = monthsList(parseISO(period.from), parseISO(period.to));
-    let payroll = 0;
-    employees.filter((e: any) => e.is_active !== false).forEach((e: any) => {
-      monthKeys.forEach((m) => {
-        payroll += toUsdByCurrency(rateIndex, Number(e.base_salary || 0), e.salary_currency, m);
-        (e.commissions ?? []).forEach((c: any) => { payroll += toUsdByCurrency(rateIndex, Number(c.commission_value || 0), c.currency, m); });
-      });
-    });
-    const totalExp = opex + payroll;
+    const totalExp = expenses.reduce((a: number, e: any) => a + toUsdByCurrency(rateIndex, Number(e.amount), e.currency, e.date), 0);
     const invoiced = invoices
       .filter((i: any) => !i.voided_at && inPeriod(i.period_month))
       .reduce((a: number, i: any) => a + toUsdByCurrency(rateIndex, Number(i.amount), i.currency, i.period_month), 0);
     return { income, invoiced, totalExp, net: income - totalExp, netAccrued: invoiced - totalExp };
-  }, [paidInvoices, invoices, expenses, employees, rateIndex, period]);
+  }, [paidInvoices, invoices, expenses, rateIndex, period]);
 
   const byClient = useMemo(() => {
     const map: Record<string, number> = {};
@@ -315,7 +282,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <BigCard label="Ingresos cobrado" value={formatMoney(consolidated.income, "USD")} hint="Financiero / caja" icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
           <BigCard label="Ingresos facturado" value={formatMoney(consolidated.invoiced, "USD")} hint="Económico / devengado" icon={<ReceiptText className="h-4 w-4 text-muted-foreground" />} />
-          <BigCard label="Gastos totales" value={formatMoney(consolidated.totalExp, "USD")} hint="Operativos + nómina" icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Gastos totales" value={formatMoney(consolidated.totalExp, "USD")} hint="Incluye sueldos" icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} />
           <BigCard label="Ganancia financiera (caja)" value={formatMoney(consolidated.net, "USD")} accent={consolidated.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
           <BigCard label="Ganancia económica (devengada)" value={formatMoney(consolidated.netAccrued, "USD")} accent={consolidated.netAccrued >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
         </div>
@@ -346,7 +313,6 @@ export default function Dashboard() {
                       <Metric label="Cobrado" value={formatMoney(row.income, row.currency)} icon={<TrendingUp className="h-3.5 w-3.5" />} />
                       <Metric label="Mora (a hoy)" value={formatMoney(row.overdue, row.currency)} accent={row.overdue > 0 ? "destructive" : undefined} icon={<AlertTriangle className="h-3.5 w-3.5" />} />
                       <Metric label="Gastos" value={formatMoney(row.exp, row.currency)} icon={<TrendingDown className="h-3.5 w-3.5" />} />
-                      <Metric label="Nómina" value={formatMoney(row.payroll, row.currency)} icon={<Users className="h-3.5 w-3.5" />} />
                       <Metric label="Neto" value={formatMoney(row.net, row.currency)} accent={row.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-3.5 w-3.5" />} />
                     </div>
                   </div>
