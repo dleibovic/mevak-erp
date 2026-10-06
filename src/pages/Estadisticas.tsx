@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Search, Trash2, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { debtBalances, originMonth, paymentInUsd } from "@/lib/partnerDebt";
+import { formatMoney } from "@/lib/format";
+import { buildRateIndex, rateForMonth, type RateIndex } from "@/lib/monthlyRates";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area,
 } from "recharts";
@@ -451,6 +453,7 @@ function EstadisticasInner() {
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="mes">Mes actual</TabsTrigger>
           <TabsTrigger value="cc">Cuenta corriente socios</TabsTrigger>
+          <TabsTrigger value="retiros">Retiros socios</TabsTrigger>
           <TabsTrigger value="proy">Proyección</TabsTrigger>
         </TabsList>
 
