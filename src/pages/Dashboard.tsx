@@ -225,8 +225,11 @@ export default function Dashboard() {
       });
     });
     const totalExp = opex + payroll;
-    return { income, totalExp, net: income - totalExp };
-  }, [paidInvoices, expenses, employees, rateIndex, period]);
+    const invoiced = invoices
+      .filter((i: any) => !i.voided_at && inPeriod(i.period_month))
+      .reduce((a: number, i: any) => a + toUsdByCurrency(rateIndex, Number(i.amount), i.currency, i.period_month), 0);
+    return { income, invoiced, totalExp, net: income - totalExp, netAccrued: invoiced - totalExp };
+  }, [paidInvoices, invoices, expenses, employees, rateIndex, period]);
 
   const byClient = useMemo(() => {
     const map: Record<string, number> = {};
