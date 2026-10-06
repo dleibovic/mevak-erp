@@ -846,6 +846,10 @@ function EstadisticasInner() {
             </Card>
           </div>
         </TabsContent>
+
+        <TabsContent value="retiros" className="space-y-4">
+          <RetirosSocios />
+        </TabsContent>
       </Tabs>
 
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
