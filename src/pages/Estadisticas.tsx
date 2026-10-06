@@ -951,3 +951,166 @@ function EstadisticasInner() {
     </div>
   );
 }
+
+// ===== Retiros socios: reconciliación mensual por socio, consolidada en USD =====
+// Retiro = cobró (sus clientes, por canal) − pagó (sus gastos, por paid_by). No hay caja empresa.
+function retiroUsd(index: RateIndex, amount: number, currency: string | null | undefined, dateOrMonth: string): number {
+  const c = (currency || "ARS").toUpperCase();
+  const a = Number(amount) || 0;
+  if (c === "USD") return a;
+  const { rate } = rateForMonth(index, c, ym(dateOrMonth));
+  if (!rate) return 0;
+  return c === "EUR" ? a * rate : a / rate;
+}
+
+interface RetiroMonth { month: string; maria: { cobro: number; pago: number }; dario: { cobro: number; pago: number } }
+
+function RetirosSocios() {
+  const [nMonths, setNMonths] = useState(6);
+
+  const range = useMemo(() => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - (nMonths - 1), 1);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { from: iso(from), to: iso(to) };
+  }, [nMonths]);
+
+  const { data: rates = [] } = useQuery({
+    queryKey: ["retiros-rates"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("exchange_rates").select("base_currency, rate, rate_date").eq("quote_currency", "USD");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const rateIndex = useMemo(() => buildRateIndex(rates as any), [rates]);
+
+  const { data: cobros = [] } = useQuery({
+    queryKey: ["retiros-cobros", range.from, range.to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("monthly_invoices")
+        .select("paid_at, amount_paid, currency, payment_channel")
+        .gt("amount_paid", 0)
+        .is("voided_at", null)
+        .not("paid_at", "is", null)
+        .gte("paid_at", range.from)
+        .lt("paid_at", range.to);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: gastos = [] } = useQuery({
+    queryKey: ["retiros-gastos", range.from, range.to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("date, amount, currency, paid_by")
+        .gte("date", range.from)
+        .lt("date", range.to);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const rows = useMemo<RetiroMonth[]>(() => {
+    const byMonth = new Map<string, RetiroMonth>();
+    const get = (m: string) => {
+      if (!byMonth.has(m)) byMonth.set(m, { month: m, maria: { cobro: 0, pago: 0 }, dario: { cobro: 0, pago: 0 } });
+      return byMonth.get(m)!;
+    };
+    for (const c of cobros as any[]) {
+      const p = partnerOfChannel(c.payment_channel);
+      if (!p) continue;
+      get(ym(c.paid_at))[p].cobro += retiroUsd(rateIndex, Number(c.amount_paid), c.currency, c.paid_at);
+    }
+    for (const e of gastos as any[]) {
+      const p: Partner | null = e.paid_by === "maria" ? "maria" : e.paid_by === "dario" ? "dario" : null;
+      if (!p) continue;
+      get(ym(e.date))[p].pago += retiroUsd(rateIndex, Number(e.amount), e.currency, e.date);
+    }
+    return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
+  }, [cobros, gastos, rateIndex]);
+
+  const total = useMemo(() => rows.reduce(
+    (acc, r) => ({
+      maria: { cobro: acc.maria.cobro + r.maria.cobro, pago: acc.maria.pago + r.maria.pago },
+      dario: { cobro: acc.dario.cobro + r.dario.cobro, pago: acc.dario.pago + r.dario.pago },
+    }),
+    { maria: { cobro: 0, pago: 0 }, dario: { cobro: 0, pago: 0 } },
+  ), [rows]);
+
+  const monthName = (m: string) => {
+    const [y, mm] = m.split("-").map(Number);
+    return `${MONTHS[mm - 1].slice(0, 3)} ${y}`;
+  };
+  const retCell = (v: number) => (
+    <TableCell className={`text-right whitespace-nowrap font-semibold ${v >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+      {formatMoney(v, "USD")}
+    </TableCell>
+  );
+  const numCell = (v: number) => <TableCell className="text-right whitespace-nowrap">{formatMoney(v, "USD")}</TableCell>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle>Retiros socios</CardTitle>
+            <CardDescription>
+              Cada socio cobra sus clientes (por canal) y paga sus gastos (paid_by). Retiro = cobró − pagó. No hay caja empresa; el 50/50 se equilibra en la cuenta corriente de socios.
+            </CardDescription>
+          </div>
+          <Select value={String(nMonths)} onValueChange={(v) => setNMonths(Number(v))}>
+            <SelectTrigger className="w-full sm:w-[170px] h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">Últimos 3 meses</SelectItem>
+              <SelectItem value="6">Últimos 6 meses</SelectItem>
+              <SelectItem value="12">Últimos 12 meses</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table className="min-w-[760px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead rowSpan={2} className="align-bottom">Mes</TableHead>
+              <TableHead colSpan={3} className="text-center border-l">Meri</TableHead>
+              <TableHead colSpan={3} className="text-center border-l">Darío</TableHead>
+            </TableRow>
+            <TableRow>
+              <TableHead className="text-right border-l">Cobró</TableHead>
+              <TableHead className="text-right">Pagó</TableHead>
+              <TableHead className="text-right">Retiró</TableHead>
+              <TableHead className="text-right border-l">Cobró</TableHead>
+              <TableHead className="text-right">Pagó</TableHead>
+              <TableHead className="text-right">Retiró</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.month}>
+                <TableCell className="capitalize whitespace-nowrap">{monthName(r.month)}</TableCell>
+                {numCell(r.maria.cobro)}{numCell(r.maria.pago)}{retCell(r.maria.cobro - r.maria.pago)}
+                {numCell(r.dario.cobro)}{numCell(r.dario.pago)}{retCell(r.dario.cobro - r.dario.pago)}
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Sin movimientos en el período</TableCell></TableRow>
+            )}
+            {rows.length > 0 && (
+              <TableRow className="border-t-2 font-semibold">
+                <TableCell>Total</TableCell>
+                {numCell(total.maria.cobro)}{numCell(total.maria.pago)}{retCell(total.maria.cobro - total.maria.pago)}
+                {numCell(total.dario.cobro)}{numCell(total.dario.pago)}{retCell(total.dario.cobro - total.dario.pago)}
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
