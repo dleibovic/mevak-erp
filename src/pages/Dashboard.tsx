@@ -293,6 +293,18 @@ export default function Dashboard() {
 
       <section className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
+          <h2 className="text-lg font-semibold">Totales</h2>
+          <span className="text-xs text-muted-foreground">Consolidado en USD · <span className="capitalize">{periodLabel}</span></span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <BigCard label="Ingresos (cobrado)" value={formatMoney(consolidated.income, "USD")} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Gastos totales" value={formatMoney(consolidated.totalExp, "USD")} hint="Operativos + nómina" icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ganancia neta" value={formatMoney(consolidated.net, "USD")} accent={consolidated.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
           <h2 className="text-lg font-semibold">Resumen por país</h2>
           <span className="text-xs text-muted-foreground">Fee mensualizado por cliente</span>
         </div>
@@ -409,7 +421,19 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-4 bg-gradient-card border-border/60">
-          <h3 className="font-semibold mb-3">Top clientes (ingresos cobrados)</h3>
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+            <div className="min-w-0">
+              <h3 className="font-semibold">Top clientes (cobrado, USD)</h3>
+              <p className="text-xs text-muted-foreground">Total: <span className="font-mono">{formatMoney(byClientTotal, "USD")}</span></p>
+            </div>
+            <Select value={topCountry} onValueChange={setTopCountry}>
+              <SelectTrigger className="h-8 text-xs w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los países</SelectItem>
+                {countries.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           {supportsCharts ? (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -425,7 +449,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {byClient.slice(0, 6).map((item) => (
-                <Metric key={item.name} label={item.name} value={formatMoney(item.value)} />
+                <Metric key={item.name} label={item.name} value={formatMoney(item.value, "USD")} />
               ))}
             </div>
           )}
@@ -455,6 +479,17 @@ const KCard = forwardRef<HTMLDivElement, MetricCardProps>(({ label, value, icon,
 });
 
 KCard.displayName = "KCard";
+
+function BigCard({ label, value, icon, accent, hint }: { label: string; value: string; icon?: ReactNode; accent?: "success" | "destructive"; hint?: string }) {
+  const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
+  return (
+    <Card className={`p-5 bg-gradient-card border-border/60 min-w-0 ${accent === "success" ? "border-l-4 border-l-success" : accent === "destructive" ? "border-l-4 border-l-destructive" : ""}`}>
+      <div className="flex justify-between items-center text-xs text-muted-foreground"><span>{label}</span>{icon}</div>
+      <div className={`text-2xl font-semibold mt-1 font-mono break-words ${accentClass}`}>{value}</div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
+    </Card>
+  );
+}
 
 const Metric = forwardRef<HTMLDivElement, MetricCardProps>(({ label, value, icon, accent, className, ...props }, ref) => {
   const accentClass = accent === "success" ? "text-success" : accent === "destructive" ? "text-destructive" : "text-foreground";
