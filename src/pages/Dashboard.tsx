@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { periodRange, type PeriodPreset } from "@/lib/billingPeriod";
 import { buildRateIndex, rateForMonth, monthsList, type RateIndex, type RateRow } from "@/lib/monthlyRates";
+import { useAuth } from "@/hooks/useAuth";
 
 // Mismo criterio que Analytics: USD tal cual; EUR ×rate; otras ÷rate (cotización del mes del monto).
 function toUsdByCurrency(index: RateIndex, amount: number, currency: string | null | undefined, dateOrMonth: string | Date): number {
@@ -30,6 +31,7 @@ const COLORS = ["hsl(35 95% 60%)", "hsl(20 90% 55%)", "hsl(145 60% 48%)", "hsl(2
 
 export default function Dashboard() {
   const { countries, countryId } = useCountryFilter();
+  const { isAdmin } = useAuth();
   const [supportsCharts, setSupportsCharts] = useState(false);
   const [preset, setPreset] = useState<PeriodPreset>("current");
   const [customFrom, setCustomFrom] = useState("");
