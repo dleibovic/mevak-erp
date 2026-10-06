@@ -259,6 +259,17 @@ export default function Dashboard() {
       .sort((a, b) => a.countryName.localeCompare(b.countryName));
   }, [prospects, countries]);
 
+  if (!isAdmin) {
+    return (
+      <PageContainer>
+        <PageHeader title="Dashboard" description="Cuenta corriente general" />
+        <Card className="p-6 bg-gradient-card border-border/60">
+          <p className="text-sm text-muted-foreground">Este panel es solo para socios. Usá el menú para acceder a tus secciones.</p>
+        </Card>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -301,11 +312,14 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold">Totales</h2>
           <span className="text-xs text-muted-foreground">Consolidado en USD · <span className="capitalize">{periodLabel}</span></span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <BigCard label="Ingresos (cobrado)" value={formatMoney(consolidated.income, "USD")} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <BigCard label="Ingresos cobrado" value={formatMoney(consolidated.income, "USD")} hint="Financiero / caja" icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ingresos facturado" value={formatMoney(consolidated.invoiced, "USD")} hint="Económico / devengado" icon={<ReceiptText className="h-4 w-4 text-muted-foreground" />} />
           <BigCard label="Gastos totales" value={formatMoney(consolidated.totalExp, "USD")} hint="Operativos + nómina" icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} />
-          <BigCard label="Ganancia neta" value={formatMoney(consolidated.net, "USD")} accent={consolidated.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ganancia financiera (caja)" value={formatMoney(consolidated.net, "USD")} accent={consolidated.net >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
+          <BigCard label="Ganancia económica (devengada)" value={formatMoney(consolidated.netAccrued, "USD")} accent={consolidated.netAccrued >= 0 ? "success" : "destructive"} icon={<Wallet className="h-4 w-4 text-muted-foreground" />} />
         </div>
+        <p className="text-[11px] text-muted-foreground mt-2">Financiero = caja (lo cobrado). Económico = devengado (lo facturado). La diferencia es lo que falta cobrar del período.</p>
       </section>
 
       <section className="mb-6">
