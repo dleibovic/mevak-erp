@@ -4412,18 +4412,26 @@ export type Database = {
           discount_starts_at: string | null
           email: string | null
           estimated_monthly_revenue: number
+          external_lead_id: string | null
           first_contact_channel_id: string | null
           first_contact_date: string
+          guide_downloaded: string | null
           id: string
           last_interaction_at: string | null
+          lead_score: number | null
           legal_name: string | null
+          locations_range: string | null
           lost_reason_id: string | null
+          marketing_opt_in: boolean | null
           notes: string | null
           phone: string | null
+          source: string | null
           stage_entered_at: string
           status: Database["public"]["Enums"]["prospect_status"]
           tax_id: string | null
           updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
         }
         Insert: {
           assigned_executive_id?: string | null
@@ -4444,18 +4452,26 @@ export type Database = {
           discount_starts_at?: string | null
           email?: string | null
           estimated_monthly_revenue?: number
+          external_lead_id?: string | null
           first_contact_channel_id?: string | null
           first_contact_date?: string
+          guide_downloaded?: string | null
           id?: string
           last_interaction_at?: string | null
+          lead_score?: number | null
           legal_name?: string | null
+          locations_range?: string | null
           lost_reason_id?: string | null
+          marketing_opt_in?: boolean | null
           notes?: string | null
           phone?: string | null
+          source?: string | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["prospect_status"]
           tax_id?: string | null
           updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
         }
         Update: {
           assigned_executive_id?: string | null
@@ -4476,18 +4492,26 @@ export type Database = {
           discount_starts_at?: string | null
           email?: string | null
           estimated_monthly_revenue?: number
+          external_lead_id?: string | null
           first_contact_channel_id?: string | null
           first_contact_date?: string
+          guide_downloaded?: string | null
           id?: string
           last_interaction_at?: string | null
+          lead_score?: number | null
           legal_name?: string | null
+          locations_range?: string | null
           lost_reason_id?: string | null
+          marketing_opt_in?: boolean | null
           notes?: string | null
           phone?: string | null
+          source?: string | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["prospect_status"]
           tax_id?: string | null
           updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
         }
         Relationships: [
           {
