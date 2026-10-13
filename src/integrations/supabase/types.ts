@@ -4340,6 +4340,50 @@ export type Database = {
           },
         ]
       }
+      prospect_sequences: {
+        Row: {
+          created_at: string
+          current_step: number
+          id: string
+          next_send_at: string | null
+          prospect_id: string
+          sequence_key: string
+          status: string
+          stop_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_step?: number
+          id?: string
+          next_send_at?: string | null
+          prospect_id: string
+          sequence_key?: string
+          status?: string
+          stop_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_step?: number
+          id?: string
+          next_send_at?: string | null
+          prospect_id?: string
+          sequence_key?: string
+          status?: string
+          stop_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_sequences_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prospect_stage_history: {
         Row: {
           changed_by_employee_id: string | null
@@ -4681,6 +4725,59 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sequence_sends: {
+        Row: {
+          id: string
+          prospect_sequence_id: string
+          resend_email_id: string | null
+          sent_at: string
+          step: number
+          subject: string | null
+        }
+        Insert: {
+          id?: string
+          prospect_sequence_id: string
+          resend_email_id?: string | null
+          sent_at?: string
+          step: number
+          subject?: string | null
+        }
+        Update: {
+          id?: string
+          prospect_sequence_id?: string
+          resend_email_id?: string | null
+          sent_at?: string
+          step?: number
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_sends_prospect_sequence_id_fkey"
+            columns: ["prospect_sequence_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequence_settings: {
+        Row: {
+          enabled: boolean
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       transactions: {
         Row: {
