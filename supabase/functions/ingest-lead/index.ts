@@ -94,6 +94,10 @@ Deno.serve(async (req) => {
       const { error } = await sb.from("prospects").update(patch).eq("id", existing.id);
       if (error) return json({ error: error.message }, 500);
     }
+    if ((b.origin ?? "").trim().toLowerCase() === "booking_call") {
+      await sb.from("prospect_sequences").update({ status: "stopped", stop_reason: "agendo_llamada", next_send_at: null })
+        .eq("prospect_id", existing.id).eq("status", "active");
+    }
     return json({ status: "duplicate", prospect_id: existing.id });
   }
 
@@ -131,6 +135,13 @@ Deno.serve(async (req) => {
     stage_at_interaction_id: stage.id,
     notes: `Lead ingresado desde Growth Engine — guía: ${b.origin ?? "—"}, origen: ${source}`,
   });
+
+  if (b.marketing) {
+    await sb.from("prospect_sequences").upsert(
+      { prospect_id: created.id, sequence_key: "nurturing_guia", next_send_at: new Date(Date.now() + 86400000).toISOString() },
+      { onConflict: "prospect_id,sequence_key", ignoreDuplicates: true },
+    );
+  }
 
   return json({ status: "created", prospect_id: created.id }, 201);
 });
