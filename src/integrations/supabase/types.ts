@@ -4347,6 +4347,7 @@ export type Database = {
           id: string
           next_send_at: string | null
           prospect_id: string
+          replied_at: string | null
           sequence_key: string
           status: string
           stop_reason: string | null
@@ -4358,6 +4359,7 @@ export type Database = {
           id?: string
           next_send_at?: string | null
           prospect_id: string
+          replied_at?: string | null
           sequence_key?: string
           status?: string
           stop_reason?: string | null
@@ -4369,6 +4371,7 @@ export type Database = {
           id?: string
           next_send_at?: string | null
           prospect_id?: string
+          replied_at?: string | null
           sequence_key?: string
           status?: string
           stop_reason?: string | null
@@ -4439,6 +4442,7 @@ export type Database = {
       prospects: {
         Row: {
           assigned_executive_id: string | null
+          audit_requested_at: string | null
           business_name: string
           city: string | null
           contact_name: string | null
@@ -4455,12 +4459,15 @@ export type Database = {
           discount_percentage: number | null
           discount_starts_at: string | null
           email: string | null
+          email_bounced: boolean
           estimated_monthly_revenue: number
           external_lead_id: string | null
           first_contact_channel_id: string | null
           first_contact_date: string
+          food_category: string | null
           guide_downloaded: string | null
           id: string
+          lang: string | null
           last_interaction_at: string | null
           lead_score: number | null
           legal_name: string | null
@@ -4473,12 +4480,14 @@ export type Database = {
           stage_entered_at: string
           status: Database["public"]["Enums"]["prospect_status"]
           tax_id: string | null
+          unsubscribed_at: string | null
           updated_at: string
           utm_campaign: string | null
           utm_content: string | null
         }
         Insert: {
           assigned_executive_id?: string | null
+          audit_requested_at?: string | null
           business_name: string
           city?: string | null
           contact_name?: string | null
@@ -4495,12 +4504,15 @@ export type Database = {
           discount_percentage?: number | null
           discount_starts_at?: string | null
           email?: string | null
+          email_bounced?: boolean
           estimated_monthly_revenue?: number
           external_lead_id?: string | null
           first_contact_channel_id?: string | null
           first_contact_date?: string
+          food_category?: string | null
           guide_downloaded?: string | null
           id?: string
+          lang?: string | null
           last_interaction_at?: string | null
           lead_score?: number | null
           legal_name?: string | null
@@ -4513,12 +4525,14 @@ export type Database = {
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["prospect_status"]
           tax_id?: string | null
+          unsubscribed_at?: string | null
           updated_at?: string
           utm_campaign?: string | null
           utm_content?: string | null
         }
         Update: {
           assigned_executive_id?: string | null
+          audit_requested_at?: string | null
           business_name?: string
           city?: string | null
           contact_name?: string | null
@@ -4535,12 +4549,15 @@ export type Database = {
           discount_percentage?: number | null
           discount_starts_at?: string | null
           email?: string | null
+          email_bounced?: boolean
           estimated_monthly_revenue?: number
           external_lead_id?: string | null
           first_contact_channel_id?: string | null
           first_contact_date?: string
+          food_category?: string | null
           guide_downloaded?: string | null
           id?: string
+          lang?: string | null
           last_interaction_at?: string | null
           lead_score?: number | null
           legal_name?: string | null
@@ -4553,6 +4570,7 @@ export type Database = {
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["prospect_status"]
           tax_id?: string | null
+          unsubscribed_at?: string | null
           updated_at?: string
           utm_campaign?: string | null
           utm_content?: string | null
@@ -4645,6 +4663,24 @@ export type Database = {
           },
         ]
       }
+      resend_webhook_events: {
+        Row: {
+          event_type: string
+          received_at: string
+          svix_id: string
+        }
+        Insert: {
+          event_type: string
+          received_at?: string
+          svix_id: string
+        }
+        Update: {
+          event_type?: string
+          received_at?: string
+          svix_id?: string
+        }
+        Relationships: []
+      }
       role_menu_access: {
         Row: {
           role: Database["public"]["Enums"]["app_role"]
@@ -4728,26 +4764,44 @@ export type Database = {
       }
       sequence_sends: {
         Row: {
+          bounced_at: string | null
+          clicked_at: string | null
+          complained_at: string | null
+          delivered_at: string | null
           id: string
+          opened_at: string | null
           prospect_sequence_id: string
           resend_email_id: string | null
           sent_at: string
+          status: string
           step: number
           subject: string | null
         }
         Insert: {
+          bounced_at?: string | null
+          clicked_at?: string | null
+          complained_at?: string | null
+          delivered_at?: string | null
           id?: string
+          opened_at?: string | null
           prospect_sequence_id: string
           resend_email_id?: string | null
           sent_at?: string
+          status?: string
           step: number
           subject?: string | null
         }
         Update: {
+          bounced_at?: string | null
+          clicked_at?: string | null
+          complained_at?: string | null
+          delivered_at?: string | null
           id?: string
+          opened_at?: string | null
           prospect_sequence_id?: string
           resend_email_id?: string | null
           sent_at?: string
+          status?: string
           step?: number
           subject?: string | null
         }
@@ -6040,6 +6094,7 @@ export type Database = {
       }
       recompute_mrr_for_month: { Args: { _period: string }; Returns: undefined }
       refresh_invoice_statuses: { Args: never; Returns: undefined }
+      set_nurturing_enabled: { Args: { _enabled: boolean }; Returns: Json }
       snapshot_commissions_for_month: {
         Args: { _period?: string }
         Returns: number
