@@ -1,6 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { evaluateEligibility, NEXT_DELAY_DAYS, pickLang, renderStep, sendResend, signProspect, type Lang } from "../_shared/nurturing.ts";
+import { evaluateEligibility, NEXT_DELAY_DAYS, pickLang, renderStep, replyTo, sendResend, signProspect, type Lang } from "../_shared/nurturing.ts";
 import { loadStages, moveStageIfIn } from "../_shared/prospects.ts";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -28,6 +28,12 @@ Deno.serve(async (req) => {
   const sb = createClient(URL_BASE, SERVICE);
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
+
+  // Config check (admin): effective reply-to, no mail sent, nothing touched.
+  if (body?.config_check) {
+    if (!(await isPrivileged(req, sb))) return json({ error: "unauthorized" }, 401);
+    return json({ reply_to: replyTo() });
+  }
 
   // Preview: sends the 3 templates with sample data, never touches sequences.
   if (body?.preview_to) {
