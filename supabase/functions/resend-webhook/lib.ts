@@ -36,6 +36,35 @@ export async function verifySvix(secret: string, h: { id: string | null; timesta
   });
 }
 
+/** Sending account (mevak.com.ar) signs tracking events; receiving account (r.mevak.com.ar) signs email.received. */
+export const SEND_SECRET = "RESEND_WEBHOOK_SECRET";
+export const INBOUND_SECRET = "RESEND_WEBHOOK_SECRET_INBOUND";
+export const expectedSecretFor = (type: string) => (type === "email.received" ? INBOUND_SECRET : SEND_SECRET);
+
+export type WebhookAuth = { ok: true; secret: string } | { ok: false; status: number; error: string };
+
+/**
+ * Accepts the delivery if the svix signature validates with ANY configured secret and reports which one.
+ * If none validates and the secret expected for the claimed event type is missing, answers 500 "<NAME> not configured";
+ * otherwise 401. `claimedType` is unverified and is only used to choose the error.
+ */
+export async function resolveWebhookAuth(
+  secrets: Record<string, string | undefined>,
+  h: { id: string | null; timestamp: string | null; signature: string | null },
+  body: string,
+  claimedType: string,
+  nowSec = Math.floor(Date.now() / 1000),
+): Promise<WebhookAuth> {
+  for (const name of [SEND_SECRET, INBOUND_SECRET]) {
+    const s = secrets[name];
+    if (s && (await verifySvix(s, h, body, nowSec))) return { ok: true, secret: name };
+  }
+  const expected = expectedSecretFor(claimedType);
+  if (!secrets[expected]) return { ok: false, status: 500, error: `${expected} not configured` };
+  return { ok: false, status: 401, error: "invalid_signature" };
+}
+
+
 const RANK: Record<string, number> = { sent: 0, delivered: 1, opened: 2, clicked: 3, bounced: 9, complained: 9 };
 const EVENT_MAP: Record<string, { status: string; field: string }> = {
   "email.delivered": { status: "delivered", field: "delivered_at" },

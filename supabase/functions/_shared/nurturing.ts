@@ -209,10 +209,13 @@ export function renderStep(step: Step, input: RenderInput, unsubUrl: string) {
 }
 
 // ---------- Resend ----------
-/** Calls Resend directly when RESEND_API_KEY is a native key ("re_…"), otherwise through the Lovable connector gateway. */
-export async function resendFetch(path: string, init: { method?: string; body?: unknown } = {}) {
-  const key = env("RESEND_API_KEY");
-  if (!key) throw new Error("resend_not_configured");
+/**
+ * Calls Resend directly when the key is a native key ("re_…"), otherwise through the Lovable connector gateway.
+ * `keyEnv` picks the account: RESEND_API_KEY (sending, mevak.com.ar) or RESEND_API_KEY_INBOUND (receiving, r.mevak.com.ar).
+ */
+export async function resendFetch(path: string, init: { method?: string; body?: unknown } = {}, keyEnv = "RESEND_API_KEY") {
+  const key = env(keyEnv);
+  if (!key) throw new Error(`${keyEnv} not configured`);
   let url: string; const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (key.startsWith("re_")) {
     url = `https://api.resend.com${path}`;
