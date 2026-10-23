@@ -116,11 +116,18 @@ export function replySnippet(text: string | null, html: string | null, max = 300
 
 const escHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
-export function forwardMessage(inb: Inbound, empresa: string | null) {
+export const MISSING_INBOUND_KEY_NOTE = "No se pudo recuperar el cuerpo: falta RESEND_API_KEY_INBOUND";
+
+/** `bodyNote` is shown when the body could not be fetched (e.g. MISSING_INBOUND_KEY_NOTE). */
+export function forwardMessage(inb: Inbound, empresa: string | null, bodyNote: string | null = null) {
   const who = empresa || inb.from;
   const subject = `Re: ${inb.subject.replace(/^(re|rv|fw|fwd):\s*/i, "")} — respuesta de ${who}`;
   const header = `<div style="font-family:Arial,sans-serif;font-size:13px;color:#6B6775;border-bottom:1px solid #E4E1D8;padding-bottom:8px;margin-bottom:12px">Respuesta de <strong>${escHtml(inb.from)}</strong>${empresa ? ` (${escHtml(empresa)})` : ""} a la secuencia de mails. Respondé este mail para contestarle directo.</div>`;
-  const html = header + (inb.html ?? `<pre style="white-space:pre-wrap;font-family:Arial,sans-serif">${escHtml(inb.text ?? "")}</pre>`);
-  const text = `Respuesta de ${inb.from}${empresa ? ` (${empresa})` : ""}:\n\n${inb.text ?? replySnippet(null, inb.html, 100000)}`;
+  const note = bodyNote ? `<p style="font-family:Arial,sans-serif;font-size:13px;color:#DE2D03"><strong>${escHtml(bodyNote)}</strong></p>` : "";
+  const hasBody = !!(inb.html || inb.text);
+  const body = inb.html ?? (hasBody ? `<pre style="white-space:pre-wrap;font-family:Arial,sans-serif">${escHtml(inb.text ?? "")}</pre>` : "");
+  const html = header + note + body;
+  const bodyText = inb.text ?? (inb.html ? replySnippet(null, inb.html, 100000) : "");
+  const text = `Respuesta de ${inb.from}${empresa ? ` (${empresa})` : ""}:\n\n${bodyNote ? bodyNote + "\n\n" : ""}${bodyText}`.trimEnd();
   return { subject, html, text };
 }
