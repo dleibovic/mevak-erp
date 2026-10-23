@@ -12,7 +12,14 @@
 
 ## Resend webhook (resend-webhook)
 - URL: `https://chswulyeiyeuiawgjxze.supabase.co/functions/v1/resend-webhook` (public, verify_jwt=false; authenticates by svix signature).
-- Subscribe in Resend: `email.delivered`, `email.opened`, `email.clicked`, `email.bounced`, `email.complained`, `email.received`.
-- Secret `RESEND_WEBHOOK_SECRET` = the webhook "Signing secret" (`whsec_…`) shown by Resend. Without it the function answers 500 by design.
-- Receiving domain: `r.mevak.com.ar` (MX in Resend). Once verified, set secret `EMAIL_REPLY_TO` = `Darío de Mevak <dario@r.mevak.com.ar>`; replies are logged on the prospect, stop the sequence (`respondio`) and are forwarded to dario@mevak.com.ar with reply_to = the prospect.
+- Two Resend accounts: the **sending** account owns `mevak.com.ar` (subscribe `email.delivered`, `email.opened`, `email.clicked`, `email.bounced`, `email.complained`); the **receiving** account owns `r.mevak.com.ar` (subscribe `email.received`). A delivery is accepted if its signature validates with either webhook secret; the matching secret name is stored in `resend_webhook_events.verified_with`. If the secret expected for the event's account is missing, the function answers 500 "<NAME> not configured".
+- Inbound bodies are fetched with the receiving account's key; without it the reply is still logged/forwarded from webhook metadata with a "No se pudo recuperar el cuerpo" note. Forwards to dario@mevak.com.ar always go out through the sending account, from dario@mevak.com.ar, reply_to = the prospect.
 - Delivery ids are recorded in `resend_webhook_events` so Resend retries are not processed twice.
+
+| Secret | Account | Used for |
+|---|---|---|
+| `RESEND_API_KEY` | Sending (mevak.com.ar) | Sequence mails, preview, forwarding replies to Darío |
+| `RESEND_WEBHOOK_SECRET` | Sending | svix signing secret (`whsec_…`) of the tracking-events webhook |
+| `RESEND_API_KEY_INBOUND` | Receiving (r.mevak.com.ar) | `GET /emails/receiving/{id}` to fetch reply bodies |
+| `RESEND_WEBHOOK_SECRET_INBOUND` | Receiving | svix signing secret of the `email.received` webhook |
+| `EMAIL_REPLY_TO` | — | Reply-to of sequence mails (default `dario@mevak.com.ar`; set to `Darío de Mevak <dario@r.mevak.com.ar>` once receiving is verified) |

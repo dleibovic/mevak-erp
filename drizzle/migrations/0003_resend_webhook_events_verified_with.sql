@@ -1,0 +1,2 @@
+ALTER TABLE public.resend_webhook_events ADD COLUMN IF NOT EXISTS verified_with text;
+COMMENT ON COLUMN public.resend_webhook_events.verified_with IS 'Name of the secret whose svix signature validated this delivery (RESEND_WEBHOOK_SECRET or RESEND_WEBHOOK_SECRET_INBOUND).';
