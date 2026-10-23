@@ -1,5 +1,6 @@
 // Nurturing sequence "nurturing_guia": templates (ES/EN), eligibility rules and Resend sending.
 // Pure helpers: no Deno globals at import time so they can be unit-tested anywhere.
+import { button, buttonRow, C, esc, footerText, htmlToText, layout, monthLabel, paragraph, signature, signatureText } from "./email-layout.ts";
 
 export const FROM = "Darío de Mevak <dario@mevak.com.ar>";
 export const FORWARD_TO = "dario@mevak.com.ar";
@@ -84,48 +85,45 @@ export function evaluateEligibility(p: EligibilityInput): Eligibility {
 
 export const NEXT_DELAY_DAYS: Record<number, number | null> = { 1: 3, 2: 4, 3: null };
 
-// ---------- Templates ----------
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+// ---------- Templates (design = Mevak's single template in email-layout.ts) ----------
 export const auditUrl = (n: Step) => `https://www.mevakfoodagency.com/?audit=1&utm_source=email&utm_medium=nurture&utm_campaign=sec_guia&utm_content=mail${n}`;
 export const calendlyUrl = (n: Step) => `https://calendly.com/dario-mevak/delivery-y-rentabilidad-30-minutos?utm_source=email&utm_medium=nurture&utm_content=mail${n}`;
 const INSTAGRAM = "https://www.instagram.com/mevakfoodagency";
-const BRAND = "#555EC3";
+const BRAND = C.brand;
+
+export const HEADER_TAGLINE: Record<Lang, string> = {
+  es: "Novedades de delivery, datos y GEO · por Darío Leibovic",
+  en: "Delivery, data & GEO news · by Darío Leibovic",
+};
+export const REASON: Record<Lang, string> = {
+  es: "descargaste una guía en www.mevakfoodagency.com",
+  en: "you downloaded a guide at www.mevakfoodagency.com",
+};
 
 type Block = { p: string } | { cta: true };
 
-function htmlToText(h: string) {
-  return h
-    .replace(/<a [^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/g, "$2 ($1)")
-    .replace(/<br\s*\/?>/g, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-}
-
-function build(blocks: Block[], step: Step, lang: Lang, unsubUrl: string) {
+function build(blocks: Block[], step: Step, lang: Lang, unsubUrl: string, subject: string, now: Date) {
   const L = lang === "en"
-    ? { cta: "Request the free audit", alt: "or book 30 min with me", foot: "You're receiving this because you downloaded a Mevak guide.", unsub: "Unsubscribe" }
-    : { cta: "Pedir la auditoría gratis", alt: "o agendá 30 min conmigo", foot: "Recibís este mail porque descargaste una guía de Mevak.", unsub: "No quiero recibir más estos mails" };
-  const sig = "Darío Leibovic y María Dean · Mevak Food Agency";
-  const htmlBody = blocks.map((b) => "cta" in b
-    ? `<p style="margin:24px 0 8px"><a href="${auditUrl(step)}" style="background:${BRAND};color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;display:inline-block;font-weight:600">${L.cta}</a></p><p style="margin:0 0 16px;font-size:14px"><a href="${calendlyUrl(step)}" style="color:${BRAND}">${L.alt}</a></p>`
-    : `<p style="margin:0 0 16px">${b.p}</p>`).join("\n");
-  const html = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#F4F2EC;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#2B2833">
-<div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;padding:32px 28px;font-size:16px;line-height:1.6">
-${htmlBody}
-<p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #E4E1D8;color:#6B6775;font-size:13px">${sig}</p>
-</div>
-<p style="max-width:600px;margin:16px auto 0;text-align:center;font-size:12px;color:#6B6775">${L.foot} <a href="${unsubUrl}" style="color:#6B6775">${L.unsub}</a></p>
-</body></html>`;
+    ? { cta: "Request the free audit", alt: "or book 30 min with me" }
+    : { cta: "Pedir la auditoría gratis", alt: "o agendá 30 min conmigo" };
+  const bodyHtml = blocks.map((b) => "cta" in b
+    ? buttonRow(button(L.cta, auditUrl(step), "primary"), button(L.alt, calendlyUrl(step), "secondary"))
+    : paragraph(b.p)).join("\n") + "\n" + signature(lang);
+  const html = layout({
+    headerTagline: HEADER_TAGLINE[lang], monthLabel: monthLabel(now, lang), bodyHtml, lang, unsubUrl,
+    reasonText: REASON[lang], utmMedium: "nurture", title: subject,
+  });
   const text = [
     ...blocks.map((b) => "cta" in b ? `${L.cta}: ${auditUrl(step)}\n${L.alt}: ${calendlyUrl(step)}` : htmlToText(b.p)),
     "—",
-    sig,
-    `${L.foot} ${L.unsub}: ${unsubUrl}`,
+    signatureText(lang),
+    "—",
+    footerText(lang, REASON[lang], unsubUrl, "nurture"),
   ].join("\n\n");
   return { html, text };
 }
 
-export type RenderInput = { nombre?: string | null; empresa?: string | null; guideKey?: string | null; lang?: Lang };
+export type RenderInput = { nombre?: string | null; empresa?: string | null; guideKey?: string | null; lang?: Lang; now?: Date };
 
 export function renderStep(step: Step, input: RenderInput, unsubUrl: string) {
   const lang: Lang = input.lang ?? "es";
