@@ -1,7 +1,9 @@
 import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { auditUrl, calendlyUrl, evaluateEligibility, guideName, isAuditOrigin, isValidEmail, pickLang, renderStep, type EligibilityInput } from "../_shared/nurturing.ts";
+import { AVATAR_URL, card, h1, INSTAGRAM_URL, LOGO_URL, monthLabel, YOUTUBE_URL } from "../_shared/email-layout.ts";
 
 const U = "https://x.test/unsub?p=1";
+const OCT = new Date("2026-10-23T20:00:00Z");
 
 Deno.test("mapa de guías: claves conocidas y default", () => {
   assertEquals(guideName("guia_6_tacticas"), "“6 Tácticas para rentabilizar tu delivery”");
@@ -24,17 +26,41 @@ Deno.test("idioma: EN para US/CA/GB, ES para el resto", () => {
 
 for (const lang of ["es", "en"] as const) {
   for (const step of [1, 2, 3] as const) {
-    Deno.test(`mail ${step} ${lang}: con y sin nombre, links y baja`, () => {
-      const withName = renderStep(step, { nombre: "Juan", empresa: "La Parrilla", guideKey: "guia_sorteo", lang }, U);
-      const noName = renderStep(step, { nombre: "", empresa: "", guideKey: "guia_sorteo", lang }, U);
+    Deno.test(`mail ${step} ${lang}: con y sin nombre, plantilla Mevak, links y baja`, () => {
+      const withName = renderStep(step, { nombre: "Juan", empresa: "La Parrilla", guideKey: "guia_sorteo", lang, now: OCT }, U);
+      const noName = renderStep(step, { nombre: "", empresa: "", guideKey: "guia_sorteo", lang, now: OCT }, U);
       for (const m of [withName, noName]) {
         assertStringIncludes(m.html, auditUrl(step));
         assertStringIncludes(m.html, calendlyUrl(step));
-        assertStringIncludes(m.html, U);
         assertStringIncludes(m.html, "#555EC3");
         assertStringIncludes(m.html, "max-width:600px");
-        assertStringIncludes(m.html, "Darío Leibovic y María Dean · Mevak Food Agency");
+        // Cabecera: logo blanco con link al sitio, bajada y mes
+        assertStringIncludes(m.html, LOGO_URL);
+        assertStringIncludes(m.html, "https://www.mevakfoodagency.com/?utm_source=email&utm_medium=nurture");
+        assertStringIncludes(m.html, lang === "es" ? "Novedades de delivery, datos y GEO · por Darío Leibovic" : "Delivery, data &amp; GEO news · by Darío Leibovic");
+        assertStringIncludes(m.html, lang === "es" ? "Octubre 2026" : "October 2026");
+        // Firma: foto, rol, invitación a redes y dos píldoras
+        assertStringIncludes(m.html, AVATAR_URL);
+        assertStringIncludes(m.html, lang === "es" ? "Cofundador · Mevak Food Agency" : "Co-founder · Mevak Food Agency");
+        assertStringIncludes(m.html, lang === "es" ? "publico algo nuevo todos los días" : "I post something new every day");
+        assertStringIncludes(m.html, `href="${INSTAGRAM_URL}"`);
+        assertStringIncludes(m.html, `href="${YOUTUBE_URL}"`);
+        assertStringIncludes(m.html, lang === "es" ? "Seguir en Instagram" : "Follow on Instagram");
+        assertStringIncludes(m.html, lang === "es" ? "Suscribirse en YouTube" : "Subscribe on YouTube");
+        // Pie con motivo y baja real
+        assertStringIncludes(m.html, lang === "es"
+          ? "Recibís este mail porque descargaste una guía en www.mevakfoodagency.com."
+          : "You're receiving this email because you downloaded a guide at www.mevakfoodagency.com.");
+        assertStringIncludes(m.html, `<a href="${U}" style="color:#6B6775">${lang === "es" ? "Darse de baja" : "Unsubscribe"}</a>`);
+        assertStringIncludes(m.html, "Buenos Aires · Madrid · Miami");
+        assert(!m.html.includes("María Dean"), "firma vieja eliminada");
+        assert(!m.html.includes("display:flex"), "sin flex");
+        // Texto plano: CTA, firma, redes y baja
         assertStringIncludes(m.text, auditUrl(step));
+        assertStringIncludes(m.text, INSTAGRAM_URL);
+        assertStringIncludes(m.text, YOUTUBE_URL);
+        assertStringIncludes(m.text, lang === "es" ? "todos los días" : "every day");
+        assertStringIncludes(m.text, `${lang === "es" ? "Darse de baja" : "Unsubscribe"}: ${U}`);
         assert(!m.text.includes("<"), "texto plano sin HTML");
         assert(!m.subject.includes("undefined") && !m.html.includes("undefined"));
         assert(!m.html.includes("/book"));
@@ -46,6 +72,18 @@ for (const lang of ["es", "en"] as const) {
     });
   }
 }
+
+Deno.test("mes de cabecera en hora de Buenos Aires", () => {
+  assertEquals(monthLabel(new Date("2026-11-01T02:00:00Z")), "Octubre 2026");
+  assertEquals(monthLabel(new Date("2026-11-01T04:00:00Z"), "en"), "November 2026");
+});
+
+Deno.test("helpers reutilizables: h1 con palabra clave y tarjeta apilable", () => {
+  assertStringIncludes(h1("Un sorteo que trae pedidos", "pedidos"), '<span style="color:#DE2D03">pedidos</span>');
+  const c = card({ imageUrl: "https://x.test/p.jpg", label: "Guía nueva", title: "T", button: { label: "Ver", href: "https://x.test" } });
+  assertStringIncludes(c, 'class="stack"');
+  assertStringIncludes(c, "border:1px solid #E8E5DD;border-radius:16px");
+});
 
 Deno.test("mail 1 ES: asunto con guía y nombre; 'de el' se contrae", () => {
   assertEquals(renderStep(1, { nombre: "Ana", guideKey: "guia_6_tacticas" }, U).subject, "¿Pudiste aplicar algo de “6 Tácticas para rentabilizar tu delivery”, Ana?");

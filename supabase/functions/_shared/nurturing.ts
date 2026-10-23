@@ -203,7 +203,7 @@ export function renderStep(step: Step, input: RenderInput, unsubUrl: string) {
       ];
     }
   }
-  return { subject, ...build(blocks, step, lang, unsubUrl) };
+  return { subject, ...build(blocks, step, lang, unsubUrl, subject, input.now ?? new Date()) };
 }
 
 // ---------- Resend ----------
