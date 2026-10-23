@@ -4668,16 +4668,19 @@ export type Database = {
           event_type: string
           received_at: string
           svix_id: string
+          verified_with: string | null
         }
         Insert: {
           event_type: string
           received_at?: string
           svix_id: string
+          verified_with?: string | null
         }
         Update: {
           event_type?: string
           received_at?: string
           svix_id?: string
+          verified_with?: string | null
         }
         Relationships: []
       }
