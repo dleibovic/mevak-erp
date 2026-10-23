@@ -7,6 +7,7 @@
 - Read monthlyized client revenue from `v_client_metrics.current_mrr` instead of recomputing `monthly_fee × branches × frequency multiplier` in the UI, so weekly and per-branch clients are never double-counted.
 - Treat "the current month" as a `[first day, first day of next month)` ISO range built by `monthBounds` in `src/lib/billingPeriod.ts`, so weekly billing periods (Mondays) are not missed.
 - Keep the marketing mail sequence ("nurturing_guia") as pure templates/eligibility in `supabase/functions/_shared/nurturing.ts` and stage moves in `_shared/prospects.ts`, so ingest-lead, process-sequences and resend-webhook share one set of rules and can be unit-tested with Deno.
+- Build every marketing/newsletter email with `layout()` and the `card`/`button`/`pill`/`signature` helpers in `supabase/functions/_shared/email-layout.ts`, so all Mevak mails share one approved template (tables + inline styles, `@media` only for `.pad`/`.stack`) and always ship a plain-text version.
 - Turn the sequence on/off only through the admin RPC `set_nurturing_enabled`, so enabling always stops stale backlog (>21 days) and staggers the rest 5 per hour; process-sequences also caps each hourly run at 5 sends.
 - Send mail through `sendResend`/`resendFetch`: a native `re_` RESEND_API_KEY calls api.resend.com directly, anything else goes through the Lovable connector gateway. The reply-to comes only from the `EMAIL_REPLY_TO` secret (default `dario@mevak.com.ar`), so switching to the receiving subdomain is a single secret change.
 
