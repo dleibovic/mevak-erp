@@ -4,8 +4,14 @@
 export type EmailLang = "es" | "en";
 
 export const SITE = "https://www.mevakfoodagency.com";
-export const LOGO_URL = `${SITE}/email/logo-mevak-white.png`;
-export const AVATAR_URL = `${SITE}/email/dario-avatar.jpg`;
+// Images are served from a stable host (not the marketing site, whose DNS failed); override with EMAIL_ASSETS_BASE.
+export const DEFAULT_ASSETS_BASE = "https://midtcgocljahzzwxdaex.supabase.co/functions/v1/email-assets";
+const envGet = (k: string): string | undefined => (globalThis as any).Deno?.env?.get?.(k) ?? undefined;
+export const assetsBase = (override?: string) => (override ?? envGet("EMAIL_ASSETS_BASE") ?? "").trim().replace(/\/+$/, "") || DEFAULT_ASSETS_BASE;
+export const logoUrl = (base = assetsBase()) => `${base}/logo-mevak-white.png`;
+export const avatarUrl = (base = assetsBase()) => `${base}/dario-avatar.jpg`;
+export const LOGO_URL = logoUrl();
+export const AVATAR_URL = avatarUrl();
 export const INSTAGRAM_URL = "https://www.instagram.com/darioleibovic";
 export const YOUTUBE_URL = "https://www.youtube.com/@darioleibovic";
 

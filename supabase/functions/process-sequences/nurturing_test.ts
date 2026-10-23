@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { auditUrl, calendlyUrl, evaluateEligibility, guideName, isAuditOrigin, isValidEmail, pickLang, renderStep, type EligibilityInput } from "../_shared/nurturing.ts";
-import { AVATAR_URL, card, h1, INSTAGRAM_URL, LOGO_URL, monthLabel, YOUTUBE_URL } from "../_shared/email-layout.ts";
+import { assetsBase, AVATAR_URL, avatarUrl, card, DEFAULT_ASSETS_BASE, h1, INSTAGRAM_URL, LOGO_URL, logoUrl, monthLabel, YOUTUBE_URL } from "../_shared/email-layout.ts";
 
 const U = "https://x.test/unsub?p=1";
 const OCT = new Date("2026-10-23T20:00:00Z");
@@ -72,6 +72,17 @@ for (const lang of ["es", "en"] as const) {
     });
   }
 }
+
+Deno.test("imágenes desde host estable, no desde el sitio", () => {
+  const b = "https://midtcgocljahzzwxdaex.supabase.co/functions/v1/email-assets";
+  assertEquals(DEFAULT_ASSETS_BASE, b);
+  assertEquals(logoUrl(assetsBase("")), `${b}/logo-mevak-white.png`);
+  assertEquals(avatarUrl(assetsBase("")), `${b}/dario-avatar.jpg`);
+  assertEquals(logoUrl(assetsBase("https://cdn.test/x/")), "https://cdn.test/x/logo-mevak-white.png");
+  const html = renderStep(1, { nombre: "Ana" }, U).html;
+  for (const m of html.matchAll(/<img src="([^"]+)"/g)) assert(!m[1].includes("mevakfoodagency.com"), m[1]);
+  assertStringIncludes(html, "https://www.mevakfoodagency.com/?utm_source=email&utm_medium=nurture");
+});
 
 Deno.test("mes de cabecera en hora de Buenos Aires", () => {
   assertEquals(monthLabel(new Date("2026-11-01T02:00:00Z")), "Octubre 2026");
