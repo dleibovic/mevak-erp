@@ -15,6 +15,13 @@
       "when": 1791862615873,
       "tag": "0001_prospect_sequences",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792782334798,
+      "tag": "0002_nurturing_resend_tracking",
+      "breakpoints": true
     }
   ]
 }

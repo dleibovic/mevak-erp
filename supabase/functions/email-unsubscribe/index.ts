@@ -12,6 +12,7 @@ function safeEqual(a: string, b: string) {
   return r === 0;
 }
 
+// GET (link in the mail) and POST (List-Unsubscribe one-click) both unsubscribe.
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   if (url.searchParams.get("preview")) return page("Listo, no te escribimos más");
@@ -21,7 +22,7 @@ Deno.serve(async (req) => {
   if (!secret || !/^[0-9a-f-]{36}$/i.test(p) || !safeEqual(s, await signProspect(p, secret))) return page("Link inválido", 400);
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  await sb.from("prospects").update({ marketing_opt_in: false }).eq("id", p);
+  await sb.from("prospects").update({ marketing_opt_in: false, unsubscribed_at: new Date().toISOString() }).eq("id", p).is("unsubscribed_at", null);
   await sb.from("prospect_sequences").update({ status: "stopped", stop_reason: "baja", next_send_at: null }).eq("prospect_id", p).eq("status", "active");
   return page("Listo, no te escribimos más");
 });
