@@ -10,7 +10,7 @@
 - Build every marketing/newsletter email with `layout()` and the `card`/`button`/`pill`/`signature` helpers in `supabase/functions/_shared/email-layout.ts`, so all Mevak mails share one approved template (tables + inline styles, `@media` only for `.pad`/`.stack`) and always ship a plain-text version.
 - Load email images (logo, avatar) from `assetsBase()` (secret `EMAIL_ASSETS_BASE`, default the stable email-assets function), never from the marketing site, so a site DNS outage cannot break images; links still point to the site.
 - Turn the sequence on/off only through the admin RPC `set_nurturing_enabled`, so enabling always stops stale backlog (>21 days) and staggers the rest 5 per hour; process-sequences also caps each hourly run at 5 sends.
-- Send mail through `sendResend`/`resendFetch`: a native `re_` RESEND_API_KEY calls api.resend.com directly, anything else goes through the Lovable connector gateway. The reply-to comes only from the `EMAIL_REPLY_TO` secret (default `dario@mevak.com.ar`), so switching to the receiving subdomain is a single secret change.
+- Send mail through `sendResend`/`resendFetch`: a native `re_` RESEND_API_KEY calls api.resend.com directly, anything else goes through the Lovable connector gateway. The reply-to comes only from the `EMAIL_REPLY_TO` secret (default `Darío de Mevak <dario@mevak.com.ar>` when unset), so switching to the receiving subdomain is a single secret change; check the effective value with the admin-only `{"config_check":true}` call to process-sequences.
 
 ## Resend webhook (resend-webhook)
 - URL: `https://chswulyeiyeuiawgjxze.supabase.co/functions/v1/resend-webhook` (public, verify_jwt=false; authenticates by svix signature).
