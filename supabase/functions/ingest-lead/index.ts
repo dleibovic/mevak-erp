@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { isAuditOrigin } from "../_shared/nurturing.ts";
+import { enrollmentFor, isAuditOrigin, LATE_OPT_IN_NOTE } from "../_shared/nurturing.ts";
 import { escapeIlike, loadStages, moveStageIfIn, stopActiveSequences } from "../_shared/prospects.ts";
 
 const headers = { ...corsHeaders, "Access-Control-Allow-Headers": `${corsHeaders["Access-Control-Allow-Headers"] ?? ""}, x-ingest-token`, "Content-Type": "application/json" };
@@ -116,6 +116,21 @@ Deno.serve(async (req) => {
       await sb.from("prospect_interactions").insert({ prospect_id: existing.id, stage_at_interaction_id: existing.current_stage_id, notes: auditNote });
       await moveStageIfIn(sb, await loadStages(sb), existing as any, ["Nuevo Contacto", "Contactado"], "Interesado", "Etapa → Interesado (pidió auditoría)");
     }
+    // Late opt-in: enroll only if the person never had a nurturing_guia row (any status).
+    if (b.marketing && !existing.marketing_opt_in && !existing.unsubscribed_at) {
+      const { data: seqRows } = await sb.from("prospect_sequences").select("id")
+        .eq("prospect_id", existing.id).eq("sequence_key", "nurturing_guia").limit(1);
+      const enroll = enrollmentFor({ isNew: false, marketing: true, audit, wasOptedIn: false, unsubscribed: false, hasSequenceRow: (seqRows?.length ?? 0) > 0 });
+      if (enroll) {
+        const { data: ins } = await sb.from("prospect_sequences").upsert(
+          { prospect_id: existing.id, sequence_key: "nurturing_guia", ...enroll },
+          { onConflict: "prospect_id,sequence_key", ignoreDuplicates: true },
+        ).select("id");
+        if (enroll.status === "active" && ins?.length) {
+          await sb.from("prospect_interactions").insert({ prospect_id: existing.id, stage_at_interaction_id: existing.current_stage_id, notes: LATE_OPT_IN_NOTE });
+        }
+      }
+    }
     return json({ status: "duplicate", prospect_id: existing.id });
   }
 
@@ -157,11 +172,10 @@ Deno.serve(async (req) => {
     notes: audit ? auditNote : `Lead ingresado desde Growth Engine — guía: ${b.origin ?? "—"}, origen: ${source}`,
   });
 
-  if (b.marketing) {
+  const enroll = enrollmentFor({ isNew: true, marketing: b.marketing, audit });
+  if (enroll) {
     await sb.from("prospect_sequences").upsert(
-      audit
-        ? { prospect_id: created.id, sequence_key: "nurturing_guia", status: "stopped", stop_reason: "pidio_auditoria", next_send_at: null }
-        : { prospect_id: created.id, sequence_key: "nurturing_guia", next_send_at: new Date(Date.now() + 86400000).toISOString() },
+      { prospect_id: created.id, sequence_key: "nurturing_guia", ...enroll },
       { onConflict: "prospect_id,sequence_key", ignoreDuplicates: true },
     );
   }
