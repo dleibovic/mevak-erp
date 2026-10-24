@@ -85,6 +85,27 @@ export function evaluateEligibility(p: EligibilityInput): Eligibility {
 
 export const NEXT_DELAY_DAYS: Record<number, number | null> = { 1: 3, 2: 4, 3: null };
 
+// ---------- Enrollment at ingest (one nurturing_guia row per person, forever) ----------
+export const ENROLL_DELAY_MS = 86400000;
+export const LATE_OPT_IN_NOTE = "Aceptó novedades en una descarga nueva: arranca la secuencia";
+export type EnrollInput = {
+  isNew: boolean;
+  marketing: boolean;          // opt-in in this submission
+  audit: boolean;              // this submission is an audit request
+  wasOptedIn?: boolean | null; // existing prospect's marketing_opt_in before this submission
+  unsubscribed?: boolean;      // existing prospect has unsubscribed_at
+  hasSequenceRow?: boolean;    // any prospect_sequences row for nurturing_guia (any status)
+};
+export type Enrollment = null | { status: "active"; next_send_at: string } | { status: "stopped"; stop_reason: "pidio_auditoria"; next_send_at: null };
+
+/** Decides whether ingest-lead creates the nurturing_guia row. Never creates a second row. */
+export function enrollmentFor(i: EnrollInput, now = new Date()): Enrollment {
+  if (!i.marketing) return null;
+  if (!i.isNew && (i.wasOptedIn || i.unsubscribed || i.hasSequenceRow)) return null;
+  if (i.audit) return { status: "stopped", stop_reason: "pidio_auditoria", next_send_at: null };
+  return { status: "active", next_send_at: new Date(now.getTime() + ENROLL_DELAY_MS).toISOString() };
+}
+
 // ---------- Templates (design = Mevak's single template in email-layout.ts) ----------
 export const auditUrl = (n: Step) => `https://www.mevakfoodagency.com/?audit=1&utm_source=email&utm_medium=nurture&utm_campaign=sec_guia&utm_content=mail${n}`;
 export const calendlyUrl = (n: Step) => `https://calendly.com/dario-mevak/delivery-y-rentabilidad-30-minutos?utm_source=email&utm_medium=nurture&utm_content=mail${n}`;
