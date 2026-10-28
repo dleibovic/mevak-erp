@@ -24,4 +24,4 @@
 | `RESEND_WEBHOOK_SECRET` | Sending | svix signing secret (`whsec_…`) of the tracking-events webhook |
 | `RESEND_API_KEY_INBOUND` | Receiving (r.mevak.com.ar) | `GET /emails/receiving/{id}` to fetch reply bodies |
 | `RESEND_WEBHOOK_SECRET_INBOUND` | Receiving | svix signing secret of the `email.received` webhook |
-| `EMAIL_REPLY_TO` | — | Reply-to of sequence mails. Currently UNSET on purpose, so the code default `Darío de Mevak <dario@mevak.com.ar>` applies: r.mevak.com.ar has no published MX yet and replies there would bounce. TODO: once r.mevak.com.ar resolves (MX `receive.forge.rmta.net`), add `EMAIL_REPLY_TO` = `Darío de Mevak <dario@r.mevak.com.ar>` and redeploy process-sequences. |
+| `EMAIL_REPLY_TO` | — | Reply-to of sequence mails. Set to the receiving subdomain address (r.mevak.com.ar, MX `receive.forge.rmta.net`). If that subdomain ever stops receiving, delete the secret so the code default `Darío de Mevak <dario@mevak.com.ar>` applies, and redeploy process-sequences. |
