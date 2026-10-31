@@ -26,6 +26,9 @@ import { fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { canPause, canResume, hasReplied, sendBadges, sequencePill, sequenceStatusLabel } from "@/lib/prospectSequence";
+import { AuditFilter, auditParamValue, formatAuditDate, matchesAuditFilter, parseAuditParam, sortForAudit } from "@/lib/prospectAudit";
+import { useSearchParams } from "react-router-dom";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Prospect = any;
 type ViewMode = "list" | "kanban" | "dashboard";
@@ -109,6 +112,9 @@ export default function Prospecting() {
   const [executiveFilter, setExecutiveFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [currencyFilter, setCurrencyFilter] = useState("all");
+  const [params, setParams] = useSearchParams();
+  const auditFilter = parseAuditParam(params.get("auditoria"));
+  const setAuditFilter = (f: AuditFilter) => setParams((prev) => { const next = new URLSearchParams(prev); const v = auditParamValue(f); if (v) next.set("auditoria", v); else next.delete("auditoria"); return next; }, { replace: true });
 
   const { data: employees = [] } = useQuery({ queryKey: ["employees-prospecting"], queryFn: async () => ((await supabase.from("employees").select("id, full_name, user_id, is_active").eq("is_active", true).order("full_name")).data ?? []) });
 
@@ -123,14 +129,15 @@ export default function Prospecting() {
     },
   });
 
-  const filtered = useMemo(() => prospects.filter((p: any) => {
+  const filtered = useMemo(() => sortForAudit(prospects.filter((p: any) => {
     const term = search.toLowerCase();
     return (!term || p.business_name?.toLowerCase().includes(term) || p.contact_name?.toLowerCase().includes(term))
       && (stageFilter === "all" || p.current_stage_id === stageFilter)
       && (executiveFilter === "all" || p.assigned_executive_id === executiveFilter)
       && (channelFilter === "all" || p.first_contact_channel_id === channelFilter)
-      && (currencyFilter === "all" || p.currency === currencyFilter);
-  }), [prospects, search, stageFilter, executiveFilter, channelFilter, currencyFilter]);
+      && (currencyFilter === "all" || p.currency === currencyFilter)
+      && matchesAuditFilter(p, auditFilter);
+  }), auditFilter), [prospects, search, stageFilter, executiveFilter, channelFilter, currencyFilter, auditFilter]);
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await (supabase as any).from("prospects").delete().eq("id", id); if (error) throw error; },
@@ -157,6 +164,8 @@ export default function Prospecting() {
         <Select value={executiveFilter} onValueChange={setExecutiveFilter}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent></Select>
         <Select value={channelFilter} onValueChange={setChannelFilter}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Canal" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los canales</SelectItem>{channels.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
         <Select value={currencyFilter} onValueChange={setCurrencyFilter}><SelectTrigger className="w-full sm:w-[120px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">ARS/EUR</SelectItem><SelectItem value="ARS">ARS</SelectItem><SelectItem value="EUR">EUR</SelectItem></SelectContent></Select>
+        <Select value={auditFilter} onValueChange={(v) => setAuditFilter(v as AuditFilter)}><SelectTrigger className="w-full sm:w-[200px]" aria-label="Pidió auditoría"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Pidió auditoría: Todos</SelectItem><SelectItem value="yes">Pidió auditoría: Sí</SelectItem><SelectItem value="no">Pidió auditoría: No</SelectItem></SelectContent></Select>
+        {auditFilter === "yes" && <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30 whitespace-nowrap">{filtered.length} {filtered.length === 1 ? "pedido" : "pedidos"} de auditoría</Badge>}
         <div className="ml-auto flex rounded-md border border-border bg-card/40 p-1">
           <Button size="sm" variant={mode === "list" ? "secondary" : "ghost"} onClick={() => setMode("list")}><List className="h-4 w-4" /></Button>
           <Button size="sm" variant={mode === "kanban" ? "secondary" : "ghost"} onClick={() => setMode("kanban")}><KanbanSquare className="h-4 w-4" /></Button>
@@ -178,6 +187,11 @@ function StageBadge({ stage }: { stage: any }) {
   return <Badge variant="outline" className={cn("border", STAGE_CLASS[stage?.color] ?? STAGE_CLASS.gray)}>{stage?.name ?? "—"}</Badge>;
 }
 
+function AuditBadge({ at }: { at?: string | null }) {
+  if (!at) return null;
+  return <UITooltip><TooltipTrigger asChild><Badge variant="outline" className="cursor-default whitespace-nowrap bg-accent/10 text-accent border-accent/30 px-1.5 py-0 text-[11px]">Auditoría</Badge></TooltipTrigger><TooltipContent>Pidió auditoría el {formatAuditDate(at)}</TooltipContent></UITooltip>;
+}
+
 function AlertPill({ prospect }: { prospect: any }) {
   const active = (prospect.alerts ?? []).filter((a: any) => !a.is_dismissed && !a.is_sent);
   if (!active.length) return <span className="text-muted-foreground">—</span>;
@@ -187,7 +201,7 @@ function AlertPill({ prospect }: { prospect: any }) {
 function ListView({ prospects, isLoading, onOpen, onEdit, onDelete, isAdmin }: any) {
   if (isLoading) return <Card className="p-10 text-center text-muted-foreground bg-gradient-card border-border/60">Cargando...</Card>;
   if (!prospects.length) return <EmptyState title="Sin prospectos" description="Cargá tu primer prospecto para iniciar el pipeline" />;
-  return <Card className="min-w-0 overflow-hidden bg-gradient-card border-border/60"><Table><TableHeader><TableRow><TableHead>Empresa</TableHead><TableHead>Contacto</TableHead><TableHead>País/Ciudad</TableHead><TableHead>Ejecutivo</TableHead><TableHead>Etapa</TableHead><TableHead>Secuencia</TableHead><TableHead>Primer contacto</TableHead><TableHead>Revenue</TableHead><TableHead>Días etapa</TableHead><TableHead>Alertas</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader><TableBody>{prospects.map((p: any) => <TableRow key={p.id}><TableCell className="font-medium">{p.business_name}</TableCell><TableCell><div>{p.contact_name ?? "—"}</div><div className="text-xs text-muted-foreground">{p.email ?? p.phone ?? ""}</div></TableCell><TableCell>{flagFor(p.country?.name)} {p.country?.name}<div className="text-xs text-muted-foreground">{p.city ?? "—"}</div></TableCell><TableCell>{p.executive?.full_name ?? "—"}</TableCell><TableCell><StageBadge stage={p.stage} /></TableCell><TableCell><SequencePill seq={p.sequences?.[0]} /></TableCell><TableCell>{fmtDate(p.first_contact_date)}<div className="text-xs text-muted-foreground">{p.first_channel?.name ?? "—"}</div></TableCell><TableCell>{formatMoney(p.estimated_monthly_revenue, p.currency)}</TableCell><TableCell>{daysBetween(p.stage_entered_at)} días</TableCell><TableCell><AlertPill prospect={p} /></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => onOpen(p)}><Eye className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => onEdit(p)}><Pencil className="h-4 w-4" /></Button>{isAdmin && <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Eliminar prospecto?</AlertDialogTitle><AlertDialogDescription>Esta acción elimina el prospecto y su historial.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(p.id)}>Eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>}</TableCell></TableRow>)}</TableBody></Table></Card>;
+  return <Card className="min-w-0 overflow-hidden bg-gradient-card border-border/60"><Table><TableHeader><TableRow><TableHead>Empresa</TableHead><TableHead>Contacto</TableHead><TableHead>País/Ciudad</TableHead><TableHead>Ejecutivo</TableHead><TableHead>Etapa</TableHead><TableHead>Secuencia</TableHead><TableHead>Primer contacto</TableHead><TableHead>Revenue</TableHead><TableHead>Días etapa</TableHead><TableHead>Alertas</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader><TableBody>{prospects.map((p: any) => <TableRow key={p.id}><TableCell className="font-medium"><div className="flex flex-wrap items-center gap-2"><span>{p.business_name}</span><AuditBadge at={p.audit_requested_at} /></div></TableCell><TableCell><div>{p.contact_name ?? "—"}</div><div className="text-xs text-muted-foreground">{p.email ?? p.phone ?? ""}</div></TableCell><TableCell>{flagFor(p.country?.name)} {p.country?.name}<div className="text-xs text-muted-foreground">{p.city ?? "—"}</div></TableCell><TableCell>{p.executive?.full_name ?? "—"}</TableCell><TableCell><StageBadge stage={p.stage} /></TableCell><TableCell><SequencePill seq={p.sequences?.[0]} /></TableCell><TableCell>{fmtDate(p.first_contact_date)}<div className="text-xs text-muted-foreground">{p.first_channel?.name ?? "—"}</div></TableCell><TableCell>{formatMoney(p.estimated_monthly_revenue, p.currency)}</TableCell><TableCell>{daysBetween(p.stage_entered_at)} días</TableCell><TableCell><AlertPill prospect={p} /></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => onOpen(p)}><Eye className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => onEdit(p)}><Pencil className="h-4 w-4" /></Button>{isAdmin && <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Eliminar prospecto?</AlertDialogTitle><AlertDialogDescription>Esta acción elimina el prospecto y su historial.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(p.id)}>Eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>}</TableCell></TableRow>)}</TableBody></Table></Card>;
 }
 
 function KanbanView({ prospects, stages, onOpen }: any) {
@@ -220,7 +234,7 @@ function KanbanColumn({ stage, rows, onOpen }: any) {
 
 function ProspectCard({ prospect, onOpen }: any) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: prospect.id, data: { stageId: prospect.current_stage_id } });
-  return <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners} onDoubleClick={() => onOpen(prospect)} className="cursor-grab rounded-md border border-border bg-background p-3 shadow-sm active:cursor-grabbing"><div className="font-medium leading-tight">{prospect.business_name}</div><div className="mt-1 text-xs text-muted-foreground">{flagFor(prospect.country?.name)} {prospect.city ?? prospect.country?.name}</div><div className="mt-3 flex items-center justify-between text-xs"><span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{prospect.executive?.full_name?.slice(0, 12) ?? "—"}</span><span>{formatMoney(prospect.estimated_monthly_revenue, prospect.currency)}</span></div><div className="mt-2 flex items-center justify-between text-xs text-muted-foreground"><span>{daysBetween(prospect.stage_entered_at)} días</span><AlertPill prospect={prospect} /></div></div>;
+  return <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners} onDoubleClick={() => onOpen(prospect)} className="cursor-grab rounded-md border border-border bg-background p-3 shadow-sm active:cursor-grabbing"><div className="flex flex-wrap items-center gap-1.5 font-medium leading-tight"><span>{prospect.business_name}</span><AuditBadge at={prospect.audit_requested_at} /></div><div className="mt-1 text-xs text-muted-foreground">{flagFor(prospect.country?.name)} {prospect.city ?? prospect.country?.name}</div><div className="mt-3 flex items-center justify-between text-xs"><span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{prospect.executive?.full_name?.slice(0, 12) ?? "—"}</span><span>{formatMoney(prospect.estimated_monthly_revenue, prospect.currency)}</span></div><div className="mt-2 flex items-center justify-between text-xs text-muted-foreground"><span>{daysBetween(prospect.stage_entered_at)} días</span><AlertPill prospect={prospect} /></div></div>;
 }
 
 function ProspectDialog({ open, onOpenChange, prospect, stages, employees }: any) {
