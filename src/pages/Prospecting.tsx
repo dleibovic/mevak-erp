@@ -28,7 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { canPause, canResume, hasReplied, sendBadges, sequencePill, sequenceStatusLabel } from "@/lib/prospectSequence";
 import { AuditFilter, auditParamValue, formatAuditDate, matchesAuditFilter, parseAuditParam, sortForAudit } from "@/lib/prospectAudit";
 import { useSearchParams } from "react-router-dom";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Prospect = any;
 type ViewMode = "list" | "kanban" | "dashboard";
@@ -189,7 +189,7 @@ function StageBadge({ stage }: { stage: any }) {
 
 function AuditBadge({ at }: { at?: string | null }) {
   if (!at) return null;
-  return <Tooltip><TooltipTrigger asChild><Badge variant="outline" className="cursor-default whitespace-nowrap bg-accent/10 text-accent border-accent/30 px-1.5 py-0 text-[11px]">Auditoría</Badge></TooltipTrigger><TooltipContent>Pidió auditoría el {formatAuditDate(at)}</TooltipContent></Tooltip>;
+  return <UITooltip><TooltipTrigger asChild><Badge variant="outline" className="cursor-default whitespace-nowrap bg-accent/10 text-accent border-accent/30 px-1.5 py-0 text-[11px]">Auditoría</Badge></TooltipTrigger><TooltipContent>Pidió auditoría el {formatAuditDate(at)}</TooltipContent></UITooltip>;
 }
 
 function AlertPill({ prospect }: { prospect: any }) {
