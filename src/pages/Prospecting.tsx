@@ -26,6 +26,9 @@ import { fmtDate, formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { canPause, canResume, hasReplied, sendBadges, sequencePill, sequenceStatusLabel } from "@/lib/prospectSequence";
+import { AuditFilter, auditParamValue, formatAuditDate, matchesAuditFilter, parseAuditParam, sortForAudit } from "@/lib/prospectAudit";
+import { useSearchParams } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Prospect = any;
 type ViewMode = "list" | "kanban" | "dashboard";
@@ -109,6 +112,9 @@ export default function Prospecting() {
   const [executiveFilter, setExecutiveFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [currencyFilter, setCurrencyFilter] = useState("all");
+  const [params, setParams] = useSearchParams();
+  const auditFilter = parseAuditParam(params.get("auditoria"));
+  const setAuditFilter = (f: AuditFilter) => setParams((prev) => { const next = new URLSearchParams(prev); const v = auditParamValue(f); if (v) next.set("auditoria", v); else next.delete("auditoria"); return next; }, { replace: true });
 
   const { data: employees = [] } = useQuery({ queryKey: ["employees-prospecting"], queryFn: async () => ((await supabase.from("employees").select("id, full_name, user_id, is_active").eq("is_active", true).order("full_name")).data ?? []) });
 
@@ -123,14 +129,15 @@ export default function Prospecting() {
     },
   });
 
-  const filtered = useMemo(() => prospects.filter((p: any) => {
+  const filtered = useMemo(() => sortForAudit(prospects.filter((p: any) => {
     const term = search.toLowerCase();
     return (!term || p.business_name?.toLowerCase().includes(term) || p.contact_name?.toLowerCase().includes(term))
       && (stageFilter === "all" || p.current_stage_id === stageFilter)
       && (executiveFilter === "all" || p.assigned_executive_id === executiveFilter)
       && (channelFilter === "all" || p.first_contact_channel_id === channelFilter)
-      && (currencyFilter === "all" || p.currency === currencyFilter);
-  }), [prospects, search, stageFilter, executiveFilter, channelFilter, currencyFilter]);
+      && (currencyFilter === "all" || p.currency === currencyFilter)
+      && matchesAuditFilter(p, auditFilter);
+  }), auditFilter), [prospects, search, stageFilter, executiveFilter, channelFilter, currencyFilter, auditFilter]);
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await (supabase as any).from("prospects").delete().eq("id", id); if (error) throw error; },
@@ -157,6 +164,8 @@ export default function Prospecting() {
         <Select value={executiveFilter} onValueChange={setExecutiveFilter}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Ejecutivo" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent></Select>
         <Select value={channelFilter} onValueChange={setChannelFilter}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Canal" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los canales</SelectItem>{channels.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
         <Select value={currencyFilter} onValueChange={setCurrencyFilter}><SelectTrigger className="w-full sm:w-[120px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">ARS/EUR</SelectItem><SelectItem value="ARS">ARS</SelectItem><SelectItem value="EUR">EUR</SelectItem></SelectContent></Select>
+        <Select value={auditFilter} onValueChange={(v) => setAuditFilter(v as AuditFilter)}><SelectTrigger className="w-full sm:w-[200px]" aria-label="Pidió auditoría"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Pidió auditoría: Todos</SelectItem><SelectItem value="yes">Pidió auditoría: Sí</SelectItem><SelectItem value="no">Pidió auditoría: No</SelectItem></SelectContent></Select>
+        {auditFilter === "yes" && <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30 whitespace-nowrap">{filtered.length} {filtered.length === 1 ? "pedido" : "pedidos"} de auditoría</Badge>}
         <div className="ml-auto flex rounded-md border border-border bg-card/40 p-1">
           <Button size="sm" variant={mode === "list" ? "secondary" : "ghost"} onClick={() => setMode("list")}><List className="h-4 w-4" /></Button>
           <Button size="sm" variant={mode === "kanban" ? "secondary" : "ghost"} onClick={() => setMode("kanban")}><KanbanSquare className="h-4 w-4" /></Button>
